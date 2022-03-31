@@ -1,5 +1,7 @@
 # Jotai Molecules
 
+Create many `jotai` atoms for a number of scopes with confidence and without the `useMemo` and `useContext` boilerplate.
+
 ## Installation
 
 This module is published on NPM as `jotai-molecules`
