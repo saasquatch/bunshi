@@ -1,8 +1,11 @@
 {
+  "name": "jotai-molecules",
   "version": "0.1.0",
   "license": "MIT",
   "main": "dist/index.js",
+  "module": "dist/jotai-molecules.esm.js",
   "typings": "dist/index.d.ts",
+  "author": "logvol",
   "files": [
     "dist",
     "src"
@@ -36,17 +39,14 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "jotai-molecules",
-  "author": "logvol",
-  "module": "dist/jotai-molecules.esm.js",
   "size-limit": [
     {
       "path": "dist/jotai-molecules.cjs.production.min.js",
-      "limit": "10 KB"
+      "limit": "2 KB"
     },
     {
       "path": "dist/jotai-molecules.esm.js",
-      "limit": "10 KB"
+      "limit": "2 KB"
     }
   ],
   "devDependencies": {

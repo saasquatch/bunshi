@@ -13,7 +13,26 @@ export type ProviderProps<T> = {
   children?: React.ReactNode;
 };
 
+/**
+ * Provides scope for all molecules lower down in the React component tree.
+ *
+ * Will continue to provide parent scopes down, and either override a scope value or add a new scope.
+ *
+ * NOTE - This component memoizes scope per provider. So, the followin two `ComponentA` components will have
+ * *DIFFERENT* molecules provided to them.
+ *
+ * <ScopeProvider scope={UserScope} value="a"><ComponentA/></ScopeProvider>
+ * <ScopeProvider scope={UserScope} value="a"><ComponentA/></ScopeProvider>
+ *
+ */
 export function ScopeProvider<T>(props: ProviderProps<T>) {
+  /**
+   * Memoization is important since the store relies
+   * on the ScopeTuple being referentially consistent
+   *
+   * If a new array is provided to the store,
+   * then new molecules are created
+   */
   const memoizedTuple = useMemo<ScopeTuple<T>>(
     () => [props.scope, props.value],
     [props.scope, props.value]

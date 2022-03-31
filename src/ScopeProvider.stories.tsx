@@ -1,8 +1,8 @@
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import React from 'react';
 import { atom, useAtom } from 'jotai';
-
 import { molecule, createScope, ScopeProvider, useMolecule } from '../.';
+
+export default {};
 
 const CompanyScope = createScope<string>('example.com');
 
@@ -34,12 +34,6 @@ const UserMolecule = molecule((getMol, getScope) => {
   };
 });
 
-const App = () => (
-  <ScopeProvider scope={UserScope} value={'sam@example.com'}>
-    <UserComponent />
-  </ScopeProvider>
-);
-
 const UserComponent = () => {
   const userAtoms = useMolecule(UserMolecule);
   const [userName, setUserName] = useAtom(userAtoms.userNameAtom);
@@ -56,4 +50,24 @@ const UserComponent = () => {
   );
 };
 
-ReactDOM.render(<App />, document.getElementById('root'));
+export const PeerProviders = () => (
+  <>
+    <ScopeProvider scope={UserScope} value={'sam@example.com'}>
+      <UserComponent />
+    </ScopeProvider>
+    <ScopeProvider scope={UserScope} value={'notSam@example.com'}>
+      <UserComponent />
+    </ScopeProvider>
+  </>
+);
+
+export const NestedProviders = () => (
+  <>
+    <ScopeProvider scope={UserScope} value={'sam@example.com'}>
+      <UserComponent />
+      <ScopeProvider scope={UserScope} value={'notSam@example.com'}>
+        <UserComponent />
+      </ScopeProvider>{' '}
+    </ScopeProvider>
+  </>
+);

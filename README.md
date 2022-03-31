@@ -1,5 +1,7 @@
 # Jotai Molecules
 
+A tiny, fast, dependency-free 1.18kb library for creating `jotai` atoms.
+
 Create many `jotai` atoms for a number of scopes with confidence and without the `useMemo` and `useContext` boilerplate.
 
 ## Installation
@@ -14,7 +16,9 @@ npm i jotai-molecules
 
 Molecules are a set of atoms that can be easily scoped globally or per context.
 
-```ts
+```tsx
+import {molecule, createScope, ScopeProvider, useMolecule} from "jotai-molecules";
+
 const CompanyScope = createScope<string>('example.com');
 
 const CompanyMolecule = molecule((_, getScope) => {
@@ -44,9 +48,7 @@ const UserMolecule = molecule((getMol, getScope) => {
     company: companyAtoms.company,
   };
 });
-```
 
-```tsx
 const App = () => (
   <ScopeProvider scope={UserScope} value={'sam@example.com'}>
     <UserComponent />
@@ -66,7 +68,7 @@ const UserComponent = () => {
 
 ## Differences from Jotai
 
-Molecules are very similar to `jotai` atoms, but with a few important differences:
+Molecules are very similar to [jotai](https://jotai.org/) atoms, but with a few important differences:
 
 - Molecules can't be async, atoms can
 - Atom values are unique per a `jotai` scope, two atoms can't be connected across `jotai` scopes
