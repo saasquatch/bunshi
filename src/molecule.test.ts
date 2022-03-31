@@ -1,11 +1,11 @@
-import { atom, PrimitiveAtom } from 'jotai';
+import { atom, PrimitiveAtom } from "jotai";
 import {
   createScope,
   createStore,
   Molecule,
   molecule,
   ScopeTuple,
-} from './molecule';
+} from "./molecule";
 
 type BaseAtoms = {
   nameAtom: PrimitiveAtom<string>;
@@ -33,21 +33,21 @@ const doubleDerived = molecule((getMol) => {
 const UnrelatedScope = createScope<number>(1);
 const unrelatedScope1: ScopeTuple<number> = [UnrelatedScope, 1];
 
-const UserScope = createScope<string>('bob@example.com');
-const user1Scope: ScopeTuple<string> = [UserScope, 'one@example.com'];
-const user2Scope: ScopeTuple<string> = [UserScope, 'two@example.com'];
+const UserScope = createScope<string>("bob@example.com");
+const user1Scope: ScopeTuple<string> = [UserScope, "one@example.com"];
+const user2Scope: ScopeTuple<string> = [UserScope, "two@example.com"];
 
-const CompanyScope = createScope<string>('example.com');
-const company1Scope: ScopeTuple<string> = [CompanyScope, 'example.com'];
-const company2Scope: ScopeTuple<string> = [CompanyScope, 'foo.example.com'];
+const CompanyScope = createScope<string>("example.com");
+const company1Scope: ScopeTuple<string> = [CompanyScope, "example.com"];
+const company2Scope: ScopeTuple<string> = [CompanyScope, "foo.example.com"];
 
 const userMolecule = molecule((getMol, getScope) => {
   const userId = getScope(UserScope);
   const company = getMol(companyMolecule);
-  const userNameAtom = atom(userId + ' name');
-  const userCountryAtom = atom(userId + ' country');
+  const userNameAtom = atom(userId + " name");
+  const userCountryAtom = atom(userId + " country");
   const groupAtom = atom((get) => {
-    return userId + ' in ' + get(company.companyNameAtom);
+    return userId + " in " + get(company.companyNameAtom);
   });
   return {
     userId,
@@ -67,8 +67,8 @@ const companyMolecule = molecule((_, getScope) => {
   };
 });
 
-describe('Store', () => {
-  it('returns the same values for dependency-free molecule', () => {
+describe("Store", () => {
+  it("returns the same values for dependency-free molecule", () => {
     const store = createStore();
 
     const firstValue = store.get(exampleMol);
@@ -79,7 +79,7 @@ describe('Store', () => {
 
   ([derivedMol, doubleDerived] as Molecule<{ base: BaseAtoms }>[]).forEach(
     (mol) => {
-      it('returns the same value for derived molecule', () => {
+      it("returns the same value for derived molecule", () => {
         const store = createStore();
 
         const firstValue = store.get(mol);
@@ -99,7 +99,7 @@ describe('Store', () => {
     }
   );
 
-  it('two stores return different molecules', () => {
+  it("two stores return different molecules", () => {
     const store1 = createStore();
     const store2 = createStore();
 
@@ -109,8 +109,8 @@ describe('Store', () => {
     expect(firstValue).not.toBe(secondValue);
   });
 
-  describe('Scoping', () => {
-    it('Creates one molecule per scope, if not dependent on scope', () => {
+  describe("Scoping", () => {
+    it("Creates one molecule per scope, if not dependent on scope", () => {
       const store = createStore();
       const firstValue = store.get(exampleMol);
       const secondValue = store.get(exampleMol, user1Scope);
@@ -122,7 +122,7 @@ describe('Store', () => {
       expect(firstValue).toBe(fourthValue);
     });
 
-    it('Creates one molecule, if no scope provided', () => {
+    it("Creates one molecule, if no scope provided", () => {
       const store = createStore();
       const firstValue = store.get(companyMolecule);
       const secondValue = store.get(companyMolecule);
@@ -130,7 +130,7 @@ describe('Store', () => {
       expect(firstValue).toBe(secondValue);
     });
 
-    it('Creates one molecule per dependent scope', () => {
+    it("Creates one molecule per dependent scope", () => {
       //
       const store = createStore();
 
@@ -144,7 +144,7 @@ describe('Store', () => {
       expect(thirdValue).not.toBe(secondValue);
     });
 
-    it('Creates only one molecule per dependent scope', () => {
+    it("Creates only one molecule per dependent scope", () => {
       const store = createStore();
 
       const firstValue = store.get(companyMolecule, company1Scope);
@@ -154,7 +154,7 @@ describe('Store', () => {
       expect(firstValue).toBe(secondValue);
     });
 
-    it('Creates one molecule per dependent molecule that is scope dependent', () => {
+    it("Creates one molecule per dependent molecule that is scope dependent", () => {
       const store = createStore();
 
       const firstValue = store.get(userMolecule, company1Scope, user1Scope);
@@ -172,7 +172,7 @@ describe('Store', () => {
       expect(secondValue).not.toBe(thirdValue);
     });
 
-    it('Creates one molecule per dependent molecule that is scope dependent', () => {
+    it("Creates one molecule per dependent molecule that is scope dependent", () => {
       const store = createStore();
 
       const firstValue = store.get(userMolecule, company1Scope, user1Scope);
@@ -189,7 +189,7 @@ describe('Store', () => {
       expect(secondValue.userId).toBe(user2Scope[1]);
     });
 
-    it('Creates ONLY one molecule per dependent molecule that is scope dependent', () => {
+    it("Creates ONLY one molecule per dependent molecule that is scope dependent", () => {
       const store = createStore();
 
       const firstValue = store.get(userMolecule, company1Scope, user1Scope);
@@ -206,7 +206,7 @@ describe('Store', () => {
       expect(firstValue).toBe(thirdValue);
     });
 
-    it('Creates ONLY one molecule per dependent molecule, regardless of scope order', () => {
+    it("Creates ONLY one molecule per dependent molecule, regardless of scope order", () => {
       const store = createStore();
 
       const firstValue = store.get(userMolecule, company1Scope, user1Scope);
@@ -223,7 +223,7 @@ describe('Store', () => {
       expect(firstValue).toBe(thirdValue);
     });
 
-    it('Works with highly nested molecules that depend on a top level scope', () => {
+    it("Works with highly nested molecules that depend on a top level scope", () => {
       const TopScope = createScope(0);
       const scope1: ScopeTuple<number> = [TopScope, 1];
       const scope2: ScopeTuple<number> = [TopScope, 2];
@@ -258,14 +258,14 @@ describe('Store', () => {
       expect(val6).not.toBe(defaultVal6);
     });
 
-    describe('Cyclic dependencies', () => {
-      it('Crashes with an error on cyclic dependencies', () => {
+    describe("Cyclic dependencies", () => {
+      it("Crashes with an error on cyclic dependencies", () => {
         const molLeft: Molecule<unknown> = molecule((getMol) => [
-          'left',
+          "left",
           getMol(molRight),
         ]);
         const molRight: Molecule<unknown> = molecule((getMol) => [
-          'right',
+          "right",
           getMol(molLeft),
         ]);
         const store = createStore();
@@ -275,7 +275,7 @@ describe('Store', () => {
       });
     });
 
-    describe('Transient dependencies in diamond patterns', () => {
+    describe("Transient dependencies in diamond patterns", () => {
       /*
       
       These tests are all based on the "Diamond Pattern",
@@ -288,25 +288,25 @@ describe('Store', () => {
       const scope1: ScopeTuple<number> = [TopScope, 1];
       const scope2: ScopeTuple<number> = [TopScope, 2];
 
-      const LeftScope = createScope('LS0');
-      const leftScope1: ScopeTuple<string> = [LeftScope, 'LS1'];
-      const leftScope2: ScopeTuple<string> = [LeftScope, 'LS2'];
+      const LeftScope = createScope("LS0");
+      const leftScope1: ScopeTuple<string> = [LeftScope, "LS1"];
+      const leftScope2: ScopeTuple<string> = [LeftScope, "LS2"];
 
-      const RightScope = createScope('RS0');
-      const rightScope1: ScopeTuple<string> = [RightScope, 'RS1'];
-      const rightScope2: ScopeTuple<string> = [RightScope, 'RS2'];
+      const RightScope = createScope("RS0");
+      const rightScope1: ScopeTuple<string> = [RightScope, "RS1"];
+      const rightScope2: ScopeTuple<string> = [RightScope, "RS2"];
 
-      const BottomScope = createScope('BS0');
-      const bottomScope1: ScopeTuple<string> = [BottomScope, 'BS1'];
-      const bottomScope2: ScopeTuple<string> = [BottomScope, 'BS2'];
+      const BottomScope = createScope("BS0");
+      const bottomScope1: ScopeTuple<string> = [BottomScope, "BS1"];
+      const bottomScope2: ScopeTuple<string> = [BottomScope, "BS2"];
 
-      const molTop = molecule((_, getScope) => ['top', getScope(TopScope)]);
+      const molTop = molecule((_, getScope) => ["top", getScope(TopScope)]);
 
-      it('Works with a diamond pattern dependency tree', () => {
-        const molLeft = molecule((getMol) => ['left', getMol(molTop)]);
-        const molRight = molecule((getMol) => ['right', getMol(molTop)]);
+      it("Works with a diamond pattern dependency tree", () => {
+        const molLeft = molecule((getMol) => ["left", getMol(molTop)]);
+        const molRight = molecule((getMol) => ["right", getMol(molTop)]);
         const molBottom = molecule((getMol) => [
-          'bottom',
+          "bottom",
           getMol(molLeft),
           getMol(molRight),
         ]);
@@ -318,35 +318,35 @@ describe('Store', () => {
         const bottom2 = store.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
-          'bottom',
-          ['left', ['top', 0]],
-          ['right', ['top', 0]],
+          "bottom",
+          ["left", ["top", 0]],
+          ["right", ["top", 0]],
         ]);
         expect(bottom1).toStrictEqual([
-          'bottom',
-          ['left', ['top', 1]],
-          ['right', ['top', 1]],
+          "bottom",
+          ["left", ["top", 1]],
+          ["right", ["top", 1]],
         ]);
         expect(bottom2).toStrictEqual([
-          'bottom',
-          ['left', ['top', 2]],
-          ['right', ['top', 2]],
+          "bottom",
+          ["left", ["top", 2]],
+          ["right", ["top", 2]],
         ]);
       });
 
-      it('Works with a diamond pattern dependency tree, with side scope dependencies', () => {
+      it("Works with a diamond pattern dependency tree, with side scope dependencies", () => {
         const molLeft = molecule((getMol, getScope) => [
-          'left',
+          "left",
           getScope(LeftScope),
           getMol(molTop),
         ]);
         const molRight = molecule((getMol, getScope) => [
-          'right',
+          "right",
           getScope(RightScope),
           getMol(molTop),
         ]);
         const molBottom = molecule((getMol, getScope) => [
-          'bottom',
+          "bottom",
           getScope(BottomScope),
           getMol(molLeft),
           getMol(molRight),
@@ -375,10 +375,10 @@ describe('Store', () => {
           store.get(molBottom)
         ).toBe(bottom0);
         expect(bottom0).toStrictEqual([
-          'bottom',
-          'BS0',
-          ['left', 'LS0', ['top', 0]],
-          ['right', 'RS0', ['top', 0]],
+          "bottom",
+          "BS0",
+          ["left", "LS0", ["top", 0]],
+          ["right", "RS0", ["top", 0]],
         ]);
         expect(bottom0[2][2]).toBe(bottom0[3][2]);
 
@@ -387,10 +387,10 @@ describe('Store', () => {
           store.get(molBottom, scope1, rightScope1, leftScope1, bottomScope1)
         ).toBe(bottom1);
         expect(bottom1).toStrictEqual([
-          'bottom',
-          'BS1',
-          ['left', 'LS1', ['top', 1]],
-          ['right', 'RS1', ['top', 1]],
+          "bottom",
+          "BS1",
+          ["left", "LS1", ["top", 1]],
+          ["right", "RS1", ["top", 1]],
         ]);
         expect(bottom1[2][2]).toBe(bottom1[3][2]);
 
@@ -399,24 +399,24 @@ describe('Store', () => {
           store.get(molBottom, scope2, rightScope2, leftScope2, bottomScope2)
         ).toBe(bottom2);
         expect(bottom2).toStrictEqual([
-          'bottom',
-          'BS2',
-          ['left', 'LS2', ['top', 2]],
-          ['right', 'RS2', ['top', 2]],
+          "bottom",
+          "BS2",
+          ["left", "LS2", ["top", 2]],
+          ["right", "RS2", ["top", 2]],
         ]);
         expect(bottom2[2][2]).toBe(bottom2[3][2]);
       });
 
-      it('Works with a diamond pattern dependency tree, with sibling dependency', () => {
-        const molLeft = molecule((getMol) => ['left', getMol(molTop)]);
+      it("Works with a diamond pattern dependency tree, with sibling dependency", () => {
+        const molLeft = molecule((getMol) => ["left", getMol(molTop)]);
         const molRight = molecule((getMol) => [
-          'right',
+          "right",
           getMol(molTop),
           getMol(molLeft),
         ]);
 
         const molBottom = molecule((getMol) => [
-          'bottom',
+          "bottom",
           getMol(molLeft),
           getMol(molRight),
         ]);
@@ -428,27 +428,27 @@ describe('Store', () => {
         const bottom2 = store.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
-          'bottom',
-          ['left', ['top', 0]],
-          ['right', ['top', 0], ['left', ['top', 0]]],
+          "bottom",
+          ["left", ["top", 0]],
+          ["right", ["top", 0], ["left", ["top", 0]]],
         ]);
         expect(bottom1).toStrictEqual([
-          'bottom',
-          ['left', ['top', 1]],
-          ['right', ['top', 1], ['left', ['top', 1]]],
+          "bottom",
+          ["left", ["top", 1]],
+          ["right", ["top", 1], ["left", ["top", 1]]],
         ]);
         expect(bottom2).toStrictEqual([
-          'bottom',
-          ['left', ['top', 2]],
-          ['right', ['top', 2], ['left', ['top', 2]]],
+          "bottom",
+          ["left", ["top", 2]],
+          ["right", ["top", 2], ["left", ["top", 2]]],
         ]);
       });
 
-      it('Works with a diamond pattern dependency tree, with a direct deep dependency', () => {
-        const molLeft = molecule((getMol) => ['left', getMol(molTop)]);
-        const molRight = molecule((getMol) => ['right', getMol(molTop)]);
+      it("Works with a diamond pattern dependency tree, with a direct deep dependency", () => {
+        const molLeft = molecule((getMol) => ["left", getMol(molTop)]);
+        const molRight = molecule((getMol) => ["right", getMol(molTop)]);
         const molBottom = molecule((getMol) => [
-          'bottom',
+          "bottom",
           getMol(molTop),
           getMol(molLeft),
           getMol(molRight),
@@ -461,41 +461,41 @@ describe('Store', () => {
         const bottom2 = store.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
-          'bottom',
-          ['top', 0],
-          ['left', ['top', 0]],
-          ['right', ['top', 0]],
+          "bottom",
+          ["top", 0],
+          ["left", ["top", 0]],
+          ["right", ["top", 0]],
         ]);
         expect(bottom0[1]).toBe(bottom0[2][1]);
         expect(bottom0[1]).toBe(bottom0[3][1]);
         expect(bottom1).toStrictEqual([
-          'bottom',
-          ['top', 1],
-          ['left', ['top', 1]],
-          ['right', ['top', 1]],
+          "bottom",
+          ["top", 1],
+          ["left", ["top", 1]],
+          ["right", ["top", 1]],
         ]);
         expect(bottom1[1]).toBe(bottom1[2][1]);
         expect(bottom1[1]).toBe(bottom1[3][1]);
 
         expect(bottom2).toStrictEqual([
-          'bottom',
-          ['top', 2],
-          ['left', ['top', 2]],
-          ['right', ['top', 2]],
+          "bottom",
+          ["top", 2],
+          ["left", ["top", 2]],
+          ["right", ["top", 2]],
         ]);
         expect(bottom2[1]).toBe(bottom2[2][1]);
         expect(bottom2[1]).toBe(bottom2[3][1]);
       });
 
-      it('Works with a deep diamond pattern dependency tree with a deep right tree', () => {
-        const molLeft = molecule((getMol) => ['left', getMol(molTop)]);
-        const molRight = molecule((getMol) => ['right', getMol(molTop)]);
+      it("Works with a deep diamond pattern dependency tree with a deep right tree", () => {
+        const molLeft = molecule((getMol) => ["left", getMol(molTop)]);
+        const molRight = molecule((getMol) => ["right", getMol(molTop)]);
         // Deep right tree
-        const molRightLeft = molecule((getMol) => ['left', getMol(molRight)]);
-        const molRightRight = molecule((getMol) => ['right', getMol(molRight)]);
+        const molRightLeft = molecule((getMol) => ["left", getMol(molRight)]);
+        const molRightRight = molecule((getMol) => ["right", getMol(molRight)]);
 
         const molBottom = molecule((getMol) => [
-          'bottom',
+          "bottom",
           getMol(molLeft),
           getMol(molRightLeft),
           getMol(molRightRight),
@@ -508,22 +508,22 @@ describe('Store', () => {
         const bottom2 = store.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
-          'bottom',
-          ['left', ['top', 0]],
-          ['left', ['right', ['top', 0]]],
-          ['right', ['right', ['top', 0]]],
+          "bottom",
+          ["left", ["top", 0]],
+          ["left", ["right", ["top", 0]]],
+          ["right", ["right", ["top", 0]]],
         ]);
         expect(bottom1).toStrictEqual([
-          'bottom',
-          ['left', ['top', 1]],
-          ['left', ['right', ['top', 1]]],
-          ['right', ['right', ['top', 1]]],
+          "bottom",
+          ["left", ["top", 1]],
+          ["left", ["right", ["top", 1]]],
+          ["right", ["right", ["top", 1]]],
         ]);
         expect(bottom2).toStrictEqual([
-          'bottom',
-          ['left', ['top', 2]],
-          ['left', ['right', ['top', 2]]],
-          ['right', ['right', ['top', 2]]],
+          "bottom",
+          ["left", ["top", 2]],
+          ["left", ["right", ["top", 2]]],
+          ["right", ["right", ["top", 2]]],
         ]);
       });
     });

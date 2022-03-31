@@ -1,4 +1,4 @@
-import { createMemoizeAtom } from './weakCache';
+import { createMemoizeAtom } from "./weakCache";
 
 type Deps = {
   scopes: AnyScope[];

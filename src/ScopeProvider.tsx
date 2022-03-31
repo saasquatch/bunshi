@@ -1,11 +1,11 @@
-import React, { useContext, useMemo } from 'react';
-import { createStore, Molecule, MoleculeScope, ScopeTuple } from './molecule';
+import React, { useContext, useMemo } from "react";
+import { createStore, Molecule, MoleculeScope, ScopeTuple } from "./molecule";
 
 export const STORE_CONTEXT = React.createContext(createStore());
-STORE_CONTEXT.displayName = 'Jotai Molecule Store Context';
+STORE_CONTEXT.displayName = "Jotai Molecule Store Context";
 
 export const SCOPE_CONTEXT = React.createContext<ScopeTuple<unknown>[]>([]);
-SCOPE_CONTEXT.displayName = 'Jotai Molecule Scope Context';
+SCOPE_CONTEXT.displayName = "Jotai Molecule Scope Context";
 
 export type ProviderProps<T> = {
   scope: MoleculeScope<T>;

@@ -1,8 +1,8 @@
 # Jotai Molecules
 
-A tiny, fast, dependency-free 1.18kb library for creating `jotai` atoms.
+A tiny, fast, dependency-free 1.18kb library for creating [jotai](https://jotai.org/) atoms.
 
-Create many `jotai` atoms for a number of scopes with confidence and without the `useMemo` and `useContext` boilerplate.
+Create many [jotai](https://jotai.org/) atoms for a number of scopes with confidence and without the `useMemo` and `useContext` boilerplate.
 
 ## Installation
 
@@ -17,7 +17,14 @@ npm i jotai-molecules
 Molecules are a set of atoms that can be easily scoped globally or per context.
 
 ```tsx
-import {molecule, createScope, ScopeProvider, useMolecule} from "jotai-molecules";
+import React from 'react';
+import { atom, useAtom } from 'jotai';
+import {
+  molecule,
+  useMolecule,
+  createScope,
+  ScopeProvider,
+} from 'jotai-molecules';
 
 const CompanyScope = createScope<string>('example.com');
 
@@ -59,10 +66,16 @@ const UserComponent = () => {
   const userAtoms = useMolecule(UserMolecule);
   const [userName, setUserName] = useAtom(userAtoms.userNameAtom);
 
-  return <div>
-    Hi, my name is {userName} <br/>
-    <input type="text" value={userName} onInput={(e)=>setUserName(e.target.value)}>
-  </div>
+  return (
+    <div>
+      Hi, my name is {userName} <br />
+      <input
+        type="text"
+        value={userName}
+        onInput={(e) => setUserName((e.target as HTMLInputElement).value)}
+      />
+    </div>
+  );
 };
 ```
 
