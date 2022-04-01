@@ -1,5 +1,6 @@
 import React, { useContext, useMemo } from "react";
 import { createStore, Molecule, MoleculeScope, ScopeTuple } from "./molecule";
+import { createMemoizeAtom } from "./weakCache";
 
 export const STORE_CONTEXT = React.createContext(createStore());
 STORE_CONTEXT.displayName = "Jotai Molecule Store Context";
@@ -12,6 +13,8 @@ export type ProviderProps<T> = {
   value: T;
   children?: React.ReactNode;
 };
+
+const memoize = createMemoizeAtom();
 
 /**
  * Provides scope for all molecules lower down in the React component tree.
@@ -33,10 +36,16 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
    * If a new array is provided to the store,
    * then new molecules are created
    */
-  const memoizedTuple = useMemo<ScopeTuple<T>>(
-    () => [props.scope, props.value],
-    [props.scope, props.value]
-  );
+  const memoizedTuple = useMemo<ScopeTuple<T>>(() => {
+    const { value, scope } = props;
+    const tuple: ScopeTuple<T> = [scope, value];
+    if (typeof value === "object") {
+      // If we have an object, we can safely weak cache it.
+      return memoize(() => tuple, [scope, value as unknown as object]);
+    }
+    // Not an object, so we can't safely cache it
+    return tuple;
+  }, [props.scope, props.value]);
   const parentScopes = useContext(SCOPE_CONTEXT);
 
   const found = parentScopes.findIndex((scopeTuple) => {
