@@ -82,9 +82,9 @@ const UserComponent = () => {
 Molecules are similar to and inspired by [jotai](https://jotai.org/) atoms, but with a few important differences:
 
 - **Molecules can't be async**, but atoms can be.
-- **Molecule scopes can be interconnected**, but atom scopes are "seperate universes".
+- **Molecule scopes can be interconnected**, but atom scopes are "separate universes".
 - **Molecules can depend on molecules AND scope**, but atoms only depend on other atoms.
-- **Molecules are read-only**, but atoms can be writeable.
+- **Molecules are read-only**, but atoms can be writable.
 
 ## Motivation
 
@@ -108,7 +108,7 @@ The most important function in these examples is the `createAtom` function, it c
 const createAtom = () => atom(0);
 ```
 
-Here is an example of the two synchornized `Counter` components using **global state**.
+Here is an example of the two synchronized `Counter` components using **global state**.
 
 ```tsx
 import { atom, useAtom } from "jotai";
