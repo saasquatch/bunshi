@@ -104,7 +104,7 @@ Let's examine this idea by looking at an example `Counter` component.
 
 The most important function in these examples is the `createAtom` function, it creates all the state:
 
-```
+```ts
 const createAtom = () => atom(0);
 ```
 
@@ -200,13 +200,14 @@ Or, to make that context scoped based off a **scoped context**
 ```tsx
 import { atom, useAtom } from "jotai";
 
-const createAtom = () => atom(0);
+const createAtom = (userId: string) =>
+  atom(userId === "bob@example.com" ? 0 : 1);
 
 const CountAtomContext = React.createContext(createAtom());
 const useCountAtom = () => useContext(CountAtomContext);
 const CountAtomScopeProvider = ({ children, userId }) => {
   // Create a new atom for every user Id
-  const countAtom = useMemo(() => createAtom, [userId]);
+  const countAtom = useMemo(() => createAtom(userId), [userId]);
   return (
     <CountAtomContext.Provider value={countAtom}>
       {children}

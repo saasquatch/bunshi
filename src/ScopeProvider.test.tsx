@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { useContext } from "react";
+import { create } from "react-test-renderer";
 import { createScope, molecule } from "./molecule";
 import { ScopeProvider, SCOPE_CONTEXT, useMolecule } from "./ScopeProvider";
 
@@ -75,7 +76,7 @@ test("Use molecule should produce a different value in different providers", () 
   expect(result2.current.molecule.userId).toBe("jeffrey@example.com");
 });
 
-test("String scope values aren't shared across providers", () => {
+test("String scope values are shared across providers", () => {
   const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
     <ScopeProvider
       scope={UserScope}
@@ -104,9 +105,41 @@ test("String scope values aren't shared across providers", () => {
     wrapper: Wrapper2,
   });
 
-  expect(result1.current.molecule).not.toBe(result2.current.molecule);
+  expect(result1.current.molecule).toBe(result2.current.molecule);
   expect(result1.current.molecule.userId).toBe("sam@example.com");
   expect(result2.current.molecule.userId).toBe("sam@example.com");
+});
+
+test("Void scopes can be used to create unique molecules", () => {
+  const VoidScope = createScope();
+
+  const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
+    <ScopeProvider scope={VoidScope} children={children} uniqueValue />
+  );
+  const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
+    <ScopeProvider scope={VoidScope} children={children} uniqueValue />
+  );
+
+  const voidMolecule = molecule((getMol, getScope) => {
+    getScope(VoidScope);
+    return {
+      example: Math.random(),
+    };
+  });
+  const useVoidMolecule = () => {
+    return {
+      molecule: useMolecule(voidMolecule),
+      context: useContext(SCOPE_CONTEXT),
+    };
+  };
+  const { result: result1 } = renderHook(useVoidMolecule, {
+    wrapper: Wrapper1,
+  });
+  const { result: result2 } = renderHook(useVoidMolecule, {
+    wrapper: Wrapper2,
+  });
+
+  expect(result1.current.molecule).not.toBe(result2.current.molecule);
 });
 
 test("Object scope values are shared across providers", () => {
