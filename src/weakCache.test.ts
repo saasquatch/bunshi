@@ -1,7 +1,7 @@
-import { createMemoizeAtom } from './weakCache';
+import { createMemoizeAtom } from "./weakCache";
 
-describe('Weak cache', () => {
-  it('order matters', () => {
+describe("Weak cache", () => {
+  it("order matters", () => {
     const memoize = createMemoizeAtom();
 
     const first = {};

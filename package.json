@@ -1,8 +1,12 @@
 {
-  "version": "0.1.0",
+  "name": "jotai-molecules",
+  "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
+  "version": "1.0.0",
   "license": "MIT",
   "main": "dist/index.js",
+  "module": "dist/jotai-molecules.esm.js",
   "typings": "dist/index.d.ts",
+  "author": "logvol",
   "files": [
     "dist",
     "src"
@@ -14,7 +18,6 @@
     "start": "tsdx watch",
     "build": "tsdx build",
     "test": "tsdx test --passWithNoTests",
-    "lint": "tsdx lint",
     "prepare": "tsdx build",
     "size": "size-limit",
     "analyze": "size-limit --why",
@@ -30,23 +33,15 @@
       "pre-commit": "tsdx lint"
     }
   },
-  "prettier": {
-    "printWidth": 80,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "es5"
-  },
-  "name": "jotai-molecules",
-  "author": "logvol",
-  "module": "dist/jotai-molecules.esm.js",
+  "prettier": {},
   "size-limit": [
     {
       "path": "dist/jotai-molecules.cjs.production.min.js",
-      "limit": "10 KB"
+      "limit": "2 KB"
     },
     {
       "path": "dist/jotai-molecules.esm.js",
-      "limit": "10 KB"
+      "limit": "2 KB"
     }
   ],
   "devDependencies": {

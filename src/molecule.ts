@@ -1,4 +1,4 @@
-import { createMemoizeAtom } from './weakCache';
+import { createMemoizeAtom } from "./weakCache";
 
 type Deps = {
   scopes: AnyScope[];
@@ -38,8 +38,12 @@ export function createStore() {
       Array.from(mol.deps.scopes.values()).forEach((s) =>
         transientScopes.add(s)
       );
+      Array.from(mol.deps.transitiveScopes).forEach((s) =>
+        transientScopes.add(s)
+      );
       return mol.value as any;
     };
+
     const value = m.getter(trackingGetter, trackingScopeGetter);
     return {
       deps: {
@@ -68,10 +72,19 @@ export function createStore() {
       return mounted.deps.transitiveScopes.includes(scope);
     });
 
-    if (relatedScopes.length > 0 || transitiveRelatedScopes.length > 0) {
+    if (
+      relatedScopes.length > 0 ||
+      transitiveRelatedScopes.length > 0 ||
+      mounted.deps.molecules
+    ) {
       return deepCache(
         () => mounted,
-        [...relatedScopes, ...transitiveRelatedScopes]
+        [
+          m,
+          ...relatedScopes,
+          ...transitiveRelatedScopes,
+          ...mounted.deps.molecules,
+        ]
       );
     }
 
@@ -97,7 +110,10 @@ export type MoleculeScope<T> = {
   defaultValue: T;
 };
 
-export function createScope<T>(defaultValue: T): MoleculeScope<T> {
+export function createScope<T = undefined>(): MoleculeScope<undefined>;
+export function createScope<T>(defaultValue: T): MoleculeScope<T>;
+
+export function createScope(defaultValue?: unknown): MoleculeScope<unknown> {
   return {
     defaultValue,
   };
