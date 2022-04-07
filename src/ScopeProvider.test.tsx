@@ -1,7 +1,6 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { useContext } from "react";
-import { create } from "react-test-renderer";
 import { createScope, molecule } from "./molecule";
 import { ScopeProvider, SCOPE_CONTEXT, useMolecule } from "./ScopeProvider";
 
@@ -40,6 +39,42 @@ test("Use molecule should produce a single value across multiple uses", () => {
   const { result: result2 } = renderHook(() => useMolecule(ExampleMolecule));
 
   expect(result1.current).toBe(result2.current);
+});
+
+test("Alternative scopes", () => {
+  const ScopeA = createScope("a");
+  const ScopeB = createScope("b");
+
+  const TwoScopesMolecule = molecule((getMol, getScope) => {
+    return getScope(ScopeA) + "/" + getScope(ScopeB);
+  });
+  const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+    <ScopeProvider scope={ScopeA} value={"a1"}>
+      <ScopeProvider scope={ScopeB} value={"b1"}>
+        <ScopeProvider scope={ScopeA} value={"a2"}>
+          <ScopeProvider scope={ScopeB} value={"b2"}>
+            <ScopeProvider scope={ScopeA} value={"a3"}>
+              <ScopeProvider scope={ScopeB} value={"b3"}>
+                {children}
+              </ScopeProvider>
+            </ScopeProvider>
+          </ScopeProvider>
+        </ScopeProvider>
+      </ScopeProvider>
+    </ScopeProvider>
+  );
+
+  const useTestcase = () => {
+    return {
+      molecule: useMolecule(TwoScopesMolecule),
+      context: useContext(SCOPE_CONTEXT),
+    };
+  };
+  const { result } = renderHook(useTestcase, {
+    wrapper: Wrapper,
+  });
+
+  expect(result.current.molecule).toStrictEqual("a3/b3");
 });
 
 test("Use molecule should produce a different value in different providers", () => {
