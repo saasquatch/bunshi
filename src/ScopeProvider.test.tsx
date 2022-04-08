@@ -42,22 +42,20 @@ test("Use molecule should produce a single value across multiple uses", () => {
 });
 
 test("Alternative scopes", () => {
-  const ScopeA = createScope("a");
-  const ScopeB = createScope("b");
+  const ScopeA = createScope(undefined);
+  const ScopeB = createScope(undefined);
+  const ScopeC = createScope(undefined);
 
-  const TwoScopesMolecule = molecule((getMol, getScope) => {
-    return getScope(ScopeA) + "/" + getScope(ScopeB);
-  });
+  const ScopeAMolecule = molecule(
+    (getMol, getScope) =>
+      `${getScope(ScopeA)}/${getScope(ScopeB)}/${getScope(ScopeC)}`
+  );
   const Wrapper = ({ children }: { children?: React.ReactNode }) => (
     <ScopeProvider scope={ScopeA} value={"a1"}>
       <ScopeProvider scope={ScopeB} value={"b1"}>
-        <ScopeProvider scope={ScopeA} value={"a2"}>
+        <ScopeProvider scope={ScopeC} value={"c1"}>
           <ScopeProvider scope={ScopeB} value={"b2"}>
-            <ScopeProvider scope={ScopeA} value={"a3"}>
-              <ScopeProvider scope={ScopeB} value={"b3"}>
-                {children}
-              </ScopeProvider>
-            </ScopeProvider>
+            {children}
           </ScopeProvider>
         </ScopeProvider>
       </ScopeProvider>
@@ -66,7 +64,7 @@ test("Alternative scopes", () => {
 
   const useTestcase = () => {
     return {
-      molecule: useMolecule(TwoScopesMolecule),
+      molecule: useMolecule(ScopeAMolecule),
       context: useContext(SCOPE_CONTEXT),
     };
   };
@@ -74,7 +72,7 @@ test("Alternative scopes", () => {
     wrapper: Wrapper,
   });
 
-  expect(result.current.molecule).toStrictEqual("a3/b3");
+  expect(result.current.molecule).toStrictEqual("a1/b2/c1");
 });
 
 test("Use molecule should produce a different value in different providers", () => {

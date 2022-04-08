@@ -39,6 +39,7 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
 
   if (typeof providedValue !== "undefined" && uniqueValue)
     throw new Error("Provide one of `value` or `uniqueValue` but not both");
+
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
     []
@@ -96,7 +97,7 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
         [
           ...parentScopes.slice(0, found),
           memoizedTuple,
-          ...parentScopes.slice(found, -1),
+          ...parentScopes.slice(found + 1),
         ]
       : // Append to the end (when not found)
         [...parentScopes, memoizedTuple];
