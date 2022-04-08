@@ -1,8 +1,13 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { createScope, molecule } from "./molecule";
-import { ScopeProvider, SCOPE_CONTEXT, useMolecule } from "./ScopeProvider";
+import {
+  ScopeProvider,
+  SCOPE_CACHE_CONTEXT,
+  SCOPE_CONTEXT,
+  useMolecule,
+} from "./ScopeProvider";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -109,38 +114,78 @@ test("Use molecule should produce a different value in different providers", () 
   expect(result2.current.molecule.userId).toBe("jeffrey@example.com");
 });
 
-test("String scope values are shared across providers", () => {
-  const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider
-      scope={UserScope}
-      value={"sam@example.com"}
-      children={children}
-    />
-  );
-  const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider
-      scope={UserScope}
-      value={"sam@example.com"}
-      children={children}
-    />
-  );
-
+describe("String scopes", () => {
   const useUserMolecule = () => {
     return {
       molecule: useMolecule(UserMolecule),
       context: useContext(SCOPE_CONTEXT),
     };
   };
-  const { result: result1 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper1,
-  });
-  const { result: result2 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper2,
-  });
 
-  expect(result1.current.molecule).toBe(result2.current.molecule);
-  expect(result1.current.molecule.userId).toBe("sam@example.com");
-  expect(result2.current.molecule.userId).toBe("sam@example.com");
+  test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
+    const Context = React.createContext<ReturnType<typeof useTextHook>>(
+      undefined as any
+    );
+    const useTextHook = () => {
+      const [mountA, setMountA] = useState(true);
+      const [mountB, setMountB] = useState(true);
+      const cache = useContext(SCOPE_CACHE_CONTEXT);
+
+      const props = { cache, mountA, mountB, setMountA, setMountB };
+      return props;
+    };
+    const sharedKey = "shared@example.com";
+    const TestStuffProvider: React.FC = ({ children }) => {
+      const props = useTextHook();
+      return (
+        <Context.Provider value={props}>
+          {children}
+          <Controller {...props} />
+        </Context.Provider>
+      );
+    };
+    const Controller = (props: any) => {
+      return (
+        <>
+          {props.mountA && (
+            <ScopeProvider scope={UserScope} value={sharedKey}>
+              Bad
+            </ScopeProvider>
+          )}
+          {props.mountB && (
+            <ScopeProvider scope={UserScope} value={sharedKey}>
+              Bad
+            </ScopeProvider>
+          )}
+        </>
+      );
+    };
+
+    const { result } = renderHook(() => useContext(Context), {
+      wrapper: TestStuffProvider,
+    });
+
+    const { cache } = result.current;
+    const initialScopeCache = cache.get(UserScope)?.get(sharedKey);
+    expect(initialScopeCache).not.toBeUndefined();
+    expect(initialScopeCache?.tuple).not.toBeUndefined();
+    expect(initialScopeCache?.references.size).toBe(2);
+
+    await act(() => {
+      result.current.setMountA(false);
+    });
+
+    const afterUnmountCache = cache.get(UserScope)?.get(sharedKey);
+    expect(afterUnmountCache?.references.size).toBe(1);
+    expect(afterUnmountCache?.tuple).toBe(initialScopeCache?.tuple);
+
+    act(() => {
+      result.current.setMountB(false);
+    });
+
+    const finalTuple = cache.get(UserScope)?.get(sharedKey);
+    expect(finalTuple).toBeUndefined();
+  });
 });
 
 test("Void scopes can be used to create unique molecules", () => {
