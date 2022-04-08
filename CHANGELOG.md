@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2022-04-08
+
+- Improve performance when using thousands of molecules
+
 ## [1.0.2] - 2022-04-08
 
 - Fix bug with `ScopeProvider` where primitive values would not be cached
@@ -28,6 +32,7 @@ Initial release of `jotai-molecules`
 - `ScopeProvider` a React component for providing scope to the tree
 
 [unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.0.0...HEAD
+[1.0.3]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.3
 [1.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.2
 [1.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.1
 [1.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.0
