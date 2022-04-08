@@ -1,11 +1,11 @@
 import { atom, PrimitiveAtom } from "jotai";
 import {
-  createScope,
-  createStore,
   Molecule,
   molecule,
   ScopeTuple,
 } from "./molecule";
+import { createStore } from "./store";
+import { createScope } from "./scope";
 
 type BaseAtoms = {
   nameAtom: PrimitiveAtom<string>;
