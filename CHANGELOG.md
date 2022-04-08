@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2022-04-08
+
+- Fix bug with `ScopeProvider` where primitive values would not be cached
+- Add `displayName` to molecule and scope
+
 ## [1.0.1] - 2022-04-07
 
 - Fix bug with `ScopeProvider` with nested scopes being undefined
