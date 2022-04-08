@@ -1,5 +1,7 @@
-import { molecule, createScope } from "./molecule";
+import { molecule } from "./molecule";
+import { createScope } from "./scope";
 
-import { ScopeProvider, useMolecule } from "./ScopeProvider";
+import { ScopeProvider } from "./ScopeProvider";
+import { useMolecule } from "./useMolecule";
 
 export { molecule, createScope, ScopeProvider, useMolecule };

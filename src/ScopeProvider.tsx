@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useMemo } from "react";
-import { createStore, Molecule, MoleculeScope, ScopeTuple } from "./molecule";
+import { ScopeTuple } from "./molecule";
+import { MoleculeScope } from "./scope";
+import { createStore } from "./store";
 import { createMemoizeAtom } from "./weakCache";
 
 export const STORE_CONTEXT = React.createContext(createStore());
@@ -51,12 +53,42 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
   if (typeof providedValue !== "undefined" && uniqueValue)
     throw new Error("Provide one of `value` or `uniqueValue` but not both");
 
-  const id = useMemo(() => Symbol(Math.random()), []);
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
     []
   );
   const value = providedValue ?? generatedValue;
+
+  const memoizedTuple = useMemoizedScopeTuple<T>(scope, value);
+  const parentScopes = useContext(SCOPE_CONTEXT);
+
+  const found = parentScopes.findIndex((scopeTuple) => {
+    const scope = scopeTuple[0];
+    return scope === props.scope;
+  });
+
+  const downstreamScopes =
+    found >= 0
+      ? // Replace inline (when found)
+        [
+          ...parentScopes.slice(0, found),
+          memoizedTuple,
+          ...parentScopes.slice(found + 1),
+        ]
+      : // Append to the end (when not found)
+        [...parentScopes, memoizedTuple];
+  return (
+    <SCOPE_CONTEXT.Provider value={downstreamScopes}>
+      {props.children}
+    </SCOPE_CONTEXT.Provider>
+  );
+}
+
+function useMemoizedScopeTuple<T>(
+  scope: MoleculeScope<T>,
+  value: Error | NonNullable<T>
+) {
+  const id = useMemo(() => Symbol(Math.random()), []);
   const primitiveScopeMap = useContext(SCOPE_CACHE_CONTEXT);
   useEffect(() => {
     return () => {
@@ -82,36 +114,23 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
       registerMemoizedScopeTuple<T>(scope, value as T, primitiveScopeMap, id),
     [scope, value, primitiveScopeMap, id]
   );
-  const parentScopes = useContext(SCOPE_CONTEXT);
-
-  const found = parentScopes.findIndex((scopeTuple) => {
-    const scope = scopeTuple[0];
-    return scope === props.scope;
-  });
-
-  const downstreamScopes =
-    found >= 0
-      ? // Replace inline (when found)
-        [
-          ...parentScopes.slice(0, found),
-          memoizedTuple,
-          ...parentScopes.slice(found + 1),
-        ]
-      : // Append to the end (when not found)
-        [...parentScopes, memoizedTuple];
-  return (
-    <SCOPE_CONTEXT.Provider value={downstreamScopes}>
-      {props.children}
-    </SCOPE_CONTEXT.Provider>
-  );
+  return memoizedTuple;
 }
 
+/**
+ * For values that are "primitive" (not an object),
+ * deregisters them from the primitive scope
+ * cache to ensure no memory leaks
+ */
 function deregisterScopeTuple<T>(
   primitiveScopeMap: PrimitiveScopeMap,
   scope: MoleculeScope<T>,
   value: Error | NonNullable<T>,
   id: Symbol
 ) {
+  // No scope cleanup needed for non-primitives
+  if (typeof value === "object") return;
+
   const scopeMap = primitiveScopeMap.get(scope);
   if (!scopeMap) return;
 
@@ -125,19 +144,19 @@ function deregisterScopeTuple<T>(
   }
 }
 
-export function useMolecule<T>(m: Molecule<T>): T {
-  const store = useContext(STORE_CONTEXT);
-  const scopes = useContext(SCOPE_CONTEXT);
-  return store.get(m, ...scopes);
-}
-
+/**
+ * Creates a memoized tuple of `[scope,value]`
+ *
+ * Registers primitive `value`s in the primitive scope cache. This has side-effects
+ * and needs to be cleaned up with `deregisterScopeTuple`
+ *
+ */
 function registerMemoizedScopeTuple<T>(
   scope: MoleculeScope<T>,
   value: T,
   primitiveMap: PrimitiveScopeMap,
   id: Symbol
 ) {
-  console.log("Register", scope, value);
   const tuple: ScopeTuple<T> = [scope, value];
   if (typeof value === "object") {
     // If we have an object, we can safely weak cache it.
