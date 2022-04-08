@@ -5,8 +5,8 @@ import { molecule } from "./molecule";
 import { createScope } from "./scope";
 import {
   ScopeProvider,
-  SCOPE_CACHE_CONTEXT,
-  SCOPE_CONTEXT,
+  ScopeCacheContext,
+  ScopeContext,
 } from "./ScopeProvider";
 import { useMolecule } from "./useMolecule";
 
@@ -71,7 +71,7 @@ test("Alternative scopes", () => {
   const useTestcase = () => {
     return {
       molecule: useMolecule(ScopeAMolecule),
-      context: useContext(SCOPE_CONTEXT),
+      context: useContext(ScopeContext),
     };
   };
   const { result } = renderHook(useTestcase, {
@@ -98,7 +98,7 @@ test("Use molecule should produce a different value in different providers", () 
   const useUserMolecule = () => {
     return {
       molecule: useMolecule(UserMolecule),
-      context: useContext(SCOPE_CONTEXT),
+      context: useContext(ScopeContext),
     };
   };
   const { result: result1 } = renderHook(useUserMolecule, {
@@ -119,7 +119,7 @@ describe("String scopes", () => {
   const useUserMolecule = () => {
     return {
       molecule: useMolecule(UserMolecule),
-      context: useContext(SCOPE_CONTEXT),
+      context: useContext(ScopeContext),
     };
   };
 
@@ -130,7 +130,7 @@ describe("String scopes", () => {
     const useTextHook = () => {
       const [mountA, setMountA] = useState(true);
       const [mountB, setMountB] = useState(true);
-      const cache = useContext(SCOPE_CACHE_CONTEXT);
+      const cache = useContext(ScopeCacheContext);
 
       const props = { cache, mountA, mountB, setMountA, setMountB };
       return props;
@@ -208,7 +208,7 @@ test("Void scopes can be used to create unique molecules", () => {
   const useVoidMolecule = () => {
     return {
       molecule: useMolecule(voidMolecule),
-      context: useContext(SCOPE_CONTEXT),
+      context: useContext(ScopeContext),
     };
   };
   const { result: result1 } = renderHook(useVoidMolecule, {
@@ -232,7 +232,7 @@ test("Object scope values are shared across providers", () => {
 
   const useUserMolecule = () => {
     const molecule = useMolecule(AtomMolecule);
-    const context = useContext(SCOPE_CONTEXT);
+    const context = useContext(ScopeContext);
     const name = useAtom(molecule.userNameAtom)[0];
     const userId = useAtom(molecule.userIdAtom)[0];
     return {
@@ -266,7 +266,7 @@ test("Use molecule should will use the nested scope", () => {
   const useUserMolecule = () => {
     return {
       molecule: useMolecule(UserMolecule),
-      context: useContext(SCOPE_CONTEXT),
+      context: useContext(ScopeContext),
     };
   };
   const { result } = renderHook(useUserMolecule, {

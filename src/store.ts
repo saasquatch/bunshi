@@ -72,31 +72,37 @@ export function createStore(): MoleculeStore {
   }
 
   function getInternal<T>(m: Molecule<T>, ...scopes: AnyScopeTuple[]): Mounted {
-    const getScopeValue: ScopeGetter = (scope) => {
-      const found = scopes.find((providedScope) => providedScope[0] === scope);
-      if (found) return found[1] as any;
-      return scope.defaultValue;
-    };
-    const mounted = mountMolecule(m, getScopeValue, scopes);
+    return deepCache(() => {
+      const getScopeValue: ScopeGetter = (scope) => {
+        const found = scopes.find(
+          (providedScope) => providedScope[0] === scope
+        );
+        if (found) return found[1] as any;
+        return scope.defaultValue;
+      };
 
-    const relatedScopes = scopes.filter((s) => {
-      const scope = s[0];
-      return mounted.deps.scopes.includes(scope);
-    });
-    const transitiveRelatedScopes = scopes.filter((s) => {
-      const scope = s[0];
-      return mounted.deps.transitiveScopes.includes(scope);
-    });
+      const mounted = mountMolecule(m, getScopeValue, scopes);
 
-    return deepCache(
-      () => mounted,
-      [
-        m,
-        ...relatedScopes,
-        ...transitiveRelatedScopes,
-        ...mounted.deps.molecules,
-      ]
-    );
+      const relatedScopes = scopes.filter((s) => {
+        const scope = s[0];
+        return mounted.deps.scopes.includes(scope);
+      });
+
+      const transitiveRelatedScopes = scopes.filter((s) => {
+        const scope = s[0];
+        return mounted.deps.transitiveScopes.includes(scope);
+      });
+
+      return deepCache(
+        () => mounted,
+        [
+          m,
+          ...relatedScopes,
+          ...transitiveRelatedScopes,
+          ...mounted.deps.molecules,
+        ]
+      );
+    }, [m, ...scopes]);
   }
 
   function get<T>(m: Molecule<T>, ...scopes: AnyScopeTuple[]): T {
