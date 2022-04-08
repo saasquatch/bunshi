@@ -28,5 +28,6 @@ Initial release of `jotai-molecules`
 - `ScopeProvider` a React component for providing scope to the tree
 
 [unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.0.0...HEAD
+[1.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.2
 [1.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.1
 [1.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.0
