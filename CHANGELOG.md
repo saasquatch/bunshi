@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2022-04-07
+
+- Fix bug with `ScopeProvider` with nested scopes being undefined
+
 ## [1.0.0] - 2022-03-31
 
 Initial release of `jotai-molecules`
@@ -19,4 +23,5 @@ Initial release of `jotai-molecules`
 - `ScopeProvider` a React component for providing scope to the tree
 
 [unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.1
 [1.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.0
