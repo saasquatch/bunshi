@@ -1,8 +1,13 @@
-import React from "react";
 import { atom, useAtom } from "jotai";
-import { molecule, createScope, ScopeProvider, useMolecule } from "../.";
+import React from "react";
+import { molecule } from "./molecule";
+import { createScope } from "./scope";
+import { ScopeProvider } from "./ScopeProvider";
+import { useMolecule } from "./useMolecule";
 
 export default {};
+
+export const Div = () => <div>I am a div</div>;
 
 const CompanyScope = createScope<string>("example.com");
 
@@ -71,3 +76,30 @@ export const NestedProviders = () => (
     </ScopeProvider>
   </>
 );
+
+const numbers = [];
+for (let i = 0; i < 1000; i++) {
+  numbers.push(i);
+}
+const NestedMol = numbers.reduce(
+  (prev) => molecule((getMol) => getMol(prev)),
+  UserMolecule
+);
+const NestedComponent = () => {
+  const args = useMolecule(NestedMol);
+  return <div>{`${args}`}</div>;
+};
+export const LoadTest = () => {
+  const elements = [];
+
+  for (let i = 0; i < 100; i++) {
+    elements.push(<NestedComponent key={i} />);
+  }
+  return (
+    <>
+      <ScopeProvider scope={UserScope} value={"sam@example.com"}>
+        {elements}
+      </ScopeProvider>
+    </>
+  );
+};

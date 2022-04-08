@@ -4,16 +4,16 @@ import { MoleculeScope } from "./scope";
 import { createStore } from "./store";
 import { createMemoizeAtom } from "./weakCache";
 
-export const STORE_CONTEXT = React.createContext(createStore());
-STORE_CONTEXT.displayName = "Jotai Molecule Store Context";
+export const StoreContext = React.createContext(createStore());
+StoreContext.displayName = "JotaiMoleculeStoreContext";
 
-export const SCOPE_CONTEXT = React.createContext<ScopeTuple<unknown>[]>([]);
-SCOPE_CONTEXT.displayName = "Jotai Molecule Scope Context";
+export const ScopeContext = React.createContext<ScopeTuple<unknown>[]>([]);
+ScopeContext.displayName = "JotaiMoleculeScopeContext";
 
-export const SCOPE_CACHE_CONTEXT = React.createContext<PrimitiveScopeMap>(
+export const ScopeCacheContext = React.createContext<PrimitiveScopeMap>(
   new WeakMap()
 );
-SCOPE_CACHE_CONTEXT.displayName = "Jotai Molecule Scope Cache Context";
+ScopeCacheContext.displayName = "JotaiMoleculeScopeCacheContext";
 
 type PrimitiveScopeMap = WeakMap<
   AnyMoleculeScope,
@@ -60,7 +60,7 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
   const value = providedValue ?? generatedValue;
 
   const memoizedTuple = useMemoizedScopeTuple<T>(scope, value);
-  const parentScopes = useContext(SCOPE_CONTEXT);
+  const parentScopes = useContext(ScopeContext);
 
   const found = parentScopes.findIndex((scopeTuple) => {
     const scope = scopeTuple[0];
@@ -78,9 +78,9 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
       : // Append to the end (when not found)
         [...parentScopes, memoizedTuple];
   return (
-    <SCOPE_CONTEXT.Provider value={downstreamScopes}>
+    <ScopeContext.Provider value={downstreamScopes}>
       {props.children}
-    </SCOPE_CONTEXT.Provider>
+    </ScopeContext.Provider>
   );
 }
 
@@ -89,7 +89,7 @@ function useMemoizedScopeTuple<T>(
   value: Error | NonNullable<T>
 ) {
   const id = useMemo(() => Symbol(Math.random()), []);
-  const primitiveScopeMap = useContext(SCOPE_CACHE_CONTEXT);
+  const primitiveScopeMap = useContext(ScopeCacheContext);
   useEffect(() => {
     return () => {
       // Clean up scope value, if cached
