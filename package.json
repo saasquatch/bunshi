@@ -1,7 +1,7 @@
 {
   "name": "jotai-molecules",
   "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "MIT",
   "main": "dist/index.js",
   "module": "dist/jotai-molecules.esm.js",
