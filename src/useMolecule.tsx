@@ -1,10 +1,12 @@
-import { useContext } from "react";
 import { Molecule } from "./molecule";
-import { StoreContext, ScopeContext } from "./ScopeProvider";
+import { MoleculeScopeOptions, useScopes } from "./useScopes";
+import { useStore } from "./useStore";
 
-
-export function useMolecule<T>(m: Molecule<T>): T {
-  const store = useContext(StoreContext);
-  const scopes = useContext(ScopeContext);
+export function useMolecule<T>(
+  m: Molecule<T>,
+  options?: MoleculeScopeOptions
+): T {
+  const scopes = useScopes(options);
+  const store = useStore();
   return store.get(m, ...scopes);
 }

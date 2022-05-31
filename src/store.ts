@@ -1,5 +1,6 @@
-import { Molecule, MoleculeGetter, ScopeGetter, ScopeTuple } from "./molecule";
+import { Molecule, MoleculeGetter, ScopeGetter } from "./molecule";
 import { MoleculeScope } from "./scope";
+import { ScopeTuple } from "./types";
 import { createMemoizeAtom } from "./weakCache";
 
 type Deps = {

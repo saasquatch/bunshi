@@ -1,13 +1,11 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { useContext, useState } from "react";
+import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
+import { ScopeContext } from "./contexts/ScopeContext";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
-import {
-  ScopeProvider,
-  ScopeCacheContext,
-  ScopeContext,
-} from "./ScopeProvider";
+import { ScopeProvider } from "./ScopeProvider";
 import { useMolecule } from "./useMolecule";
 
 const ExampleMolecule = molecule(() => {
@@ -16,11 +14,11 @@ const ExampleMolecule = molecule(() => {
   };
 });
 
-const UserScope = createScope("user@example.com");
+export const UserScope = createScope("user@example.com");
 
 const AtomScope = createScope(atom("user@example.com"));
 
-const UserMolecule = molecule((_, getScope) => {
+export const UserMolecule = molecule((_, getScope) => {
   const userId = getScope(UserScope);
 
   return {

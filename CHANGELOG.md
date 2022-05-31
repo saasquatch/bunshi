@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2022-05-31
+
+- Added options for overriding scope in `useMolecule`. This removes the need for `ScopeProvider` in a number of cases.
+
 ## [1.0.3] - 2022-04-08
 
 - Improve performance when using thousands of molecules
@@ -31,7 +35,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.0
 [1.0.3]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.3
 [1.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.2
 [1.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.1
