@@ -4,7 +4,9 @@ import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
 import { useMemoizedScopeTuple } from "./useMemoizedScopeTuple";
 
-export function useScopes(options?: MoleculeScopeOptions) {
+export function useScopes(
+  options?: MoleculeScopeOptions
+): ScopeTuple<unknown>[] {
   const parentScopes = useContext(ScopeContext);
 
   // if (typeof providedValue !== "undefined" && uniqueValue)
@@ -18,7 +20,7 @@ export function useScopes(options?: MoleculeScopeOptions) {
   const tuple: ScopeTuple<unknown> | undefined = (() => {
     if (!options) return undefined;
     if (options.withUniqueScope) {
-      return [options.withUniqueScope, generatedValue];
+      return [options.withUniqueScope, generatedValue] as ScopeTuple<unknown>;
     }
     if (options.withScope) {
       return options.withScope;
