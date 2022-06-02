@@ -1,7 +1,5 @@
 import { MoleculeScope } from "./scope";
 
-export type ScopeTuple<T> = [MoleculeScope<T>, T];
-
 export type ScopeGetter = {
   <Value>(scope: MoleculeScope<Value>): Value;
 };

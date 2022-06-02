@@ -342,6 +342,30 @@ export const PageComponent = () => {
 };
 ```
 
+By default `useMolecule` will provide a molecule based off the _implicit_ scope from context. You can override this behaviour by passing options to `useMolecule`.
+
+- `withScope` - will overide a scope value (`ScopeTuple<unknown>`)
+- `withUniqueScope` - will override a scope value with a new unique value (`MoleculeScope<unknown>`)
+- `exclusiveScope` - will override ALL scopes (`ScopeTuple<unknown>`)
+
+Instead of a scope provider, you can use an explicit scope when using a molecule. This can simplify integrating jotai with other hooks-based libraries.
+
+**Before:**
+
+```tsx
+const App = () => (
+  <ScopeProvider scope={UserScope} value={"sam@example.com"}>
+    <UserComponent />
+  </ScopeProvider>
+);
+```
+
+**After:**
+
+```tsx
+useMolecule(UserMolecule, { withScope: [UserScope, "sam@example.com"] });
+```
+
 ### createScope
 
 Creates a reference for scopes, similar to React Context
