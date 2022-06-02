@@ -9,9 +9,6 @@ export function useScopes(
 ): ScopeTuple<unknown>[] {
   const parentScopes = useContext(ScopeContext);
 
-  // if (typeof providedValue !== "undefined" && uniqueValue)
-  //   throw new Error("Provide one of `value` or `uniqueValue` but not both");
-
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
     []
