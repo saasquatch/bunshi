@@ -67,7 +67,11 @@ export type MoleculeScopeOptions = {
   /**
    * By default {@link useMolecule} will use scopes based on the {@link ScopeContext}
    */
-  withScope?: ScopeTuple<unknown>;
+  withScope?: InferableScope;
   withUniqueScope?: MoleculeScope<unknown>;
-  exclusiveScope?: ScopeTuple<unknown>;
+  exclusiveScope?: InferableScope;
 };
+export type InferableScope<TScope = any> = [
+  TScope,
+  TScope extends MoleculeScope<infer TValue> ? TValue : never
+];
