@@ -44,13 +44,13 @@ export function useScopes(
   }
 
   const [scope] = tuple;
-  const found = parentScopes.findIndex((scopeTuple) => {
-    const foundScope = scopeTuple[0];
-    return foundScope === scope;
-  });
+  const downstreamScopes = useMemo(() => {
+    const found = parentScopes.findIndex((scopeTuple) => {
+      const foundScope = scopeTuple[0];
+      return foundScope === scope;
+    });
 
-  const downstreamScopes =
-    found >= 0
+    return found >= 0
       ? // Replace inline (when found)
         [
           ...parentScopes.slice(0, found),
@@ -59,6 +59,7 @@ export function useScopes(
         ]
       : // Append to the end (when not found)
         [...parentScopes, memoizedTuple];
+  }, [scope, parentScopes, memoizedTuple]);
 
   return downstreamScopes;
 }
