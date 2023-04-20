@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "module": "dist/jotai-molecules.esm.js",
   "typings": "dist/index.d.ts",
-  "author": "logvol",
+  "author": "ReferralSaaSquatch.com, Inc.",
   "files": [
     "dist",
     "src"
