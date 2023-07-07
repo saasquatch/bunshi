@@ -1,4 +1,4 @@
-import { Molecule } from "./molecule";
+import { Molecule } from "../vanilla";
 import { MoleculeScopeOptions, useScopes } from "./useScopes";
 import { useStore } from "./useStore";
 

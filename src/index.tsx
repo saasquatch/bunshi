@@ -1,8 +1,8 @@
-import { molecule } from "./molecule";
-import { createScope } from "./scope";
-import { ScopeProvider } from "./ScopeProvider";
-import { useMolecule } from "./useMolecule";
-import { MoleculeScopeOptions } from "./useScopes";
+import { molecule } from "./vanilla/molecule";
+import { createScope } from "./vanilla/scope";
+import { ScopeProvider } from "./react/ScopeProvider";
+import { useMolecule } from "./react/useMolecule";
+import { MoleculeScopeOptions } from "./react/useScopes";
 export {
   molecule,
   createScope,

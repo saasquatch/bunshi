@@ -3,8 +3,8 @@ import { atom, useAtom } from "jotai";
 import React, { useContext, useState } from "react";
 import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { molecule } from "./molecule";
-import { createScope } from "./scope";
+import { molecule } from "../vanilla/molecule";
+import { createScope } from "../vanilla/scope";
 import { ScopeProvider } from "./ScopeProvider";
 import { useMolecule } from "./useMolecule";
 

@@ -1,12 +1,7 @@
 import { useContext, useEffect, useMemo } from "react";
 import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
-import { AnyScopeTuple, PrimitiveScopeMap, ScopeTuple } from "./types";
-import { createMemoizeAtom } from "./weakCache";
-
-export type TupleAndReferences = {
-  references: Set<Symbol>;
-  tuple: AnyScopeTuple;
-};
+import { PrimitiveScopeMap, ScopeTuple } from "../vanilla";
+import { createMemoizeAtom } from "../vanilla/weakCache";
 
 const memoize = createMemoizeAtom();
 

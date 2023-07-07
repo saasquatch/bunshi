@@ -1,5 +1,5 @@
 import React from "react";
-import { PrimitiveScopeMap } from "../types";
+import { PrimitiveScopeMap } from "../../vanilla/types";
 
 export const ScopeCacheContext = React.createContext<PrimitiveScopeMap>(
   new WeakMap()

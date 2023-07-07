@@ -1,5 +1,5 @@
 import type { MoleculeScope } from "./scope";
-import type { TupleAndReferences } from "./useMemoizedScopeTuple";
+import type { TupleAndReferences } from "./TupleAndReferences";
 
 export type ScopeTuple<T> = [MoleculeScope<T>, T];
 

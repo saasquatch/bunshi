@@ -1,7 +1,6 @@
 import { useContext, useMemo } from "react";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { MoleculeScope } from "./scope";
-import { ScopeTuple } from "./types";
+import { MoleculeScope, ScopeTuple } from "../vanilla";
 import { useMemoizedScopeTuple } from "./useMemoizedScopeTuple";
 
 export function useScopes(
