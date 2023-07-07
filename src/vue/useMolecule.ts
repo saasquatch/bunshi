@@ -1,8 +1,12 @@
+import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { Molecule } from "../vanilla";
+import { useScopes } from "./useScopes";
 import { useStore } from "./useStore";
 
-export const useMolecule = <T>(mol: Molecule<T>) => {
+export const useMolecule = <T>(m: Molecule<T>, options?: MoleculeScopeOptions) => {
+    const scopes = useScopes(options);
     const store = useStore();
-    const value = store.get(mol);
-    return value;
+    return store.get(m, ...scopes);
 }
+
+

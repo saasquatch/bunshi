@@ -1,10 +1,8 @@
 import { useContext, useEffect, useMemo } from "react";
+import { deregisterScopeTuple, registerMemoizedScopeTuple } from "../shared/memoized-scopes";
+import { ScopeTuple } from "../vanilla";
 import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
-import { createMemoizeAtom, ScopeTuple } from "../vanilla";
-import { registerMemoizedScopeTuple } from "../shared/memoized-scopes/registerMemoizedScopeTuple";
-import { deregisterScopeTuple } from "../shared/memoized-scopes/deregisterScopeTuple";
 
-export const memoize = createMemoizeAtom();
 
 /**
  * Scope tuples need to be memozied as their array to be used in the store.

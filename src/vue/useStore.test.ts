@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/vue'
 import { ref } from 'vue'
 
-
 const Component = {
     setup() {
         const count = ref(0)
