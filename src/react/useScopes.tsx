@@ -1,7 +1,8 @@
 import { useContext, useMemo } from "react";
+import { ScopeTuple, getDownstreamScopes } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { MoleculeScope, ScopeTuple } from "../vanilla";
 import { useMemoizedScopeTuple } from "./useMemoizedScopeTuple";
+import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 
 export function useScopes(
   options?: MoleculeScopeOptions
@@ -42,31 +43,7 @@ export function useScopes(
     return parentScopes;
   }
 
-  const [scope] = tuple;
-  const found = parentScopes.findIndex((scopeTuple) => {
-    const foundScope = scopeTuple[0];
-    return foundScope === scope;
-  });
-
-  const downstreamScopes =
-    found >= 0
-      ? // Replace inline (when found)
-        [
-          ...parentScopes.slice(0, found),
-          memoizedTuple,
-          ...parentScopes.slice(found + 1),
-        ]
-      : // Append to the end (when not found)
-        [...parentScopes, memoizedTuple];
-
-  return downstreamScopes;
+  return getDownstreamScopes(parentScopes, memoizedTuple);
 }
 
-export type MoleculeScopeOptions = {
-  /**
-   * By default {@link useMolecule} will use scopes based on the {@link ScopeContext}
-   */
-  withScope?: ScopeTuple<unknown>;
-  withUniqueScope?: MoleculeScope<unknown>;
-  exclusiveScope?: ScopeTuple<unknown>;
-};
+

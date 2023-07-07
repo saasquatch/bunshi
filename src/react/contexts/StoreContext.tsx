@@ -1,5 +1,5 @@
 import React from "react";
-import { createStore } from "../../vanilla";
+import { defaultStore } from "../../vanilla";
 
-export const StoreContext = React.createContext(createStore());
+export const StoreContext = React.createContext(defaultStore);
 StoreContext.displayName = "JotaiMoleculeStoreContext";

@@ -1,5 +1,6 @@
 import { Molecule } from "../vanilla";
-import { MoleculeScopeOptions, useScopes } from "./useScopes";
+import { useScopes } from "./useScopes";
+import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { useStore } from "./useStore";
 
 export function useMolecule<T>(
