@@ -1,11 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { useContext, useState } from "react";
+import { createScope, molecule } from "../vanilla";
+import { ScopeProvider } from "./ScopeProvider";
 import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { molecule } from "../vanilla/molecule";
-import { createScope } from "../vanilla/scope";
-import { ScopeProvider } from "./ScopeProvider";
 import { useMolecule } from "./useMolecule";
 
 const ExampleMolecule = molecule(() => {

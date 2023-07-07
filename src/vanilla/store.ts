@@ -113,3 +113,6 @@ export function createStore(): MoleculeStore {
     get,
   };
 }
+
+
+export const defaultStore = createStore();

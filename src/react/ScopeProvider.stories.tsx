@@ -1,7 +1,6 @@
 import { atom, useAtom } from "jotai";
 import React from "react";
-import { molecule } from "../vanilla/molecule";
-import { createScope } from "../vanilla/scope";
+import { createScope, molecule } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { useMolecule } from "./useMolecule";
 

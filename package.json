@@ -25,8 +25,12 @@
     "build-storybook": "build-storybook"
   },
   "peerDependencies": {
-    "react": ">=16",
-    "jotai": ">=1"
+    "react": ">=16"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "husky": {
     "hooks": {
@@ -45,21 +49,14 @@
     }
   ],
   "devDependencies": {
-    "@babel/core": "^7.17.8",
     "@size-limit/preset-small-lib": "^7.0.8",
-    "@storybook/addon-essentials": "^6.4.19",
-    "@storybook/addon-info": "^5.3.21",
-    "@storybook/addon-links": "^6.4.19",
-    "@storybook/addons": "^6.4.19",
-    "@storybook/react": "^6.4.19",
+    "@testing-library/react-hooks": "^8.0.1",
     "@types/react": "^17.0.43",
     "@types/react-dom": "^17.0.14",
-    "babel-loader": "^8.2.4",
     "husky": "^7.0.4",
     "jotai": ">=1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-hooks-testing-library": "^0.6.0",
     "react-is": "^18.0.0",
     "react-test-renderer": "^18.0.0",
     "size-limit": "^7.0.8",

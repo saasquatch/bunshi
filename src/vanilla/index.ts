@@ -1,5 +1,5 @@
-import { createStoreForExport } from "jotai/core/store";
-
+export { createMemoizeAtom } from "./weakCache";
 export { molecule, Molecule } from "./molecule";
-export { createScope, MoleculeScope } from "./scope";
+export * from "./scope";
+export * from "./store"
 export * from "./types"

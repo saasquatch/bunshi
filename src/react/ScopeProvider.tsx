@@ -1,6 +1,6 @@
 import React from "react";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { MoleculeScope } from "../vanilla/scope";
+import { MoleculeScope } from "../vanilla";
 import { MoleculeScopeOptions, useScopes } from "./useScopes";
 
 export type ProviderProps<T> = {
