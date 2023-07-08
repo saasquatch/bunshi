@@ -8,22 +8,35 @@ import { useCache } from './useScopeCache';
 export const ScopeKey = Symbol("jotai-molecules-scope");
 
 export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknown>[] => {
-    const parentScopes = inject(ScopeKey, []);
+    const parentScopes = inject(ScopeKey, [] as ScopeTuple<unknown>[]);
     const primitiveMap = useCache();
-    if (options.exclusiveScope) return [options.exclusiveScope];
-    if (options.withScope) {
-        return getDownstreamScopes(parentScopes, options.withScope);
+
+    const generatedValue = new Error("Don't use this value, it is a placeholder only");
+    if (options?.exclusiveScope) {
+        /**
+         *  Exclusive scopes means ignore scopes from context
+         */
+        return [options.exclusiveScope];
     }
 
-    if (options.withUniqueScope) {
+    const tuple: ScopeTuple<unknown> | undefined = (() => {
+        if (options.withUniqueScope) {
+            return [options.withUniqueScope, generatedValue] as ScopeTuple<unknown>;
+        }
+        if (options.withScope) {
+            return options.withScope;
+        }
+        return undefined
+    })();
+
+    if (tuple) {
         const uniqueValue = Symbol(Math.random());
-        const tuple: ScopeTuple<unknown> = [options.withUniqueScope, new Error("Don't use this value, it is a placeholder only")];
-        registerMemoizedScopeTuple(tuple, primitiveMap, uniqueValue)
+        const memoizedTuple = registerMemoizedScopeTuple(tuple, primitiveMap, uniqueValue)
         onUnmounted(() => {
             deregisterScopeTuple(tuple, primitiveMap, uniqueValue)
         });
 
-        return getDownstreamScopes(parentScopes, tuple);
+        return getDownstreamScopes(parentScopes, memoizedTuple);
     }
 
     return parentScopes;

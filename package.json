@@ -49,6 +49,7 @@
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/vue": "^7.0.0",
     "@types/react": "*",
+    "@vitejs/plugin-vue": "^4.2.3",
     "happy-dom": "^10.0.3",
     "husky": "^7.0.4",
     "jotai": ">=1",

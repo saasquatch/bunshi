@@ -1,6 +1,6 @@
 // vite.config.ts
+import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
-// import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
     test: {
@@ -8,5 +8,5 @@ export default defineConfig({
         environment: 'happy-dom',
         globals: true,
     },
-    //   plugins: [vue()],
+    plugins: [vue()],
 })
