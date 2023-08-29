@@ -18,7 +18,7 @@ export function registerMemoizedScopeTuple<T>(
     if (typeof value === "object") {
         // If we have an object, we can safely weak cache it.
         // Equivalent to `cache.get(scope).get(value)`
-        return memoize(() => tuple, [scope, value as unknown as object]);
+        return memoize.deepCache(() => tuple, [scope, value as unknown as object]);
     }
 
     // Not an object, so we can't safely cache it in a WeakMap

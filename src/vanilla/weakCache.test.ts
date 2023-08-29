@@ -1,8 +1,8 @@
-import { createMemoizeAtom } from "./weakCache";
+import { createDeepCache } from "./weakCache";
 
 describe("Weak cache", () => {
   it("order matters", () => {
-    const memoize = createMemoizeAtom();
+    const memoize = createDeepCache();
 
     const first = {};
     const second = {};
@@ -11,12 +11,14 @@ describe("Weak cache", () => {
       value: i++,
     });
 
-    const firstValue = memoize(fn, [first, second]);
-    const secondValue = memoize(fn, [first, second]);
-    const thirdValue = memoize(fn, [second, first]);
-
+    // Same order, so same value
+    const firstValue = memoize.deepCache(fn, [first, second]);
+    const secondValue = memoize.deepCache(fn, [first, second]);
     expect(secondValue).toBe(firstValue);
-    // FIXME: Not getting memoized the way I think it should
+
+    // Different order, so different values
+    const thirdValue = memoize.deepCache(fn, [second, first]);
     expect(thirdValue).not.toBe(firstValue);
+    expect(thirdValue).not.toBe(secondValue);
   });
 });

@@ -1,13 +1,15 @@
-import { Molecule, MoleculeGetter, ScopeGetter } from "./molecule";
+import { ErrorUnboundMolecule, ErrorAsyncGetScope, ErrorAsyncGetMol } from "./errors";
+import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter, isMolecule, isMoleculeKey } from "./molecule";
 import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
-import { createMemoizeAtom } from "./weakCache";
+import { createDeepCache } from "./weakCache";
 
 type Deps = {
   scopes: AnyScope[];
   transitiveScopes: AnyScope[];
   molecules: AnyMolecule[];
 };
+type AnyMoleculeKey = MoleculeKey<unknown>;
 type AnyMolecule = Molecule<unknown>;
 type AnyValue = unknown;
 type AnyScope = MoleculeScope<unknown>;
@@ -24,7 +26,16 @@ export type MoleculeStore = {
    * @param molecule
    * @param scopes
    */
-  get<T>(molecule: Molecule<T>, ...scopes: AnyScopeTuple[]): T;
+  get<T>(molecule: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): T;
+
+  /**
+   * Replace the binding for a molecule. This is not reactive, so won't cause previously created
+   * molecules to be re-created.
+   * 
+   * @param key 
+   * @param molecule 
+   */
+  bind<T>(key: MoleculeKey<T>, molecule: Molecule<T>): void;
 };
 
 /**
@@ -35,23 +46,41 @@ export type MoleculeStore = {
  * @returns
  */
 export function createStore(): MoleculeStore {
-  const deepCache = createMemoizeAtom();
+
+  const deepCache = createDeepCache();
+  const bindings = new Map<AnyMoleculeKey, AnyMolecule>();
+
+  function getTrueMolecule<T>(molOrKey: MoleculeOrKey<T>): Molecule<T> {
+    const bound = bindings.get(molOrKey);
+    if (bound) return bound as Molecule<T>;
+
+    if (isMolecule(molOrKey)) return molOrKey as Molecule<T>;
+
+    throw new Error(ErrorUnboundMolecule);
+  }
 
   function mountMolecule(
-    m: AnyMolecule,
+    maybeMolecule: AnyMolecule,
     getScopeValue: ScopeGetter,
     scopes: AnyScopeTuple[]
   ): Mounted {
+    const m = getTrueMolecule(maybeMolecule);
+
     const dependentMolecules = new Set<AnyMolecule>();
     const dependentScopes = new Set<AnyScope>();
     const transientScopes = new Set<AnyScope>();
+    let running = true;
     const trackingScopeGetter: ScopeGetter = (s) => {
+      if (!running) throw new Error(ErrorAsyncGetScope)
       dependentScopes.add(s);
       return getScopeValue(s);
     };
-    const trackingGetter: MoleculeGetter = (m) => {
-      dependentMolecules.add(m);
-      const mol = getInternal(m, ...scopes);
+    const trackingGetter: MoleculeGetter = (molOrKey) => {
+      if (!running) throw new Error(ErrorAsyncGetMol)
+
+      const dependentMolecule = getTrueMolecule(molOrKey);
+      dependentMolecules.add(dependentMolecule);
+      const mol = getInternal(dependentMolecule, ...scopes);
       Array.from(mol.deps.scopes.values()).forEach((s) =>
         transientScopes.add(s)
       );
@@ -62,6 +91,7 @@ export function createStore(): MoleculeStore {
     };
 
     const value = m.getter(trackingGetter, trackingScopeGetter);
+    running = false;
     return {
       deps: {
         molecules: Array.from(dependentMolecules.values()),
@@ -73,44 +103,54 @@ export function createStore(): MoleculeStore {
   }
 
   function getInternal<T>(m: Molecule<T>, ...scopes: AnyScopeTuple[]): Mounted {
-    return deepCache(() => {
-      const getScopeValue: ScopeGetter = (scope) => {
-        const found = scopes.find(
-          (providedScope) => providedScope[0] === scope
-        );
-        if (found) return found[1] as any;
-        return scope.defaultValue;
-      };
-
-      const mounted = mountMolecule(m, getScopeValue, scopes);
-
-      const relatedScopes = scopes.filter((s) => {
-        const scope = s[0];
-        return mounted.deps.scopes.includes(scope);
-      });
-
-      const transitiveRelatedScopes = scopes.filter((s) => {
-        const scope = s[0];
-        return mounted.deps.transitiveScopes.includes(scope);
-      });
-
-      return deepCache(
-        () => mounted,
-        [
-          m,
-          ...relatedScopes,
-          ...transitiveRelatedScopes,
-          ...mounted.deps.molecules,
-        ]
+    const getScopeValue: ScopeGetter = (scope) => {
+      const found = scopes.find(
+        (providedScope) => providedScope[0] === scope
       );
-    }, [m, ...scopes]);
+      if (found) return found[1] as any;
+      return scope.defaultValue;
+    };
+
+    const mounted = mountMolecule(m, getScopeValue, scopes);
+
+    const relatedScope = scopes.filter((s) => {
+      const scopeKey = s[0];
+      return mounted.deps.scopes.includes(scopeKey);
+    });
+
+    const transitiveRelatedScope = scopes.filter((s) => {
+      const scopeKey = s[0];
+      return mounted.deps.transitiveScopes.includes(scopeKey);
+    });
+
+    const dependencies = [
+      m,
+      ...relatedScope,
+      ...transitiveRelatedScope,
+      ...mounted.deps.molecules,
+    ];
+
+    return deepCache.deepCache(
+      () => mounted,
+      dependencies
+    );
   }
 
-  function get<T>(m: Molecule<T>, ...scopes: AnyScopeTuple[]): T {
-    return getInternal(m, ...scopes).value as T;
+  function get<T>(m: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): T {
+    if (!isMolecule(m) && !isMoleculeKey(m)) throw new Error("Expected a molecule or molecule key");
+    const bound = getTrueMolecule(m);
+    return getInternal(bound, ...scopes).value as T;
   }
+
+  function bind<T>(key: MoleculeKey<T>, molecule: Molecule<T>): void {
+    if (!isMolecule(molecule)) throw new Error("Expected a molecule");
+    if (!isMolecule(key) && !isMoleculeKey(key)) throw new Error("Expected a molecule or molecule key");
+    bindings.set(key, molecule);
+  }
+
   return {
     get,
+    bind
   };
 }
 

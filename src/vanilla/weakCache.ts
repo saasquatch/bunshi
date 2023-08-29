@@ -1,5 +1,6 @@
 /**
- *
+ * A weak, deep cache
+ * 
  *
  * Copied direcly from: https://github.com/pmndrs/jotai/blob/main/src/utils/weakCache.ts
  *
@@ -12,7 +13,7 @@ export type WeakCache<T> = WeakMap<object, [WeakCache<T>] | [WeakCache<T>, T]>;
 
 const getWeakCacheItem = <T>(
   cache: WeakCache<T>,
-  deps: readonly object[]
+  deps: Deps
 ): T | undefined => {
   while (true) {
     const [dep, ...rest] = deps;
@@ -30,7 +31,7 @@ const getWeakCacheItem = <T>(
 
 const setWeakCacheItem = <T>(
   cache: WeakCache<T>,
-  deps: readonly object[],
+  deps: Deps,
   item: T
 ): void => {
   while (true) {
@@ -49,19 +50,27 @@ const setWeakCacheItem = <T>(
   }
 };
 
-export const createMemoizeAtom = () => {
+type Deps = readonly object[];
+
+export const createDeepCache = () => {
   const cache: WeakCache<{}> = new WeakMap();
-  const memoizeAtom = <T extends {}, Deps extends readonly object[]>(
-    createAtom: () => T,
+  const deepCache = <T extends {}>(
+    createFn: () => T,
     deps: Deps
   ) => {
     const cachedAtom = getWeakCacheItem(cache, deps);
     if (cachedAtom) {
       return cachedAtom as T;
     }
-    const createdAtom = createAtom();
-    setWeakCacheItem(cache, deps, createdAtom);
-    return createdAtom;
+    const newObject = createFn();
+    setWeakCacheItem(cache, deps, newObject);
+    return newObject;
   };
-  return memoizeAtom;
+  
+  return {
+    getWeakCacheItem: (deps: Deps) => getWeakCacheItem(cache, deps),
+    setWeakCacheItem: <T extends {}>(deps: Deps, newObject: T) => setWeakCacheItem(cache, deps, newObject),
+    cache,
+    deepCache
+  };
 };

@@ -1,7 +1,8 @@
 import { atom, PrimitiveAtom } from "jotai";
-import { Molecule, molecule } from "./molecule";
-import { createStore } from "./store";
+import { ErrorUnboundMolecule } from "./errors";
+import { Molecule, molecule, moleculeKey } from "./molecule";
 import { createScope } from "./scope";
+import { createStore } from "./store";
 import { ScopeTuple } from "./types";
 
 type BaseAtoms = {
@@ -525,4 +526,111 @@ describe("Store", () => {
       });
     });
   });
+
+  describe("Validation", () => {
+
+    it("Molecules will throw errors if attempted to load asynchronously", async () => {
+
+      const badMolecule = molecule((getMol) => {
+        const example = getMol(exampleMol);
+        return new Promise((resolve, reject) => setTimeout(() => {
+          try {
+            resolve(getMol(exampleMol))
+          } catch (e) {
+            reject(e);
+          }
+        }, 10));
+      });
+
+      const store1 = createStore();
+
+      const firstValue = store1.get(badMolecule);
+      await expect(firstValue).rejects.toThrow("o");
+    })
+
+  })
+
+
+  describe("Binding", () => {
+
+    interface HTTPService {
+      get(url: string): Promise<string>
+      post(url: string): Promise<string>
+    }
+
+    const HTTPServiceKey = moleculeKey<HTTPService>();
+
+    const NeedsHttp = molecule((getMol) => {
+
+      const httpService = getMol(HTTPServiceKey);
+
+      const logout = () => httpService.post("/logout")
+      return {
+        httpService,
+        logout
+      }
+    });
+
+    it("Errors when a molecule key is not bound", () => {
+      const store1 = createStore();
+      expect(() => store1.get(HTTPServiceKey)).toThrow(ErrorUnboundMolecule);
+    });
+
+    it("Allows binding a molecule keys to a molecule", () => {
+
+      const store1 = createStore();
+
+      const MockHTTPMolecule = molecule<HTTPService>(() => {
+
+        return {
+          async get(url) {
+            return "I am fake";
+          },
+          async post(url) {
+            return "I am fake";
+          },
+        }
+      });
+
+      store1.bind(HTTPServiceKey, MockHTTPMolecule);
+
+      const firstValue = store1.get(NeedsHttp);
+      expect(firstValue.logout).not.toBeNull();
+
+      const bound = store1.get(HTTPServiceKey);
+      expect(bound).toBe(firstValue.httpService);
+
+    })
+
+    it("Allows binding a molecule keys to a scoped molecule", async () => {
+
+      const store1 = createStore();
+
+      const UserScopedHTTPMolecule = molecule<HTTPService>((getMol, getScope) => {
+        const user = getScope(UserScope);
+        return {
+          async get(url) {
+            return `I am ${user}`;
+          },
+          async post(url) {
+            return `I am ${user}`;
+          },
+        }
+      });
+
+      store1.bind(HTTPServiceKey, UserScopedHTTPMolecule);
+
+      const firstValue = store1.get(NeedsHttp);
+
+      const loggedOut = await firstValue.logout();
+      expect(loggedOut).toBe("I am bob@example.com");
+
+      const secondValue = store1.get(NeedsHttp, user1Scope);
+
+      const loggedOut2 = await secondValue.logout();
+      expect(loggedOut2).toBe("I am one@example.com");
+
+    })
+  })
+
 });

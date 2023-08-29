@@ -1,7 +1,11 @@
 import type { MoleculeScope } from "./scope";
-import type { TupleAndReferences } from "./TupleAndReferences";
 
 export type ScopeTuple<T> = [MoleculeScope<T>, T];
+
+export type TupleAndReferences = {
+  references: Set<Symbol>;
+  tuple: AnyScopeTuple;
+};
 
 export type PrimitiveScopeMap = WeakMap<
   AnyMoleculeScope,

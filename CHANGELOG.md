@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2023-04-20
+
+### Added
+- Vue support
+- Vanilla JS support
+
+
+### Changed
+- Default export no longer returns react.
+
+
+
 ## [1.1.1] - 2023-04-20
 
 ### Changed
