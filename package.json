@@ -62,5 +62,8 @@
     "typescript": "^4.6.3",
     "vitest": "^0.33.0",
     "vue": "^3.3.4"
+  },
+  "dependencies": {
+    "use-sync-external-store": "^1.2.0"
   }
 }

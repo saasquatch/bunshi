@@ -1,4 +1,5 @@
-import { ErrorUnboundMolecule, ErrorAsyncGetScope, ErrorAsyncGetMol } from "./errors";
+import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./errors";
+import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./memoized-scopes";
 import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter, isMolecule, isMoleculeKey } from "./molecule";
 import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
@@ -18,15 +19,36 @@ type Mounted = {
   deps: Deps;
   value: AnyValue;
 };
+type Unsub = () => unknown;
 
 export type MoleculeStore = {
   /**
-   * Get the molecule value for an optional scope
+   * Get the molecule value for an optional scope. Expects scope tuples to be memoized ahead of time.
    *
    * @param molecule
    * @param scopes
    */
   get<T>(molecule: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): T;
+
+
+  /**
+   * Use a molecule, and memoizes scope tuples.
+   * 
+   * Returns a function to cleanup scope tuples.
+   *
+   * @param molecule
+   * @param scopes
+   */
+  use<T>(molecule: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): [T, Unsub];
+
+  /**
+   * Use and memoize scopes.
+   * 
+   * Returns a function to cleanup scope tuples.
+   * 
+   * @param scopes 
+   */
+  useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
 
   /**
    * Replace the binding for a molecule. This is not reactive, so won't cause previously created
@@ -47,8 +69,11 @@ export type MoleculeStore = {
  */
 export function createStore(): MoleculeStore {
 
-  const deepCache = createDeepCache();
+  const moleculeCache = createDeepCache();
+  const scopeCache = createDeepCache();
+
   const bindings = new Map<AnyMoleculeKey, AnyMolecule>();
+
 
   function getTrueMolecule<T>(molOrKey: MoleculeOrKey<T>): Molecule<T> {
     const bound = bindings.get(molOrKey);
@@ -130,7 +155,7 @@ export function createStore(): MoleculeStore {
       ...mounted.deps.molecules,
     ];
 
-    return deepCache.deepCache(
+    return moleculeCache.deepCache(
       () => mounted,
       dependencies
     );
@@ -148,8 +173,34 @@ export function createStore(): MoleculeStore {
     bindings.set(key, molecule);
   }
 
+  function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
+    const unsubs = new Set<Unsub>();
+    const tuples = scopes.map((tuple) => {
+      
+      const uniqueValue = Symbol(Math.random());
+      const memoizedTuple = registerMemoizedScopeTuple(tuple, uniqueValue);
+
+      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue));
+
+      return memoizedTuple;
+    })
+    const unsub = () => unsubs.forEach(fn => fn());
+
+    return [tuples, unsub]
+  }
+
+  function use<T>(m: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): [T, Unsub] {
+    if (!isMolecule(m) && !isMoleculeKey(m)) throw new Error("Expected a molecule or molecule key");
+
+    const [tuples, unsub] = useScopes(...scopes);
+    const value = get<T>(m, ...tuples);
+    return [value, unsub];
+  }
+
   return {
     get,
+    use,
+    useScopes,
     bind
   };
 }

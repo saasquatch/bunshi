@@ -1,11 +1,11 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
-import React, { useContext, useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import { createScope, molecule } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
-import { ScopeCacheContext } from "./contexts/ScopeCacheContext";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useMolecule } from "./useMolecule";
+import { useScopes } from "./useScopes";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -44,7 +44,7 @@ test("Use molecule should produce a single value across multiple uses", () => {
   expect(result1.current).toBe(result2.current);
 });
 
-test("Alternative scopes", () => {
+test("Alternating scopes", () => {
   const ScopeA = createScope(undefined);
   const ScopeB = createScope(undefined);
   const ScopeC = createScope(undefined);
@@ -121,68 +121,94 @@ describe("String scopes", () => {
   };
 
   test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
-    const Context = React.createContext<ReturnType<typeof useTextHook>>(
+    const StringScopeTestContext = React.createContext<ReturnType<typeof useTextHook>>(
       undefined as any
     );
     const useTextHook = () => {
       const [mountA, setMountA] = useState(true);
       const [mountB, setMountB] = useState(true);
-      const cache = useContext(ScopeCacheContext);
-
-      const props = { cache, mountA, mountB, setMountA, setMountB };
+      const insideValue = useRef(null as any);
+      const props = { mountA, mountB, setMountA, setMountB, insideValue };
       return props;
     };
     const sharedKey = "shared@example.com";
     const TestStuffProvider: React.FC = ({ children }) => {
       const props = useTextHook();
       return (
-        <Context.Provider value={props}>
+        <StringScopeTestContext.Provider value={props}>
           {children}
           <Controller {...props} />
-        </Context.Provider>
+        </StringScopeTestContext.Provider>
       );
     };
+    const Child = () => {
+      const scopes = useScopes();
+      const context = useContext(StringScopeTestContext);
+      context.insideValue.current = scopes;
+      return <div>Bad</div>
+    }
     const Controller = (props: any) => {
       return (
         <>
           {props.mountA && (
             <ScopeProvider scope={UserScope} value={sharedKey}>
-              Bad
+              <Child />
             </ScopeProvider>
           )}
           {props.mountB && (
             <ScopeProvider scope={UserScope} value={sharedKey}>
-              Bad
+              <Child />
             </ScopeProvider>
           )}
         </>
       );
     };
 
-    const { result } = renderHook(() => useContext(Context), {
+    const { result } = renderHook(() => useContext(StringScopeTestContext), {
       wrapper: TestStuffProvider,
     });
 
-    const { cache } = result.current;
-    const initialScopeCache = cache.get(UserScope)?.get(sharedKey);
-    expect(initialScopeCache).not.toBeUndefined();
-    expect(initialScopeCache?.tuple).not.toBeUndefined();
-    expect(initialScopeCache?.references.size).toBe(2);
+    const { insideValue } = result.current;
+    const initialScopes = insideValue.current;
+    expect(initialScopes).not.toBeUndefined();
+    expect(initialScopes.length).toBe(1);
+
+    const userScopeTuple = initialScopes[0];
+    if (true) {
+      const [scopeKey, scopeValue] = userScopeTuple;
+      expect(scopeKey).toBe(UserScope);
+      expect(scopeValue).toBe(sharedKey);
+    }
 
     await act(() => {
       result.current.setMountA(false);
     });
 
-    const afterUnmountCache = cache.get(UserScope)?.get(sharedKey);
-    expect(afterUnmountCache?.references.size).toBe(1);
-    expect(afterUnmountCache?.tuple).toBe(initialScopeCache?.tuple);
+    const afterUnmountCache = insideValue.current;
+
+    expect(afterUnmountCache[0]).toBe(userScopeTuple);
 
     act(() => {
       result.current.setMountB(false);
     });
 
-    const finalTuple = cache.get(UserScope)?.get(sharedKey);
-    expect(finalTuple).toBeUndefined();
+    const finalTuples = insideValue.current;
+    expect(finalTuples[0]).toBe(userScopeTuple);
+
+
+    act(() => {
+      result.current.setMountB(true);
+    });
+
+    const freshTuples = insideValue.current;
+    const [freshTuple] = freshTuples;
+    expect(freshTuple).not.toBe(userScopeTuple);
+    if (true) {
+      const [scopeKey, scopeValue] = freshTuple;
+      expect(scopeKey).toBe(UserScope);
+      expect(scopeValue).toBe(sharedKey);
+    }
+
   });
 });
 

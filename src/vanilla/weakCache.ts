@@ -53,7 +53,7 @@ const setWeakCacheItem = <T>(
 type Deps = readonly object[];
 
 export const createDeepCache = () => {
-  const cache: WeakCache<{}> = new WeakMap();
+  let cache: WeakCache<{}> = new WeakMap();
   const deepCache = <T extends {}>(
     createFn: () => T,
     deps: Deps
@@ -70,6 +70,9 @@ export const createDeepCache = () => {
   return {
     getWeakCacheItem: (deps: Deps) => getWeakCacheItem(cache, deps),
     setWeakCacheItem: <T extends {}>(deps: Deps, newObject: T) => setWeakCacheItem(cache, deps, newObject),
+    clear: ()=>{
+      cache = new WeakMap();
+    },
     cache,
     deepCache
   };

@@ -1,6 +1,8 @@
-import { PrimitiveScopeMap, ScopeTuple, createMemoizeAtom } from "../vanilla";
+import { PrimitiveScopeMap, ScopeTuple, createMemoizeAtom } from ".";
 
-export const memoize = createMemoizeAtom();
+export const cache = createMemoizeAtom();
+export const defaultCache = new WeakMap();
+
 /**
  * Creates a memoized tuple of `[scope,value]`
  *
@@ -8,11 +10,11 @@ export const memoize = createMemoizeAtom();
  * and needs to be cleaned up with `deregisterScopeTuple`
  *
  */
-
 export function registerMemoizedScopeTuple<T>(
     tuple: ScopeTuple<T>,
-    primitiveMap: PrimitiveScopeMap,
-    id: Symbol
+    id: Symbol,
+    primitiveMap: PrimitiveScopeMap = defaultCache,
+    memoize = cache
 ): ScopeTuple<T> {
     const [scope, value] = tuple;
     if (typeof value === "object") {
@@ -49,12 +51,20 @@ export function registerMemoizedScopeTuple<T>(
  * For values that are "primitive" (not an object),
  * deregisters them from the primitive scope
  * cache to ensure no memory leaks
- */
 
+
+    // Clean up scope value, if cached
+    // Deleting the scope tuple should cascade a cleanup
+    // 1 - it is deleted from this map
+    // 2 - it should be garbage collected from the Molecule store WeakMap
+    // 3 - any atoms created in the molecule should be garbage collected
+    // 4 - any atom values in the jotai store should be garbage collected from it's WeakMap
+
+*/
 export function deregisterScopeTuple<T>(
     tuple: ScopeTuple<T>,
-    primitiveScopeMap: PrimitiveScopeMap,
-    id: Symbol
+    id: Symbol,
+    primitiveScopeMap: PrimitiveScopeMap = defaultCache,
 ) {
     const [scope, value] = tuple;
     // No scope cleanup needed for non-primitives
@@ -72,5 +82,3 @@ export function deregisterScopeTuple<T>(
         scopeMap.delete(value);
     }
 }
-
-export const defaultCache = new WeakMap();

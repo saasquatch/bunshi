@@ -633,4 +633,61 @@ describe("Store", () => {
     })
   })
 
+  describe("Scope caching", () => {
+
+
+    it("Caches a scope tuple", () => {
+      const store = createStore();
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      expect(tuple1).toBe(tuple2);
+
+      unsub1();
+      unsub2();
+    });
+
+    it("Does not cache when scopes are cleaned up", () => {
+      const store = createStore();
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+      unsub1();
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      unsub2();
+      // Subscription 1 and 2 never overlapped
+      expect(tuple1).not.toBe(tuple2);
+    });
+
+    it("Caches if there are overlapping subscriptions", () => {
+      const store = createStore();
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      unsub2();
+      unsub1();
+      // Subscription 2 overlapped with 1
+      expect(tuple1).toBe(tuple2);
+    });
+
+    it("Caches as long as subscriptions overlap", () => {
+      const store = createStore();
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+
+
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+
+      // Doesn't create a new value, the second use has a lease
+      unsub1();
+
+      const [[tuple3], unsub3] = store.useScopes([UserScope, "one"]);
+      unsub2();
+
+      const [[tuple4], unsub4] = store.useScopes([UserScope, "one"]);
+      unsub3();
+
+      // Final cleanup
+      unsub4();
+
+      expect(tuple1).toBe(tuple2);
+      expect(tuple1).toBe(tuple3);
+      expect(tuple1).toBe(tuple4);
+    });
+  })
 });

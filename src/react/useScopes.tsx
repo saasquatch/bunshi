@@ -1,13 +1,14 @@
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
+import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { ScopeTuple, getDownstreamScopes } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { useMemoizedScopeTuple } from "./useMemoizedScopeTuple";
-import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
+import { useStore } from "./useStore";
 
 export function useScopes(
   options?: MoleculeScopeOptions
 ): ScopeTuple<unknown>[] {
   const parentScopes = useContext(ScopeContext);
+
 
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
@@ -28,14 +29,7 @@ export function useScopes(
     return undefined;
   })();
 
-  const memoizedTuple = useMemoizedScopeTuple(tuple);
 
-  if (options?.exclusiveScope) {
-    /**
-     *  Exclusive scopes means ignore scopes from context
-     */
-    return [options.exclusiveScope];
-  }
   if (!tuple) {
     /**
      * This is the default case, when we don't have any tuples
@@ -43,7 +37,22 @@ export function useScopes(
     return parentScopes;
   }
 
-  return getDownstreamScopes(parentScopes, memoizedTuple);
+  if (options?.exclusiveScope) {
+    /**
+     *  Exclusive scopes means ignore scopes from context
+     */
+    return [options.exclusiveScope];
+  }
+
+  const store = useStore();
+  const [[memoizedTuple], unsub] = useMemo(() => store.useScopes(tuple), tuple);
+
+  useEffect(() => {
+    // Cleanup effect
+    return () => { unsub() };
+  }, [unsub]);
+
+  return getDownstreamScopes(parentScopes, memoizedTuple as ScopeTuple<unknown>);
 }
 
 
