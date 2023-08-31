@@ -52,6 +52,9 @@ const setWeakCacheItem = <T>(
 
 type Deps = readonly object[];
 
+
+export type DeepCache = ReturnType<typeof createDeepCache>;
+
 export const createDeepCache = () => {
   let cache: WeakCache<{}> = new WeakMap();
   const deepCache = <T extends {}>(

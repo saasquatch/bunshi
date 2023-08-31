@@ -1,7 +1,16 @@
-import { PrimitiveScopeMap, ScopeTuple, createMemoizeAtom } from ".";
+import { AnyMoleculeScope, AnyScopeTuple, AnyScopeValue, ScopeTuple } from "../";
+import { DeepCache } from "./weakCache";
 
-export const cache = createMemoizeAtom();
-export const defaultCache = new WeakMap();
+export type TupleAndReferences = {
+    references: Set<Symbol>;
+    tuple: AnyScopeTuple;
+};
+
+export type PrimitiveScopeMap = WeakMap<
+    AnyMoleculeScope,
+    Map<AnyScopeValue, TupleAndReferences>
+>;
+
 
 /**
  * Creates a memoized tuple of `[scope,value]`
@@ -13,8 +22,8 @@ export const defaultCache = new WeakMap();
 export function registerMemoizedScopeTuple<T>(
     tuple: ScopeTuple<T>,
     id: Symbol,
-    primitiveMap: PrimitiveScopeMap = defaultCache,
-    memoize = cache
+    primitiveMap: PrimitiveScopeMap,
+    memoize: DeepCache
 ): ScopeTuple<T> {
     const [scope, value] = tuple;
     if (typeof value === "object") {
@@ -64,7 +73,7 @@ export function registerMemoizedScopeTuple<T>(
 export function deregisterScopeTuple<T>(
     tuple: ScopeTuple<T>,
     id: Symbol,
-    primitiveScopeMap: PrimitiveScopeMap = defaultCache,
+    primitiveScopeMap: PrimitiveScopeMap,
 ) {
     const [scope, value] = tuple;
     // No scope cleanup needed for non-primitives

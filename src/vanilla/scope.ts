@@ -7,13 +7,21 @@ export type MoleculeScope<T> = {
 
 export function createScope<T = undefined>(): MoleculeScope<undefined>;
 export function createScope<T>(defaultValue: T): MoleculeScope<T>;
-
+/**
+ * Create a scope key
+ * 
+ * A scope tuple is a combination of both a scope key and a scope value. For example,
+ * a scope key would be "User" and the scope value would be "user1@example.com"
+ * 
+ * 
+ * @param defaultValue 
+ * @returns 
+ */
 export function createScope(defaultValue?: unknown): MoleculeScope<unknown> {
   return {
     defaultValue,
   };
 }
-
 
 export function getDownstreamScopes(parentScopes: ScopeTuple<unknown>[], nextTuple: ScopeTuple<unknown>) {
   const [scope] = nextTuple;

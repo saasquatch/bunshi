@@ -1,5 +1,4 @@
-export { createDeepCache as createMemoizeAtom } from "./weakCache";
-export { molecule, Molecule } from "./molecule";
+export { Molecule, molecule } from "./molecule";
 export * from "./scope";
-export * from "./store"
-export * from "./types"
+export * from "./store";
+export * from "./types";

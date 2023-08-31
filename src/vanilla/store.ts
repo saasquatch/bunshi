@@ -1,9 +1,9 @@
 import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./errors";
-import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./memoized-scopes";
+import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
+import { createDeepCache } from "./internal/weakCache";
 import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter, isMolecule, isMoleculeKey } from "./molecule";
 import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
-import { createDeepCache } from "./weakCache";
 
 type Deps = {
   scopes: AnyScope[];
@@ -69,11 +69,24 @@ export type MoleculeStore = {
  */
 export function createStore(): MoleculeStore {
 
+  /*
+  *
+  *
+  *     State
+  * 
+  * 
+  */
   const moleculeCache = createDeepCache();
-  const scopeCache = createDeepCache();
+
+  const objectScopeCache = createDeepCache();
+  const primitiveScopeCache = new WeakMap();
 
   const bindings = new Map<AnyMoleculeKey, AnyMolecule>();
 
+  /*
+  * 
+  * 
+  */
 
   function getTrueMolecule<T>(molOrKey: MoleculeOrKey<T>): Molecule<T> {
     const bound = bindings.get(molOrKey);
@@ -176,11 +189,11 @@ export function createStore(): MoleculeStore {
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
     const unsubs = new Set<Unsub>();
     const tuples = scopes.map((tuple) => {
-      
-      const uniqueValue = Symbol(Math.random());
-      const memoizedTuple = registerMemoizedScopeTuple(tuple, uniqueValue);
 
-      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue));
+      const uniqueValue = Symbol(Math.random());
+      const memoizedTuple = registerMemoizedScopeTuple(tuple, uniqueValue, primitiveScopeCache, objectScopeCache);
+
+      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue, primitiveScopeCache));
 
       return memoizedTuple;
     })
