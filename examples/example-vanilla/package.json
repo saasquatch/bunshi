@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "jotai": "^2.4.1",
+    "jotai-molecules": "file:../../",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
   }
