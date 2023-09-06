@@ -1,4 +1,4 @@
-import { GetterSymbol, MoleculeSymbol, MoleculeKeySymbol, TypeSymbol } from "./internal/symbols";
+import { GetterSymbol, MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./internal/symbols";
 import { MoleculeScope } from "./scope";
 
 export type ScopeGetter = {
@@ -6,7 +6,7 @@ export type ScopeGetter = {
 };
 
 export type MoleculeGetter = {
-  <Value>(mol: MoleculeOrKey<Value>): Value;
+  <Value>(mol: MoleculeOrInterface<Value>): Value;
 };
 
 /**
@@ -26,8 +26,11 @@ export type Molecule<T> = {
   displayName?: string;
 };
 
-export type MoleculeOrKey<T> = MoleculeKey<T> | Molecule<T>;
-export type MoleculeKey<T> = {};
+export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
+export type MoleculeInterface<T> = {
+  [TypeSymbol]: typeof MoleculeInterfaceSymbol;
+  displayName?: string;
+};
 
 export function molecule<T>(getter: MoleculeConstructor<T>): Molecule<T> {
   return {
@@ -36,9 +39,9 @@ export function molecule<T>(getter: MoleculeConstructor<T>): Molecule<T> {
   };
 }
 
-export function moleculeKey<T>(): MoleculeKey<T> {
+export function moleculeInterface<T>(): MoleculeInterface<T> {
   return {
-    [TypeSymbol]: MoleculeKeySymbol
+    [TypeSymbol]: MoleculeInterfaceSymbol
   };
 }
 

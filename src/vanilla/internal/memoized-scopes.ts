@@ -65,7 +65,7 @@ export function registerMemoizedScopeTuple<T>(
     // Clean up scope value, if cached
     // Deleting the scope tuple should cascade a cleanup
     // 1 - it is deleted from this map
-    // 2 - it should be garbage collected from the Molecule store WeakMap
+    // 2 - it should be garbage collected from the Molecule injector WeakMap
     // 3 - any atoms created in the molecule should be garbage collected
     // 4 - any atom values in the jotai store should be garbage collected from it's WeakMap
 

@@ -1,13 +1,13 @@
-import { Molecule } from "../vanilla";
-import { useScopes } from "./useScopes";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { useStore } from "./useStore";
+import { Molecule } from "../vanilla";
+import { useInjector } from "./useInjector";
+import { useScopes } from "./useScopes";
 
 export function useMolecule<T>(
   m: Molecule<T>,
   options?: MoleculeScopeOptions
 ): T {
   const scopes = useScopes(options);
-  const store = useStore();
-  return store.get(m, ...scopes);
+  const injector = useInjector();
+  return injector.get(m, ...scopes);
 }

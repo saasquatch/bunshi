@@ -1,5 +1,5 @@
 import { AnyMolecule } from "../types";
-import { MoleculeSymbol, MoleculeKeySymbol, TypeSymbol } from "./symbols";
+import { MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./symbols";
 
 export function isMolecule(value: unknown): value is AnyMolecule {
   if (!value) return false;
@@ -8,9 +8,9 @@ export function isMolecule(value: unknown): value is AnyMolecule {
   return type === MoleculeSymbol;
 }
 
-export function isMoleculeKey(value: unknown): value is AnyMolecule {
+export function isMoleculeInterface(value: unknown): value is AnyMolecule {
   if (!value) return false;
   if (typeof value !== "object") return false;
   const type = (value as any)[TypeSymbol];
-  return type === MoleculeKeySymbol;
+  return type === MoleculeInterfaceSymbol;
 }

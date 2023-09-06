@@ -3,8 +3,8 @@ export { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 
 export * from "../vanilla";
 export * from "./ScopeProvider";
-export * from "./StoreProvider";
+export * from "./InjectorProvider";
 export * from "./useMolecule";
 export * from "./useScopes";
-export * from "./useStore";
+export * from "./useInjector";
 

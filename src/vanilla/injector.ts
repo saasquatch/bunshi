@@ -1,9 +1,9 @@
 import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./internal/errors";
 import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
 import { GetterSymbol } from "./internal/symbols";
-import { isMolecule, isMoleculeKey } from "./internal/utils";
+import { isMolecule, isMoleculeInterface } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter } from "./molecule";
+import { Molecule, MoleculeGetter, MoleculeInterface, MoleculeOrInterface, ScopeGetter } from "./molecule";
 import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
 
@@ -12,7 +12,7 @@ type Deps = {
   transitiveScopes: AnyScope[];
   molecules: AnyMolecule[];
 };
-type AnyMoleculeKey = MoleculeKey<unknown>;
+type AnyMoleculeInterface = MoleculeInterface<unknown>;
 type AnyMolecule = Molecule<unknown>;
 type AnyValue = unknown;
 type AnyScope = MoleculeScope<unknown>;
@@ -23,14 +23,34 @@ type Mounted = {
 };
 type Unsub = () => unknown;
 
-export type MoleculeStore = {
+/**
+ * Builds the graphs of molecules that make up your application. 
+ * 
+ * The injector tracks the dependencies for each molecule and uses bindings to inject them. 
+ * 
+ * This is the core of jotai-molecules, although you may rarely interact with it directly.
+ * 
+ * This "behind-the-scenes" operation is what distinguishes dependency injection from its cousin, the service locator pattern.
+ * 
+ * From Dependency Injection: https://en.wikipedia.org/wiki/Dependency_injection
+ * 
+ * > The injector, sometimes also called an assembler, container, provider or factory, introduces services to the client.
+ * > The role of injectors is to construct and connect complex object graphs, where objects may be both clients and services. 
+ * > The injector itself may be many objects working together, but must not be the client, as this would create a circular dependency.
+ * > Because dependency injection separates how objects are constructed from how they are used, 
+ * > it often diminishes the importance of the new keyword found in most object-oriented languages. 
+ * > Because the framework handles creating services, the programmer tends to only directly construct value objects which represents entities 
+ * > in the program's domain (such as an Employee object in a business app or an Order object in a shopping app).
+ * 
+ */
+export type MoleculeInjector = {
   /**
    * Get the molecule value for an optional scope. Expects scope tuples to be memoized ahead of time.
    *
    * @param molecule
    * @param scopes
    */
-  get<T>(molecule: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): T;
+  get<T>(molecule: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T;
 
 
   /**
@@ -41,7 +61,7 @@ export type MoleculeStore = {
    * @param molecule
    * @param scopes
    */
-  use<T>(molecule: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): [T, Unsub];
+  use<T>(molecule: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): [T, Unsub];
 
   /**
    * Use and memoize scopes.
@@ -53,23 +73,25 @@ export type MoleculeStore = {
   useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
 
   /**
-   * Replace the binding for a molecule. This is not reactive, so won't cause previously created
-   * molecules to be re-created.
+   * Bind a molecule interface to an implementation
    * 
-   * @param key 
+   * 
+   * Note: This is not reactive, so won't cause previously created molecules to be re-created.
+   * 
+   * @param intf 
    * @param molecule 
    */
-  bind<T>(key: MoleculeKey<T>, molecule: Molecule<T>): void;
+  bind<T>(intf: MoleculeInterface<T>, molecule: Molecule<T>): void;
 };
 
 /**
- * Creates a molecule store.
+ * Creates a molecule injector.
  *
  * Internally this is just a tree of WeapMaps of WeakMaps
  *
  * @returns
  */
-export function createStore(): MoleculeStore {
+export function createInjector(): MoleculeInjector {
 
   /*
   *
@@ -81,17 +103,16 @@ export function createStore(): MoleculeStore {
   const moleculeCache = createDeepCache();
   const objectScopeCache = createDeepCache();
   const primitiveScopeCache = new WeakMap();
-  const bindings = new Map<AnyMoleculeKey, AnyMolecule>();
+  const bindings = new Map<AnyMoleculeInterface | AnyMolecule, AnyMolecule>();
 
   /** 
-  * Lookup bindings to override a molecule, or throw an error for unbound keys
+  * Lookup bindings to override a molecule, or throw an error for unbound interfaces
   * 
   */
-  function getTrueMolecule<T>(molOrKey: MoleculeOrKey<T>): Molecule<T> {
-    const bound = bindings.get(molOrKey);
+  function getTrueMolecule<T>(molOrIntf: MoleculeOrInterface<T>): Molecule<T> {
+    const bound = bindings.get(molOrIntf);
     if (bound) return bound as Molecule<T>;
-
-    if (isMolecule(molOrKey)) return molOrKey as Molecule<T>;
+    if (isMolecule(molOrIntf)) return molOrIntf as Molecule<T>;
 
     throw new Error(ErrorUnboundMolecule);
   }
@@ -116,10 +137,10 @@ export function createStore(): MoleculeStore {
       dependentScopes.add(s);
       return getScopeValue(s);
     };
-    const trackingGetter: MoleculeGetter = (molOrKey) => {
+    const trackingGetter: MoleculeGetter = (molOrInterface) => {
       if (!running) throw new Error(ErrorAsyncGetMol)
 
-      const dependentMolecule = getTrueMolecule(molOrKey);
+      const dependentMolecule = getTrueMolecule(molOrInterface);
       dependentMolecules.add(dependentMolecule);
       const mol = getInternal(dependentMolecule, ...scopes);
       Array.from(mol.deps.scopes.values()).forEach((s) =>
@@ -177,16 +198,16 @@ export function createStore(): MoleculeStore {
     );
   }
 
-  function get<T>(m: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): T {
-    if (!isMolecule(m) && !isMoleculeKey(m)) throw new Error("Expected a molecule or molecule key");
+  function get<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T {
+    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error("Expected a molecule or molecule interface");
     const bound = getTrueMolecule(m);
     return getInternal(bound, ...scopes).value as T;
   }
 
-  function bind<T>(key: MoleculeKey<T>, molecule: Molecule<T>): void {
+  function bind<T>(intf: MoleculeInterface<T>, molecule: Molecule<T>): void {
     if (!isMolecule(molecule)) throw new Error("Expected a molecule");
-    if (!isMolecule(key) && !isMoleculeKey(key)) throw new Error("Expected a molecule or molecule key");
-    bindings.set(key, molecule);
+    if (!isMolecule(intf) && !isMoleculeInterface(intf)) throw new Error("Expected a molecule or molecule interface");
+    bindings.set(intf, molecule);
   }
 
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
@@ -205,8 +226,8 @@ export function createStore(): MoleculeStore {
     return [tuples, unsub]
   }
 
-  function use<T>(m: MoleculeOrKey<T>, ...scopes: AnyScopeTuple[]): [T, Unsub] {
-    if (!isMolecule(m) && !isMoleculeKey(m)) throw new Error("Expected a molecule or molecule key");
+  function use<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): [T, Unsub] {
+    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error("Expected a molecule or molecule interface");
 
     const [tuples, unsub] = useScopes(...scopes);
     const value = get<T>(m, ...tuples);
@@ -222,4 +243,4 @@ export function createStore(): MoleculeStore {
 }
 
 
-export const defaultStore = createStore();
+export const defaultInjector = createInjector();

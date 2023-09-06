@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { ScopeTuple, getDownstreamScopes } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
-import { useStore } from "./useStore";
+import { useInjector } from "./useInjector";
 
 export function useScopes(
   options?: MoleculeScopeOptions
@@ -44,8 +44,8 @@ export function useScopes(
     return [options.exclusiveScope];
   }
 
-  const store = useStore();
-  const [[memoizedTuple], unsub] = useMemo(() => store.useScopes(tuple), tuple);
+  const injector = useInjector();
+  const [[memoizedTuple], unsub] = useMemo(() => injector.useScopes(tuple), tuple);
 
   useEffect(() => {
     // Cleanup effect

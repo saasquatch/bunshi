@@ -1,8 +1,8 @@
 import { atom, PrimitiveAtom } from "jotai";
+import { createInjector } from "./injector";
 import { ErrorUnboundMolecule } from "./internal/errors";
-import { Molecule, molecule, moleculeKey } from "./molecule";
+import { Molecule, molecule, moleculeInterface } from "./molecule";
 import { createScope } from "./scope";
-import { createStore } from "./store";
 import { ScopeTuple } from "./types";
 
 type BaseAtoms = {
@@ -65,12 +65,12 @@ const companyMolecule = molecule((_, getScope) => {
   };
 });
 
-describe("Store", () => {
+describe("Injector", () => {
   it("returns the same values for dependency-free molecule", () => {
-    const store = createStore();
+    const injector = createInjector();
 
-    const firstValue = store.get(exampleMol);
-    const secondValue = store.get(exampleMol);
+    const firstValue = injector.get(exampleMol);
+    const secondValue = injector.get(exampleMol);
 
     expect(firstValue).toBe(secondValue);
   });
@@ -78,12 +78,12 @@ describe("Store", () => {
   ([derivedMol, doubleDerived] as Molecule<{ base: BaseAtoms }>[]).forEach(
     (mol) => {
       it("returns the same value for derived molecule", () => {
-        const store = createStore();
+        const injector = createInjector();
 
-        const firstValue = store.get(mol);
-        const secondValue = store.get(mol);
-        const firstBaseValue = store.get(exampleMol);
-        const secondBaseValue = store.get(exampleMol);
+        const firstValue = injector.get(mol);
+        const secondValue = injector.get(mol);
+        const firstBaseValue = injector.get(exampleMol);
+        const secondBaseValue = injector.get(exampleMol);
 
         // All should be the same value
         expect(firstValue).toBe(secondValue);
@@ -97,23 +97,23 @@ describe("Store", () => {
     }
   );
 
-  it("two stores return different molecules", () => {
-    const store1 = createStore();
-    const store2 = createStore();
+  it("two injectors return different molecules", () => {
+    const injector1 = createInjector();
+    const injector2 = createInjector();
 
-    const firstValue = store1.get(exampleMol);
-    const secondValue = store2.get(exampleMol);
+    const firstValue = injector1.get(exampleMol);
+    const secondValue = injector2.get(exampleMol);
 
     expect(firstValue).not.toBe(secondValue);
   });
 
   describe("Scoping", () => {
     it("Creates one molecule per scope, if not dependent on scope", () => {
-      const store = createStore();
-      const firstValue = store.get(exampleMol);
-      const secondValue = store.get(exampleMol, user1Scope);
-      const thirdValue = store.get(exampleMol, company1Scope);
-      const fourthValue = store.get(exampleMol, company1Scope, user1Scope);
+      const injector = createInjector();
+      const firstValue = injector.get(exampleMol);
+      const secondValue = injector.get(exampleMol, user1Scope);
+      const thirdValue = injector.get(exampleMol, company1Scope);
+      const fourthValue = injector.get(exampleMol, company1Scope, user1Scope);
       // Molecule doesn't depend on scope, should be the same
       expect(firstValue).toBe(secondValue);
       expect(firstValue).toBe(thirdValue);
@@ -121,20 +121,20 @@ describe("Store", () => {
     });
 
     it("Creates one molecule, if no scope provided", () => {
-      const store = createStore();
-      const firstValue = store.get(companyMolecule);
-      const secondValue = store.get(companyMolecule);
+      const injector = createInjector();
+      const firstValue = injector.get(companyMolecule);
+      const secondValue = injector.get(companyMolecule);
       // Should be one molecule, with default scope value
       expect(firstValue).toBe(secondValue);
     });
 
     it("Creates one molecule per dependent scope", () => {
       //
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(companyMolecule, company1Scope);
-      const secondValue = store.get(companyMolecule, company2Scope);
-      const thirdValue = store.get(companyMolecule);
+      const firstValue = injector.get(companyMolecule, company1Scope);
+      const secondValue = injector.get(companyMolecule, company2Scope);
+      const thirdValue = injector.get(companyMolecule);
 
       // Molecule depends on scope, should be different for each scope
       expect(firstValue).not.toBe(secondValue);
@@ -143,21 +143,21 @@ describe("Store", () => {
     });
 
     it("Creates only one molecule per dependent scope", () => {
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(companyMolecule, company1Scope);
-      const secondValue = store.get(companyMolecule, company1Scope);
+      const firstValue = injector.get(companyMolecule, company1Scope);
+      const secondValue = injector.get(companyMolecule, company1Scope);
 
       // Molecole depends on scope, should produce the same element for the same scope
       expect(firstValue).toBe(secondValue);
     });
 
     it("Creates one molecule per dependent molecule that is scope dependent", () => {
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(userMolecule, company1Scope, user1Scope);
-      const secondValue = store.get(userMolecule, company2Scope, user1Scope);
-      const thirdValue = store.get(userMolecule, user1Scope);
+      const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
+      const secondValue = injector.get(userMolecule, company2Scope, user1Scope);
+      const thirdValue = injector.get(userMolecule, user1Scope);
 
       // Molecule has a TRANSITIVE dependency on scope via another molecule
       // So should be a different molecule every time
@@ -171,10 +171,10 @@ describe("Store", () => {
     });
 
     it("Creates one molecule per dependent molecule that is scope dependent", () => {
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(userMolecule, company1Scope, user1Scope);
-      const secondValue = store.get(userMolecule, company1Scope, user2Scope);
+      const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
+      const secondValue = injector.get(userMolecule, company1Scope, user2Scope);
 
       // Molecule has a direct dependency AND a transitive dependency
       // Should be different for each direct dependency when the transitive dependency is unchanged
@@ -188,11 +188,11 @@ describe("Store", () => {
     });
 
     it("Creates ONLY one molecule per dependent molecule that is scope dependent", () => {
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(userMolecule, company1Scope, user1Scope);
-      const secondValue = store.get(userMolecule, company1Scope, user1Scope);
-      const thirdValue = store.get(
+      const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
+      const secondValue = injector.get(userMolecule, company1Scope, user1Scope);
+      const thirdValue = injector.get(
         userMolecule,
         company1Scope,
         unrelatedScope1,
@@ -205,11 +205,11 @@ describe("Store", () => {
     });
 
     it("Creates ONLY one molecule per dependent molecule, regardless of scope order", () => {
-      const store = createStore();
+      const injector = createInjector();
 
-      const firstValue = store.get(userMolecule, company1Scope, user1Scope);
-      const secondValue = store.get(userMolecule, user1Scope, company1Scope);
-      const thirdValue = store.get(
+      const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
+      const secondValue = injector.get(userMolecule, user1Scope, company1Scope);
+      const thirdValue = injector.get(
         userMolecule,
         unrelatedScope1,
         user1Scope,
@@ -232,16 +232,16 @@ describe("Store", () => {
       const mol5 = molecule((getMol) => [5, getMol(mol4)]);
       const mol6 = molecule((getMol) => [6, getMol(mol5)]);
 
-      const store = createStore();
+      const injector = createInjector();
 
-      const val6 = store.get(mol6, scope1);
-      const val5 = store.get(mol5, scope1);
-      const val4 = store.get(mol4, scope1);
-      const val3 = store.get(mol3, scope1);
-      const val2 = store.get(mol2, scope1);
-      const val1 = store.get(mol1, scope1);
-      const otherVal6 = store.get(mol6, scope2);
-      const defaultVal6 = store.get(mol6);
+      const val6 = injector.get(mol6, scope1);
+      const val5 = injector.get(mol5, scope1);
+      const val4 = injector.get(mol4, scope1);
+      const val3 = injector.get(mol3, scope1);
+      const val2 = injector.get(mol2, scope1);
+      const val1 = injector.get(mol1, scope1);
+      const otherVal6 = injector.get(mol6, scope2);
+      const defaultVal6 = injector.get(mol6);
 
       expect(val1).toStrictEqual([1, 1]);
       expect(val2).toStrictEqual([2, [1, 1]]);
@@ -266,10 +266,10 @@ describe("Store", () => {
           "right",
           getMol(molLeft),
         ]);
-        const store = createStore();
+        const injector = createInjector();
 
-        expect(() => store.get(molLeft)).toThrowError();
-        expect(() => store.get(molRight)).toThrowError();
+        expect(() => injector.get(molLeft)).toThrowError();
+        expect(() => injector.get(molRight)).toThrowError();
       });
     });
 
@@ -309,11 +309,11 @@ describe("Store", () => {
           getMol(molRight),
         ]);
 
-        const store = createStore();
+        const injector = createInjector();
 
-        const bottom0 = store.get(molBottom);
-        const bottom1 = store.get(molBottom, scope1);
-        const bottom2 = store.get(molBottom, scope2);
+        const bottom0 = injector.get(molBottom);
+        const bottom1 = injector.get(molBottom, scope1);
+        const bottom2 = injector.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
           "bottom",
@@ -350,17 +350,17 @@ describe("Store", () => {
           getMol(molRight),
         ]);
 
-        const store = createStore();
+        const injector = createInjector();
 
-        const bottom0 = store.get(molBottom);
-        const bottom1 = store.get(
+        const bottom0 = injector.get(molBottom);
+        const bottom1 = injector.get(
           molBottom,
           scope1,
           rightScope1,
           leftScope1,
           bottomScope1
         );
-        const bottom2 = store.get(
+        const bottom2 = injector.get(
           molBottom,
           scope2,
           rightScope2,
@@ -370,7 +370,7 @@ describe("Store", () => {
 
         expect(
           // Second call to get should return the same value
-          store.get(molBottom)
+          injector.get(molBottom)
         ).toBe(bottom0);
         expect(bottom0).toStrictEqual([
           "bottom",
@@ -382,7 +382,7 @@ describe("Store", () => {
 
         expect(
           // Second call to get should return the same value
-          store.get(molBottom, scope1, rightScope1, leftScope1, bottomScope1)
+          injector.get(molBottom, scope1, rightScope1, leftScope1, bottomScope1)
         ).toBe(bottom1);
         expect(bottom1).toStrictEqual([
           "bottom",
@@ -394,7 +394,7 @@ describe("Store", () => {
 
         expect(
           // Second call to get should return the same value
-          store.get(molBottom, scope2, rightScope2, leftScope2, bottomScope2)
+          injector.get(molBottom, scope2, rightScope2, leftScope2, bottomScope2)
         ).toBe(bottom2);
         expect(bottom2).toStrictEqual([
           "bottom",
@@ -419,11 +419,11 @@ describe("Store", () => {
           getMol(molRight),
         ]);
 
-        const store = createStore();
+        const injector = createInjector();
 
-        const bottom0 = store.get(molBottom);
-        const bottom1 = store.get(molBottom, scope1);
-        const bottom2 = store.get(molBottom, scope2);
+        const bottom0 = injector.get(molBottom);
+        const bottom1 = injector.get(molBottom, scope1);
+        const bottom2 = injector.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
           "bottom",
@@ -452,11 +452,11 @@ describe("Store", () => {
           getMol(molRight),
         ]);
 
-        const store = createStore();
+        const injector = createInjector();
 
-        const bottom0 = store.get(molBottom);
-        const bottom1 = store.get(molBottom, scope1);
-        const bottom2 = store.get(molBottom, scope2);
+        const bottom0 = injector.get(molBottom);
+        const bottom1 = injector.get(molBottom, scope1);
+        const bottom2 = injector.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
           "bottom",
@@ -499,11 +499,11 @@ describe("Store", () => {
           getMol(molRightRight),
         ]);
 
-        const store = createStore();
+        const injector = createInjector();
 
-        const bottom0 = store.get(molBottom);
-        const bottom1 = store.get(molBottom, scope1);
-        const bottom2 = store.get(molBottom, scope2);
+        const bottom0 = injector.get(molBottom);
+        const bottom1 = injector.get(molBottom, scope1);
+        const bottom2 = injector.get(molBottom, scope2);
 
         expect(bottom0).toStrictEqual([
           "bottom",
@@ -542,9 +542,9 @@ describe("Store", () => {
         }, 10));
       });
 
-      const store1 = createStore();
+      const injector1 = createInjector();
 
-      const firstValue = store1.get(badMolecule);
+      const firstValue = injector1.get(badMolecule);
       await expect(firstValue).rejects.toThrow("o");
     })
 
@@ -558,11 +558,11 @@ describe("Store", () => {
       post(url: string): Promise<string>
     }
 
-    const HTTPServiceKey = moleculeKey<HTTPService>();
+    const HTTPService = moleculeInterface<HTTPService>();
 
     const NeedsHttp = molecule((getMol) => {
 
-      const httpService = getMol(HTTPServiceKey);
+      const httpService = getMol(HTTPService);
 
       const logout = () => httpService.post("/logout")
       return {
@@ -571,14 +571,14 @@ describe("Store", () => {
       }
     });
 
-    it("Errors when a molecule key is not bound", () => {
-      const store1 = createStore();
-      expect(() => store1.get(HTTPServiceKey)).toThrow(ErrorUnboundMolecule);
+    it("Errors when a molecule interface is not bound", () => {
+      const injector1 = createInjector();
+      expect(() => injector1.get(HTTPService)).toThrow(ErrorUnboundMolecule);
     });
 
-    it("Allows binding a molecule keys to a molecule", () => {
+    it("Allows binding a molecule interface to a molecule", () => {
 
-      const store1 = createStore();
+      const injector1 = createInjector();
 
       const MockHTTPMolecule = molecule<HTTPService>(() => {
 
@@ -592,19 +592,19 @@ describe("Store", () => {
         }
       });
 
-      store1.bind(HTTPServiceKey, MockHTTPMolecule);
+      injector1.bind(HTTPService, MockHTTPMolecule);
 
-      const firstValue = store1.get(NeedsHttp);
+      const firstValue = injector1.get(NeedsHttp);
       expect(firstValue.logout).not.toBeNull();
 
-      const bound = store1.get(HTTPServiceKey);
+      const bound = injector1.get(HTTPService);
       expect(bound).toBe(firstValue.httpService);
 
     })
 
-    it("Allows binding a molecule keys to a scoped molecule", async () => {
+    it("Allows binding a molecule interface to a scoped molecule", async () => {
 
-      const store1 = createStore();
+      const injector1 = createInjector();
 
       const UserScopedHTTPMolecule = molecule<HTTPService>((getMol, getScope) => {
         const user = getScope(UserScope);
@@ -618,14 +618,14 @@ describe("Store", () => {
         }
       });
 
-      store1.bind(HTTPServiceKey, UserScopedHTTPMolecule);
+      injector1.bind(HTTPService, UserScopedHTTPMolecule);
 
-      const firstValue = store1.get(NeedsHttp);
+      const firstValue = injector1.get(NeedsHttp);
 
       const loggedOut = await firstValue.logout();
       expect(loggedOut).toBe("I am bob@example.com");
 
-      const secondValue = store1.get(NeedsHttp, user1Scope);
+      const secondValue = injector1.get(NeedsHttp, user1Scope);
 
       const loggedOut2 = await secondValue.logout();
       expect(loggedOut2).toBe("I am one@example.com");
@@ -637,9 +637,9 @@ describe("Store", () => {
 
 
     it("Caches a scope tuple", () => {
-      const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
+      const injector = createInjector();
+      const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
       expect(tuple1).toBe(tuple2);
 
       unsub1();
@@ -647,22 +647,22 @@ describe("Store", () => {
     });
 
     it("Does not cache when scopes are cleaned up", () => {
-      const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
+      const injector = createInjector();
+      const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
       unsub1();
 
       // Note: GC / cleanup happens in here
 
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
       unsub2();
       // Subscription 1 and 2 never overlapped
       expect(tuple1).not.toBe(tuple2);
     });
 
     it("Caches if there are overlapping subscriptions", () => {
-      const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
+      const injector = createInjector();
+      const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
       unsub2();
       unsub1();
       // Subscription 2 overlapped with 1
@@ -670,19 +670,19 @@ describe("Store", () => {
     });
 
     it("Caches as long as subscriptions overlap", () => {
-      const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
+      const injector = createInjector();
+      const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
 
 
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
 
       // Doesn't create a new value, the second use has a lease
       unsub1();
 
-      const [[tuple3], unsub3] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple3], unsub3] = injector.useScopes([UserScope, "one@example.com"]);
       unsub2();
 
-      const [[tuple4], unsub4] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple4], unsub4] = injector.useScopes([UserScope, "one@example.com"]);
       unsub3();
 
       // Final cleanup

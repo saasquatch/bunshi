@@ -2,7 +2,7 @@ import { inject, onUnmounted, provide } from 'vue';
 import { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
 import { ScopeTuple, getDownstreamScopes } from '../vanilla';
 import { ScopeSymbol } from './internal/symbols';
-import { useStore } from './useStore';
+import { useInjector } from './useInjector';
 
 
 export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknown>[] => {
@@ -27,8 +27,8 @@ export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknow
     })();
 
     if (tuple) {
-        const store = useStore();
-        const [[memoizedTuple], unsub] = store.useScopes(tuple);
+        const injector = useInjector();
+        const [[memoizedTuple], unsub] = injector.useScopes(tuple);
         onUnmounted(unsub);
         return getDownstreamScopes(parentScopes, memoizedTuple);
     }
