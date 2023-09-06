@@ -1,7 +1,7 @@
 import { inject, provide } from 'vue';
 import { MoleculeStore, defaultStore } from '../vanilla';
+import { StoreSymbol } from './internal/symbols';
 
-export const StoreKey = Symbol("jotai-molecules-store");
 
-export const useStore = () => inject(StoreKey, defaultStore);
-export const provideStore = (store: MoleculeStore) => provide(StoreKey, store)
+export const useStore = () => inject(StoreSymbol, defaultStore);
+export const provideStore = (store: MoleculeStore) => provide(StoreSymbol, store)

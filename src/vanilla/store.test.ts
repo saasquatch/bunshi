@@ -1,5 +1,5 @@
 import { atom, PrimitiveAtom } from "jotai";
-import { ErrorUnboundMolecule } from "./errors";
+import { ErrorUnboundMolecule } from "./internal/errors";
 import { Molecule, molecule, moleculeKey } from "./molecule";
 import { createScope } from "./scope";
 import { createStore } from "./store";
@@ -638,8 +638,8 @@ describe("Store", () => {
 
     it("Caches a scope tuple", () => {
       const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
       expect(tuple1).toBe(tuple2);
 
       unsub1();
@@ -648,9 +648,12 @@ describe("Store", () => {
 
     it("Does not cache when scopes are cleaned up", () => {
       const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
       unsub1();
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+
+      // Note: GC / cleanup happens in here
+
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
       unsub2();
       // Subscription 1 and 2 never overlapped
       expect(tuple1).not.toBe(tuple2);
@@ -658,8 +661,8 @@ describe("Store", () => {
 
     it("Caches if there are overlapping subscriptions", () => {
       const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
       unsub2();
       unsub1();
       // Subscription 2 overlapped with 1
@@ -668,18 +671,18 @@ describe("Store", () => {
 
     it("Caches as long as subscriptions overlap", () => {
       const store = createStore();
-      const [[tuple1], unsub1] = store.useScopes([UserScope, "one"]);
+      const [[tuple1], unsub1] = store.useScopes([UserScope, "one@example.com"]);
 
 
-      const [[tuple2], unsub2] = store.useScopes([UserScope, "one"]);
+      const [[tuple2], unsub2] = store.useScopes([UserScope, "one@example.com"]);
 
       // Doesn't create a new value, the second use has a lease
       unsub1();
 
-      const [[tuple3], unsub3] = store.useScopes([UserScope, "one"]);
+      const [[tuple3], unsub3] = store.useScopes([UserScope, "one@example.com"]);
       unsub2();
 
-      const [[tuple4], unsub4] = store.useScopes([UserScope, "one"]);
+      const [[tuple4], unsub4] = store.useScopes([UserScope, "one@example.com"]);
       unsub3();
 
       // Final cleanup

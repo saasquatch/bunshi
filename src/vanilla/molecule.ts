@@ -1,3 +1,4 @@
+import { GetterSymbol, MoleculeSymbol, MoleculeKeySymbol, TypeSymbol } from "./internal/symbols";
 import { MoleculeScope } from "./scope";
 
 export type ScopeGetter = {
@@ -20,7 +21,8 @@ export type MoleculeConstructor<T> = (
 ) => T;
 
 export type Molecule<T> = {
-  getter: MoleculeConstructor<T>;
+  [GetterSymbol]: MoleculeConstructor<T>;
+  [TypeSymbol]: typeof MoleculeSymbol;
   displayName?: string;
 };
 
@@ -29,34 +31,15 @@ export type MoleculeKey<T> = {};
 
 export function molecule<T>(getter: MoleculeConstructor<T>): Molecule<T> {
   return {
-    getter,
-    // @ts-ignore
-    [TypeSymbol]: Molecule
+    [GetterSymbol]: getter,
+    [TypeSymbol]: MoleculeSymbol
   };
 }
 
 export function moleculeKey<T>(): MoleculeKey<T> {
   return {
-    [TypeSymbol]: MoleculeKey
+    [TypeSymbol]: MoleculeKeySymbol
   };
 }
 
-const TypeSymbol = Symbol("Type");
-const Molecule = Symbol("Molecule");
-const MoleculeKey = Symbol("MoleculeKey");
 
-type AnyMolecule = Molecule<unknown>;
-
-export function isMolecule(value: unknown): value is AnyMolecule {
-  if (typeof value !== "object") return false;
-  // @ts-ignore
-  const type = value[TypeSymbol];
-  return type === Molecule;
-}
-
-export function isMoleculeKey(value: unknown): value is AnyMolecule {
-  if (typeof value !== "object") return false;
-  // @ts-ignore
-  const type = value[TypeSymbol];
-  return type === MoleculeKey;
-}

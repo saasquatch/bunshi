@@ -1,7 +1,9 @@
-import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./errors";
+import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./internal/errors";
 import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
+import { GetterSymbol } from "./internal/symbols";
+import { isMolecule, isMoleculeKey } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter, isMolecule, isMoleculeKey } from "./molecule";
+import { Molecule, MoleculeGetter, MoleculeKey, MoleculeOrKey, ScopeGetter } from "./molecule";
 import { MoleculeScope } from "./scope";
 import { ScopeTuple } from "./types";
 
@@ -77,17 +79,14 @@ export function createStore(): MoleculeStore {
   * 
   */
   const moleculeCache = createDeepCache();
-
   const objectScopeCache = createDeepCache();
   const primitiveScopeCache = new WeakMap();
-
   const bindings = new Map<AnyMoleculeKey, AnyMolecule>();
 
-  /*
-  * 
+  /** 
+  * Lookup bindings to override a molecule, or throw an error for unbound keys
   * 
   */
-
   function getTrueMolecule<T>(molOrKey: MoleculeOrKey<T>): Molecule<T> {
     const bound = bindings.get(molOrKey);
     if (bound) return bound as Molecule<T>;
@@ -97,6 +96,10 @@ export function createStore(): MoleculeStore {
     throw new Error(ErrorUnboundMolecule);
   }
 
+  /**
+   * Create a new instance of a molecule
+   * 
+   */
   function mountMolecule(
     maybeMolecule: AnyMolecule,
     getScopeValue: ScopeGetter,
@@ -128,7 +131,7 @@ export function createStore(): MoleculeStore {
       return mol.value as any;
     };
 
-    const value = m.getter(trackingGetter, trackingScopeGetter);
+    const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
     running = false;
     return {
       deps: {

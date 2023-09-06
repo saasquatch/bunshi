@@ -3,9 +3,6 @@
   "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
   "version": "1.1.1",
   "license": "MIT",
-  "main": "dist/index.js",
-  "module": "dist/jotai-molecules.esm.js",
-  "typings": "dist/index.d.ts",
   "author": "ReferralSaaSquatch.com, Inc.",
   "files": [
     "dist",
@@ -15,16 +12,43 @@
     "node": ">=10"
   },
   "scripts": {
-    "build": "tsdx build",
-    "test": "vitest",
-    "size": "size-limit",
-    "analyze": "size-limit --why"
+    "build": "run-p build:*",
+    "build:vanilla": "tsup src/vanilla/index.ts --outDir dist --format esm,cjs --dts",
+    "build:react": "tsup src/react/index.ts --outDir dist/react --format esm,cjs --dts",
+    "build:vue": "tsup src/vue/index.ts --outDir dist/vue --format esm,cjs --dts --external vue",
+    "test": "run-s test:*",
+    "test:code": "vitest run",
+    "test:size": "size-limit"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.mjs",
+      "default": "./dist/react/index.js"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue/index.mjs",
+      "default": "./dist/vue/index.js"
+    }
   },
   "peerDependencies": {
-    "react": ">=16"
+    "react": ">=16",
+    "vue": ">=3"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
@@ -36,11 +60,19 @@
   "prettier": {},
   "size-limit": [
     {
-      "path": "dist/jotai-molecules.cjs.production.min.js",
+      "path": "dist/index.js",
       "limit": "2 KB"
     },
     {
-      "path": "dist/jotai-molecules.esm.js",
+      "path": "dist/react/index.js",
+      "limit": "2.1 KB"
+    },
+    {
+      "path": "dist/vue/index.js",
+      "limit": "2 KB"
+    },
+    {
+      "path": "dist/index.mjs",
       "limit": "2 KB"
     }
   ],
@@ -53,6 +85,7 @@
     "happy-dom": "^10.0.3",
     "husky": "^7.0.4",
     "jotai": ">=1",
+    "npm-run-all": "^4.1.5",
     "react": "*",
     "react-is": "*",
     "react-test-renderer": "*",
@@ -62,8 +95,5 @@
     "typescript": "^4.6.3",
     "vitest": "^0.33.0",
     "vue": "^3.3.4"
-  },
-  "dependencies": {
-    "use-sync-external-store": "^1.2.0"
   }
 }

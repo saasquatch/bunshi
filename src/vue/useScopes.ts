@@ -1,13 +1,12 @@
 import { inject, onUnmounted, provide } from 'vue';
 import { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
 import { ScopeTuple, getDownstreamScopes } from '../vanilla';
+import { ScopeSymbol } from './internal/symbols';
 import { useStore } from './useStore';
 
 
-export const ScopeKey = Symbol("jotai-molecules-scope");
-
 export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknown>[] => {
-    const parentScopes = inject(ScopeKey, [] as ScopeTuple<unknown>[]);
+    const parentScopes = inject(ScopeSymbol, [] as ScopeTuple<unknown>[]);
 
     const generatedValue = new Error("Don't use this value, it is a placeholder only");
     if (options?.exclusiveScope) {
@@ -38,5 +37,5 @@ export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknow
 }
 
 export const provideScope = (tuple: ScopeTuple<unknown>) => {
-    provide(ScopeKey, useScopes({ withScope: tuple }));
+    provide(ScopeSymbol, useScopes({ withScope: tuple }));
 }
