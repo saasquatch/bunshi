@@ -38,7 +38,7 @@ type Unsub = () => unknown;
  * > The role of injectors is to construct and connect complex object graphs, where objects may be both clients and services. 
  * > The injector itself may be many objects working together, but must not be the client, as this would create a circular dependency.
  * > Because dependency injection separates how objects are constructed from how they are used, 
- * > it often diminishes the importance of the new keyword found in most object-oriented languages. 
+ * > it often diminishes the importance of the `new` keyword found in most object-oriented languages. 
  * > Because the framework handles creating services, the programmer tends to only directly construct value objects which represents entities 
  * > in the program's domain (such as an Employee object in a business app or an Order object in a shopping app).
  * 
