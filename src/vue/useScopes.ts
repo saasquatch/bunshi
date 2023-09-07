@@ -1,4 +1,4 @@
-import { inject, onUnmounted, provide } from 'vue';
+import { inject, onUnmounted } from 'vue';
 import { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
 import { ScopeTuple, getDownstreamScopes } from '../vanilla';
 import { ScopeSymbol } from './internal/symbols';
@@ -36,6 +36,3 @@ export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknow
     return parentScopes;
 }
 
-export const provideScope = (tuple: ScopeTuple<unknown>) => {
-    provide(ScopeSymbol, useScopes({ withScope: tuple }));
-}

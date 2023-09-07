@@ -77,6 +77,7 @@
     }
   ],
   "devDependencies": {
+    "@astrojs/language-server": "^2.3.3",
     "@size-limit/preset-small-lib": "^7.0.8",
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/vue": "^7.0.0",

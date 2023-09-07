@@ -26,11 +26,12 @@ export type Molecule<T> = {
   displayName?: string;
 };
 
-export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
 export type MoleculeInterface<T> = {
   [TypeSymbol]: typeof MoleculeInterfaceSymbol;
   displayName?: string;
 };
+
+export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
 
 export function molecule<T>(getter: MoleculeConstructor<T>): Molecule<T> {
   return {

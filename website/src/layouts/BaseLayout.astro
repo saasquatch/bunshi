@@ -1,0 +1,311 @@
+---
+import Nav from "./Nav.astro";
+
+const { frontmatter } = Astro.props;
+
+const { title } = frontmatter;
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>{title && title + " - "} Bunshi</title>
+        <meta name="robots" content="index, follow" />
+
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/public/apple-touch-icon.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/public/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/public/favicon-16x16.png"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
+        <link
+            rel="mask-icon"
+            href="/public/safari-pinned-tab.svg"
+            color="#5bbad5"
+        />
+        <meta name="msapplication-TileColor" content="#da532c" />
+        <meta name="theme-color" content="#ffffff" />
+
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css"
+        />
+
+        <link rel="stylesheet" href="/public/pico-docs.css" />
+        <script>
+            "use strict";
+            !(function () {
+                var e = {
+                        _scheme: "auto",
+                        change: {
+                            light: "<i>Turn on dark mode</i>",
+                            dark: "<i>Turn off dark mode</i>",
+                        },
+                        buttonsTarget: ".theme-switcher",
+                        localStorageKey: "picoPreferredColorScheme",
+                        init() {
+                            (this.scheme = this.schemeFromLocalStorage),
+                                this.initSwitchers();
+                        },
+                        get schemeFromLocalStorage() {
+                            return void 0 !== window.localStorage &&
+                                null !==
+                                    window.localStorage.getItem(
+                                        this.localStorageKey,
+                                    )
+                                ? window.localStorage.getItem(
+                                      this.localStorageKey,
+                                  )
+                                : this._scheme;
+                        },
+                        get preferredColorScheme() {
+                            return window.matchMedia(
+                                "(prefers-color-scheme: dark)",
+                            ).matches
+                                ? "dark"
+                                : "light";
+                        },
+                        initSwitchers() {
+                            document
+                                .querySelectorAll(this.buttonsTarget)
+                                .forEach((e) => {
+                                    e.addEventListener(
+                                        "click",
+                                        () => {
+                                            "dark" == this.scheme
+                                                ? (this.scheme = "light")
+                                                : (this.scheme = "dark");
+                                        },
+                                        !1,
+                                    );
+                                });
+                        },
+                        addButton(e) {
+                            var t = document.createElement(e.tag);
+                            (t.className = e.class),
+                                document.querySelector(e.target).appendChild(t);
+                        },
+                        set scheme(e) {
+                            "auto" == e
+                                ? "dark" == this.preferredColorScheme
+                                    ? (this._scheme = "dark")
+                                    : (this._scheme = "light")
+                                : ("dark" != e && "light" != e) ||
+                                  (this._scheme = e),
+                                this.applyScheme(),
+                                this.schemeToLocalStorage();
+                        },
+                        get scheme() {
+                            return this._scheme;
+                        },
+                        applyScheme() {
+                            document
+                                .querySelector("html")
+                                .setAttribute("data-theme", this.scheme),
+                                document
+                                    .querySelectorAll(this.buttonsTarget)
+                                    .forEach((e) => {
+                                        var t =
+                                            "dark" == this.scheme
+                                                ? this.change.dark
+                                                : this.change.light;
+                                        (e.innerHTML = t),
+                                            e.setAttribute(
+                                                "aria-label",
+                                                t.replace(/<[^>]*>?/gm, ""),
+                                            );
+                                    });
+                        },
+                        schemeToLocalStorage() {
+                            void 0 !== window.localStorage &&
+                                window.localStorage.setItem(
+                                    this.localStorageKey,
+                                    this.scheme,
+                                );
+                        },
+                    },
+                    t = {
+                        _state: "closed-on-mobile",
+                        toggleLink: document.getElementById(
+                            "toggle-docs-navigation",
+                        ),
+                        nav: document.querySelector("main > aside > nav"),
+                        init() {
+                            this.onToggleClick();
+                        },
+                        onToggleClick() {
+                            this.toggleLink.addEventListener(
+                                "click",
+                                (e) => {
+                                    e.preventDefault(),
+                                        "closed-on-mobile" == this.state
+                                            ? (this.state = "open")
+                                            : (this.state = "closed-on-mobile"),
+                                        this.nav.removeAttribute("class"),
+                                        this.nav.classList.add(this.state);
+                                },
+                                !1,
+                            );
+                        },
+                        get state() {
+                            return this._state;
+                        },
+                        set state(e) {
+                            this._state = e;
+                        },
+                    };
+                e.addButton({
+                    tag: "BUTTON",
+                    class: "contrast switcher theme-switcher",
+                    target: "body",
+                }),
+                    e.init(),
+                    t.init();
+            })();
+        </script>
+    </head>
+
+    <body>
+        <nav class="container-fluid">
+            <ul>
+                <li>
+                    <a href="/" aria-label="Back home">
+                        <style>
+                            #nav-logo .outline {
+                                fill: var(--nav-logo-color-bg);
+                                stroke: var(--nav-logo-color-primary);
+                            }
+                            #nav-logo .background {
+                                fill: var(--nav-logo-color-bg);
+                            }
+                            #nav-logo .line {
+                                fill: var(--nav-logo-color-primary);
+                            }
+                        </style>
+                        <svg
+                            id="nav-logo"
+                            width="60"
+                            height="64"
+                            viewBox="0 0 60 64"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <rect width="59.0769" height="64" class="background"
+                            ></rect>
+                            <path
+                                d="M24.3929 33.812V30.3571H32.5205C34.7487 30.3571 36.7382 30.8169 38.4889 31.7363C40.229 32.6465 41.6031 33.9328 42.6111 35.5953C43.6084 37.2577 44.1071 39.2081 44.1071 41.4464C44.1071 43.6847 43.6084 45.6351 42.6111 47.2975C41.6031 48.96 40.229 50.251 38.4889 51.1705C36.7382 52.0806 34.7487 52.5357 32.5205 52.5357H24.3929V49.0808H32.2022C33.7938 49.0808 35.2102 48.7743 36.4517 48.1614C37.6826 47.5484 38.6534 46.6753 39.3643 45.5422C40.0646 44.3999 40.4147 43.0346 40.4147 41.4464C40.4147 39.8583 40.0646 38.493 39.3643 37.3506C38.6534 36.2083 37.6826 35.3353 36.4517 34.7315C35.2102 34.1185 33.7938 33.812 32.2022 33.812H24.3929Z"
+                                class="line"></path>
+                            <path
+                                d="M22.75 14.1152V10.6429H29.9001C31.8604 10.6429 33.6106 11.1049 35.1508 12.029C36.6816 12.9438 37.8904 14.2366 38.7772 15.9075C39.6546 17.5783 40.0933 19.5385 40.0933 21.7881C40.0933 24.0377 39.6546 25.9979 38.7772 27.6688C37.8904 29.3396 36.6816 30.6372 35.1508 31.5613C33.6106 32.476 31.8604 32.9334 29.9001 32.9334H22.75V29.461H29.6201C31.0203 29.461 32.2664 29.153 33.3586 28.5369C34.4414 27.9209 35.2954 27.0434 35.9209 25.9046C36.5369 24.7565 36.845 23.3843 36.845 21.7881C36.845 20.192 36.5369 18.8198 35.9209 17.6717C35.2954 16.5235 34.4414 15.6461 33.3586 15.0393C32.2664 14.4232 31.0203 14.1152 29.6201 14.1152H22.75Z"
+                                class="line"></path>
+                            <path
+                                d="M22.75 13.1071H19.4643V51.7143H22.75V13.1071Z"
+                                class="line"></path>
+                            <path
+                                d="M24.7143 31.1786C24.7143 33.1707 23.0993 34.7857 21.1071 34.7857C19.115 34.7857 17.5 33.1707 17.5 31.1786C17.5 29.1864 19.115 27.5714 21.1071 27.5714C23.0993 27.5714 24.7143 29.1864 24.7143 31.1786Z"
+                                class="outline"></path>
+                            <path
+                                d="M24.7143 50.0714C24.7143 52.0636 23.0993 53.6786 21.1071 53.6786C19.115 53.6786 17.5 52.0636 17.5 50.0714C17.5 48.0793 19.115 46.4643 21.1071 46.4643C23.0993 46.4643 24.7143 48.0793 24.7143 50.0714Z"
+                                class="outline"></path>
+                            <path
+                                d="M24.7143 13.1071C24.7143 15.0993 23.0993 16.7143 21.1071 16.7143C19.115 16.7143 17.5 15.0993 17.5 13.1071C17.5 11.115 19.115 9.5 21.1071 9.5C23.0993 9.5 24.7143 11.115 24.7143 13.1071Z"
+                                class="outline"></path>
+                        </svg>
+                    </a>
+                </li>
+                <li>Bunshi</li>
+            </ul>
+            <ul>
+                <li><a href="/" class="secondary">Docs</a></li>
+                <li>
+                    <a
+                        href="https://github.com/saasquatch/bunshi"
+                        class="contrast"
+                        aria-label="Bunshi GitHub repository"
+                        ><svg
+                            aria-hidden="true"
+                            focusable="false"
+                            role="img"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 496 512"
+                            height="16px"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"
+                            >
+                            </path>
+                        </svg></a
+                    >
+                </li>
+            </ul>
+        </nav>
+        <main class="container" id="docs">
+            <aside>
+                <nav class="closed-on-mobile">
+                    <a href="./" class="secondary" id="toggle-docs-navigation"
+                        ><svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="expand"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                            height="16px"
+                        >
+                            <title>Expand</title>
+                            <path
+                                fill-rule="evenodd"
+                                d="M1 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 8zM7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10z"
+                            >
+                            </path>
+                        </svg>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="collapse"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                            height="16px"
+                        >
+                            <title>Collapse</title>
+                            <path
+                                fill-rule="evenodd"
+                                d="M1 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 8zm7-8a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 4.293V.5A.5.5 0 0 1 8 0zm-.5 11.707l-1.146 1.147a.5.5 0 0 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 11.707V15.5a.5.5 0 0 1-1 0v-3.793z"
+                            >
+                            </path>
+                        </svg> Table of contents</a
+                    >
+                    <Nav />
+                </nav>
+            </aside>
+            <div role="document">
+                <section id="start">
+                    <slot />
+                </section>
+                <footer>
+                    <hr />
+                    <p>
+                        <small
+                            >Code licensed <a
+                                href="https://github.com/saasquatch/bunshi/blob/master/LICENSE.md"
+                                class="secondary">MIT</a
+                            ></small
+                        >
+                    </p>
+                </footer>
+            </div>
+        </main>
+    </body>
+</html>

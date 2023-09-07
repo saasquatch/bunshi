@@ -1,0 +1,62 @@
+---
+
+---
+
+<script>
+    const activeLink = [...document.querySelectorAll("aside details a")].find(
+        (a) => a.getAttribute("href") === location.pathname,
+    );
+    if (activeLink) {
+        const parentAccordion = activeLink.closest("details");
+        parentAccordion?.setAttribute("open", "true");
+        activeLink.setAttribute("aria-current", "page");
+    }
+</script>
+
+<details open>
+    <summary>Getting started</summary>
+    <ul>
+        <li>
+            <a href="/" class="secondary">Usage</a>
+        </li>
+        <li>
+            <a href="/frameworks" class="secondary">Frameworks</a>
+        </li>
+    </ul>
+</details>
+<details open>
+    <summary>Core Concepts</summary>
+    <ul>
+        <li>
+            <a href="/molecules" class="secondary">Molecules</a>
+        </li>
+        <li>
+            <a href="/scopes" class="secondary">Scopes</a>
+        </li>
+        <li>
+            <a href="/interfaces" class="secondary">Molecule Interfaces</a>
+        </li>
+    </ul>
+</details>
+<details open>
+    <summary>Frameworks</summary>
+    <ul>
+        <li>
+            <a href="/react" class="secondary">React</a>
+        </li>
+        <li>
+            <a href="/vue" class="secondary">Vue</a>
+        </li>
+        <li>
+            <a href="/vanilla" class="secondary">Vanilla</a>
+        </li>
+    </ul>
+</details>
+<details open>
+    <summary>Advanced</summary>
+    <ul>
+        <li>
+            <a href="/motivation" class="secondary">Motivation</a>
+        </li>
+    </ul>
+</details>
