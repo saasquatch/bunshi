@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { molecule } from "jotai-molecules/vue";
+import { molecule } from "bunshi/vue";
 
 
 export const countMolecule = molecule(() => {

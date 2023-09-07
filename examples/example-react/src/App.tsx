@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { useMolecule } from "jotai-molecules/react";
+import { useMolecule } from "bunshi/react";
 import './App.css';
 import { countMolecule } from './Molecules';
 import reactLogo from './assets/react.svg';

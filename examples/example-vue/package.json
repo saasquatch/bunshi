@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
-    "jotai-molecules": "file:../../",
+    "bunshi": "file:../../",
     "jotai-vue": "^0.1.0",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",

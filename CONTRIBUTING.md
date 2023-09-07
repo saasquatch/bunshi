@@ -2,7 +2,7 @@
 
 ## Reporting Issues
 
-If you have found what you think is a bug, please [file an issue](https://github.com/saasquatch/jotai-molecules/issues/new).
+If you have found what you think is a bug, please [file an issue](https://github.com/saasquatch/bunshi/issues/new).
 
 ## Suggesting new features
 

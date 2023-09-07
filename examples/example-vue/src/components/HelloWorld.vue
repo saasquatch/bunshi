@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAtom } from "jotai-vue"
-import { useMolecule } from "jotai-molecules/vue"
+import { useMolecule } from "bunshi/vue"
 import { countMolecule } from "../Molecules"
 
 defineProps<{ msg: string }>()

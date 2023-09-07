@@ -1,4 +1,4 @@
-import { defaultInjector } from "jotai-molecules";
+import { defaultInjector } from "bunshi";
 import { getDefaultStore } from "jotai/vanilla";
 import { countMolecule } from "./Molecules";
 

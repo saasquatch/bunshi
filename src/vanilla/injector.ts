@@ -28,7 +28,7 @@ type Unsub = () => unknown;
  * 
  * The injector tracks the dependencies for each molecule and uses bindings to inject them. 
  * 
- * This is the core of jotai-molecules, although you may rarely interact with it directly.
+ * This is the core of bunshi, although you may rarely interact with it directly.
  * 
  * This "behind-the-scenes" operation is what distinguishes dependency injection from its cousin, the service locator pattern.
  * 

@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Default export no longer returns react.
-
+- Renamed from `jotai-molecules` to `bunshi`
 
 
 ## [1.1.1] - 2023-04-20

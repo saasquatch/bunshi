@@ -1,16 +1,23 @@
-# Jotai Molecules
+# Bunshi
 
-A tiny, fast, dependency-free 1.18kb library for creating [jotai](https://jotai.org/) atoms in a way that lets you lift state up, or push state down. See [Motivation](#motivation) for more details on why we created this library.
+Formerly known as `bunshi`,
+
+A tiny, fast, dependency-free 1.18kb library for creating states stores and other dependencies that lets you lift state up or push state down. Works out of the box with React, Vue and vanilla JS.
+
+Works well with state solutions like [jotai](https://jotai.org/) atoms, [valtio](https://valtio.pmnd.rs/) proxies, [zustand](https://zustand-demo.pmnd.rs/) stores, [nanostores](https://github.com/nanostores/nanostores)
+
+See [Motivation](#motivation) for more details on why we created this library.
+
 
 ## Installation
 
-This module is published on NPM as `jotai-molecules`
+This module is published on NPM as `bunshi`
 
 ```sh
-npm i jotai-molecules
+npm i bunshi
 ```
 
-## Usage
+## React + Jotai Example
 
 Molecules are a set of atoms that can be easily scoped globally or per context.
 
@@ -22,7 +29,7 @@ import {
   useMolecule,
   createScope,
   ScopeProvider,
-} from "jotai-molecules";
+} from "bunshi";
 
 const CompanyScope = createScope<string>("example.com");
 
@@ -86,9 +93,10 @@ Molecules are similar to and inspired by [jotai](https://jotai.org/) atoms, but 
 - **Molecules can depend on molecules AND scope**, but atoms only depend on other atoms.
 - **Molecules are read-only**, but atoms can be writable.
 
+
 ## Motivation
 
-In jotai, it is easy to do global state... but jotai is [much more powerful](https://jotai.org/docs/guides/atoms-in-atom) when used for more than just global state!
+In jotai, it is easy to do global state, but jotai is [much more powerful](https://jotai.org/docs/guides/atoms-in-atom) when used for more than just global state!
 
 The problem is the atom lifecycle, because we need to follow the mantras of jotai:
 
@@ -248,7 +256,7 @@ Here is an example of the `<Counter>` component with **global state**:
 
 ```tsx
 import { atom, useAtom } from "jotai";
-import { molecule, useMolecule } from "jotai-molecules";
+import { molecule, useMolecule } from "bunshi";
 
 const countMolecule = molecule(() => atom(0));
 
@@ -277,7 +285,7 @@ import {
   useMolecule,
   createScope,
   ScopeProvider,
-} from "jotai-molecules";
+} from "bunshi";
 
 const UserScope = createScope(undefined);
 const countMolecule = molecule((getMol, getScope) => {
@@ -302,7 +310,7 @@ export const App = () => (
 Create a molecule that can be dependent on other molecules, or dependent on scope.
 
 ```ts
-import { molecule } from "jotai-molecules";
+import { molecule } from "bunshi";
 
 export const PageMolecule = molecule(() => {
   return {
@@ -321,7 +329,7 @@ export const PageMolecule = molecule(() => {
 Use a molecule for the current scope. Will produce a different value depending on the React context it is run in.
 
 ```tsx
-import { useMolecule } from "jotai-molecules";
+import { useMolecule } from "bunshi";
 import { useSetAtom, useAtomValue } from "jotai";
 
 export const PageComponent = () => {
@@ -371,7 +379,7 @@ useMolecule(UserMolecule, { withScope: [UserScope, "sam@example.com"] });
 Creates a reference for scopes, similar to React Context
 
 ```ts
-import { createScope } from "jotai-molecules";
+import { createScope } from "bunshi";
 
 /**
  *  Scope for a user id
