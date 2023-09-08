@@ -578,7 +578,6 @@ describe("Injector", () => {
 
     it("Allows binding a molecule interface to a molecule", () => {
 
-      const injector1 = createInjector();
 
       const MockHTTPMolecule = molecule<HTTPService>(() => {
 
@@ -592,7 +591,10 @@ describe("Injector", () => {
         }
       });
 
-      injector1.bind(HTTPService, MockHTTPMolecule);
+      const injector1 = createInjector({
+        bindings: [[HTTPService, MockHTTPMolecule]]
+      });
+
 
       const firstValue = injector1.get(NeedsHttp);
       expect(firstValue.logout).not.toBeNull();
@@ -604,7 +606,6 @@ describe("Injector", () => {
 
     it("Allows binding a molecule interface to a scoped molecule", async () => {
 
-      const injector1 = createInjector();
 
       const UserScopedHTTPMolecule = molecule<HTTPService>((getMol, getScope) => {
         const user = getScope(UserScope);
@@ -618,7 +619,9 @@ describe("Injector", () => {
         }
       });
 
-      injector1.bind(HTTPService, UserScopedHTTPMolecule);
+      const injector1 = createInjector({
+        bindings: [[HTTPService, UserScopedHTTPMolecule]]
+      });
 
       const firstValue = injector1.get(NeedsHttp);
 

@@ -5,7 +5,7 @@ import { isMolecule, isMoleculeInterface } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
 import { Molecule, MoleculeGetter, MoleculeInterface, MoleculeOrInterface, ScopeGetter } from "./molecule";
 import { MoleculeScope } from "./scope";
-import { ScopeTuple } from "./types";
+import { BindingMap, Bindings, ScopeTuple } from "./types";
 
 type Deps = {
   scopes: AnyScope[];
@@ -72,18 +72,18 @@ export type MoleculeInjector = {
    */
   useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
 
-  /**
-   * Bind a molecule interface to an implementation
-   * 
-   * 
-   * Note: This is not reactive, so won't cause previously created molecules to be re-created.
-   * 
-   * @param intf 
-   * @param molecule 
-   */
-  bind<T>(intf: MoleculeInterface<T>, molecule: Molecule<T>): void;
 };
+export type CreateInjectorProps = {
+  bindings?: Bindings;
+}
 
+function bindingsToMap(bindings?: Bindings): BindingMap {
+  if (!bindings) return new Map();
+  if (Array.isArray(bindings)) {
+    return new Map(bindings);
+  }
+  return bindings;
+}
 /**
  * Creates a molecule injector.
  *
@@ -91,7 +91,7 @@ export type MoleculeInjector = {
  *
  * @returns
  */
-export function createInjector(): MoleculeInjector {
+export function createInjector(props: CreateInjectorProps = {}): MoleculeInjector {
 
   /*
   *
@@ -103,7 +103,7 @@ export function createInjector(): MoleculeInjector {
   const moleculeCache = createDeepCache();
   const objectScopeCache = createDeepCache();
   const primitiveScopeCache = new WeakMap();
-  const bindings = new Map<AnyMoleculeInterface | AnyMolecule, AnyMolecule>();
+  const bindings = bindingsToMap(props.bindings);
 
   /** 
   * Lookup bindings to override a molecule, or throw an error for unbound interfaces
@@ -204,12 +204,6 @@ export function createInjector(): MoleculeInjector {
     return getInternal(bound, ...scopes).value as T;
   }
 
-  function bind<T>(intf: MoleculeInterface<T>, molecule: Molecule<T>): void {
-    if (!isMolecule(molecule)) throw new Error("Expected a molecule");
-    if (!isMolecule(intf) && !isMoleculeInterface(intf)) throw new Error("Expected a molecule or molecule interface");
-    bindings.set(intf, molecule);
-  }
-
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
     const unsubs = new Set<Unsub>();
     const tuples = scopes.map((tuple) => {
@@ -237,8 +231,7 @@ export function createInjector(): MoleculeInjector {
   return {
     get,
     use,
-    useScopes,
-    bind
+    useScopes
   };
 }
 
