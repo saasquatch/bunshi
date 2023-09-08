@@ -12,6 +12,13 @@ Works well with state solutions like:
 - [nanostores](https://github.com/nanostores/nanostores)
 - [vue reactive](https://vuejs.org/guide/scaling-up/state-management.html#simple-state-management-with-reactivity-api)
 
+Comes out of the box with support for:
+
+ - React
+ - Vue
+ - Vanilla Javascript
+ - Vanilla Typescript
+
 See [Motivation](#motivation) for more details on why we created this library. Inspired by [jotai](https://jotai.org/) and [guice](https://github.com/google/guice).
 
 
@@ -24,3 +31,25 @@ npm i bunshi
 ```
 
 
+## Migrating from jotai-molecules
+
+Coming from an older version of jotai-molecules? The core API and functionality is the same, but bunshi no longer
+assumes react as the default use case.
+
+```diff
+import { atom } from "jotai"
+- import { molecule, useMolecule } from "jotai-molecules"
++ import { molecule, useMolecule } from "bunshi/react"
+
+const countMolecule = molecule(()=>atom(0));
+
+const Counter = ()=>{
+
+    const [count,setCount] = useAtom(useMolecule(countMolecule));
+
+    return <div>
+        Count is {count}
+        <button onClick={()=>setCount(c=>c+1)}>Increment</button>
+    </div>
+}
+```
