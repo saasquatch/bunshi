@@ -14,19 +14,7 @@ const exampleMol = molecule<BaseAtoms>(() => {
   };
 });
 
-const derivedMol = molecule((getMol) => {
-  const base = getMol(exampleMol);
-  return { base, ageAtom: atom(`${Math.random()}`) };
-});
 
-const doubleDerived = molecule((getMol) => {
-  const base = getMol(exampleMol);
-  const derived = getMol(derivedMol);
-  return {
-    base,
-    derived,
-  };
-});
 
 const UnrelatedScope = createScope<number>(1);
 const unrelatedScope1: ScopeTuple<number> = [UnrelatedScope, 1];
@@ -75,27 +63,49 @@ describe("Injector", () => {
     expect(firstValue).toBe(secondValue);
   });
 
-  ([derivedMol, doubleDerived] as Molecule<{ base: BaseAtoms }>[]).forEach(
-    (mol) => {
-      it("returns the same value for derived molecule", () => {
-        const injector = createInjector();
+  describe("Derived molecules", () => {
 
-        const firstValue = injector.get(mol);
-        const secondValue = injector.get(mol);
-        const firstBaseValue = injector.get(exampleMol);
-        const secondBaseValue = injector.get(exampleMol);
+    const derivedMol = molecule((getMol) => {
+      const base = getMol(exampleMol);
+      return { base, ageAtom: atom(`${Math.random()}`) };
+    });
 
-        // All should be the same value
-        expect(firstValue).toBe(secondValue);
-        expect(firstBaseValue).toBe(secondBaseValue);
+    const doubleDerived = molecule((getMol) => {
+      const base = getMol(exampleMol);
+      const derived = getMol(derivedMol);
+      return {
+        base,
+        derived,
+      };
+    });
 
-        expect(firstValue.base).toBe(firstBaseValue);
-        expect(secondValue.base).toBe(secondBaseValue);
-        expect(firstValue.base).toBe(secondBaseValue);
-        expect(secondValue.base).toBe(firstBaseValue);
-      });
+    function testDerived(mol: typeof derivedMol) {
+      const injector = createInjector();
+
+      const firstValue = injector.get(mol);
+      const secondValue = injector.get(mol);
+      const firstBaseValue = injector.get(exampleMol);
+      const secondBaseValue = injector.get(exampleMol);
+
+      // All should be the same value
+      expect(firstValue).toBe(secondValue);
+      expect(firstBaseValue).toBe(secondBaseValue);
+
+      expect(firstValue.base).toBe(firstBaseValue);
+      expect(secondValue.base).toBe(secondBaseValue);
+      expect(firstValue.base).toBe(secondBaseValue);
+      expect(secondValue.base).toBe(firstBaseValue);
     }
-  );
+
+    it("returns the same value for derived molecule", () => {
+      testDerived(derivedMol);
+    });
+
+    it("returns the same value for 2nd order derived molecule", () => {
+      testDerived(doubleDerived);
+    });
+  })
+
 
   it("two injectors return different molecules", () => {
     const injector1 = createInjector();
@@ -529,12 +539,14 @@ describe("Injector", () => {
 
   describe("Validation", () => {
 
-    it("Molecules will throw errors if attempted to load asynchronously", async () => {
+    it("Molecules will throw errors if `getMol` is called asynchronously", async () => {
 
       const badMolecule = molecule((getMol) => {
-        const example = getMol(exampleMol);
+        // Okay -- runs sync
+        getMol(exampleMol);
         return new Promise((resolve, reject) => setTimeout(() => {
           try {
+            // Not okay -- runs in a timeout
             resolve(getMol(exampleMol))
           } catch (e) {
             reject(e);

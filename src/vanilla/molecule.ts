@@ -1,3 +1,4 @@
+import { MoleculeInterfaceInternal, MoleculeInternal } from "./internal/internal-types";
 import { GetterSymbol, MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./internal/symbols";
 import { MoleculeScope } from "./scope";
 
@@ -21,29 +22,28 @@ export type MoleculeConstructor<T> = (
 ) => T;
 
 export type Molecule<T> = {
-  [GetterSymbol]: MoleculeConstructor<T>;
-  [TypeSymbol]: typeof MoleculeSymbol;
   displayName?: string;
-};
+} & Record<symbol, unknown>;
 
 export type MoleculeInterface<T> = {
-  [TypeSymbol]: typeof MoleculeInterfaceSymbol;
   displayName?: string;
-};
+} & Record<symbol, unknown>;
 
 export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
 
 export function molecule<T>(getter: MoleculeConstructor<T>): Molecule<T> {
-  return {
+  const mol: MoleculeInternal<T> = {
     [GetterSymbol]: getter,
     [TypeSymbol]: MoleculeSymbol
   };
+  return mol;
 }
 
 export function moleculeInterface<T>(): MoleculeInterface<T> {
-  return {
+  const intf: MoleculeInterfaceInternal<T> = {
     [TypeSymbol]: MoleculeInterfaceSymbol
   };
+  return intf;
 }
 
 

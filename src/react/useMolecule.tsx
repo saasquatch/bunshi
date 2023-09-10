@@ -1,10 +1,10 @@
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { Molecule } from "../vanilla";
+import { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
 import { useScopes } from "./useScopes";
 
 export function useMolecule<T>(
-  m: Molecule<T>,
+  m: MoleculeOrInterface<T>,
   options?: MoleculeScopeOptions
 ): T {
   const scopes = useScopes(options);

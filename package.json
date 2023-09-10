@@ -16,6 +16,9 @@
     "build:vanilla": "tsup src/vanilla/index.ts --outDir dist --format esm,cjs --dts",
     "build:react": "tsup src/react/index.ts --outDir dist/react --format esm,cjs --dts",
     "build:vue": "tsup src/vue/index.ts --outDir dist/vue --format esm,cjs --dts --external vue",
+    "dev": "run-p dev:*",
+    "dev:build": "run-p build -- --watch",
+    "dev:test": "vitest --watch",
     "test": "run-s test:*",
     "test:code": "vitest run",
     "test:size": "size-limit"

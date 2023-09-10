@@ -1,8 +1,8 @@
 import React from "react";
-import { ScopeContext } from "./contexts/ScopeContext";
-import { MoleculeScope } from "../vanilla";
-import { useScopes } from "./useScopes";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
+import { MoleculeScope } from "../vanilla";
+import { ScopeContext } from "./contexts/ScopeContext";
+import { useScopes } from "./useScopes";
 
 export type ProviderProps<T> = {
   scope: MoleculeScope<T>;
@@ -20,7 +20,7 @@ export type ProviderProps<T> = {
  * Will continue to provide parent scopes down, and either override a scope value or add a new scope.
  *
  */
-export function ScopeProvider<T>(props: ProviderProps<T>) {
+export function ScopeProvider<T>(props: ProviderProps<T>):ReturnType<React.FC> {
   const { value, scope, uniqueValue } = props;
 
   let options: MoleculeScopeOptions;
@@ -34,9 +34,5 @@ export function ScopeProvider<T>(props: ProviderProps<T>) {
     };
   }
   const downstreamScopes = useScopes(options);
-  return (
-    <ScopeContext.Provider value={downstreamScopes}>
-      {props.children}
-    </ScopeContext.Provider>
-  );
+  return React.createElement(ScopeContext.Provider, { value: downstreamScopes }, props.children);
 }

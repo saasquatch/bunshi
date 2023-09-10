@@ -1,22 +1,18 @@
 import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./internal/errors";
+import { MoleculeInternal } from "./internal/internal-types";
 import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
 import { GetterSymbol } from "./internal/symbols";
 import { isMolecule, isMoleculeInterface } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import { Molecule, MoleculeGetter, MoleculeInterface, MoleculeOrInterface, ScopeGetter } from "./molecule";
-import { MoleculeScope } from "./scope";
-import { BindingMap, Bindings, ScopeTuple } from "./types";
+import { Molecule, MoleculeGetter, MoleculeOrInterface, ScopeGetter } from "./molecule";
+import { AnyMolecule, AnyMoleculeScope, AnyScopeTuple, BindingMap, Bindings } from "./types";
 
 type Deps = {
-  scopes: AnyScope[];
-  transitiveScopes: AnyScope[];
+  scopes: AnyMoleculeScope[];
+  transitiveScopes: AnyMoleculeScope[];
   molecules: AnyMolecule[];
 };
-type AnyMoleculeInterface = MoleculeInterface<unknown>;
-type AnyMolecule = Molecule<unknown>;
 type AnyValue = unknown;
-type AnyScope = MoleculeScope<unknown>;
-type AnyScopeTuple = ScopeTuple<unknown>;
 type Mounted = {
   deps: Deps;
   value: AnyValue;
@@ -109,10 +105,10 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   * Lookup bindings to override a molecule, or throw an error for unbound interfaces
   * 
   */
-  function getTrueMolecule<T>(molOrIntf: MoleculeOrInterface<T>): Molecule<T> {
+  function getTrueMolecule<T>(molOrIntf: MoleculeOrInterface<T>): MoleculeInternal<T> {
     const bound = bindings.get(molOrIntf);
-    if (bound) return bound as Molecule<T>;
-    if (isMolecule(molOrIntf)) return molOrIntf as Molecule<T>;
+    if (bound) return bound as MoleculeInternal<T>;
+    if (isMolecule(molOrIntf)) return molOrIntf as MoleculeInternal<T>;
 
     throw new Error(ErrorUnboundMolecule);
   }
@@ -129,8 +125,8 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
     const m = getTrueMolecule(maybeMolecule);
 
     const dependentMolecules = new Set<AnyMolecule>();
-    const dependentScopes = new Set<AnyScope>();
-    const transientScopes = new Set<AnyScope>();
+    const dependentScopes = new Set<AnyMoleculeScope>();
+    const transientScopes = new Set<AnyMoleculeScope>();
     let running = true;
     const trackingScopeGetter: ScopeGetter = (s) => {
       if (!running) throw new Error(ErrorAsyncGetScope)
