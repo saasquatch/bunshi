@@ -1,9 +1,9 @@
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { Molecule } from "../vanilla";
-import { useScopes } from "./useScopes";
+import { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
+import { useScopes } from "./useScopes";
 
-export const useMolecule = <T>(m: Molecule<T>, options?: MoleculeScopeOptions) => {
+export const useMolecule = <T>(m: MoleculeOrInterface<T>, options?: MoleculeScopeOptions) => {
     const scopes = useScopes(options);
     const injector = useInjector();
     return injector.get(m, ...scopes);
