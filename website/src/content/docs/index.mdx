@@ -1,0 +1,49 @@
+---
+title: Bunshi
+description: A tiny, fast, dependency-free 1.18kb library for creating states stores and other dependencies that lets you lift state up or push state down. Works out of the box with React, Vue and vanilla javascript and Typescript.
+template: splash
+hero:
+  tagline: A tiny, fast, dependency-free 1.18kb library for creating states stores and other dependencies that lets you lift state up or push state down.
+  #image:
+  #  file: ../../assets/houston.webp
+  actions:
+    - text: Getting Started - React
+      link: /integrations/react/
+      icon: right-arrow
+      variant: primary
+    - text: Getting Started - Vue
+      link: /integrations/vue/
+      icon: right-arrow
+      variant: primary	  
+---
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+ 
+
+> bunshi - ぶん‐し【分子】- Japanese for molecule
+
+
+## Features
+
+<CardGrid>
+	<Card title="Small" icon="approve-check">
+		Dependency-free and only 1.18kb minified and gzipped.
+	</Card>
+	<Card title="Flexible" icon="random">
+		Works with any frontend or backed javascript framework. Ships with React and Vue integrations.
+	</Card>
+</CardGrid>
+
+## Integrations
+
+<CardGrid>
+	<LinkCard
+		title="Bunshi React"
+		description="Declaratively build your jotai, valtio, zustand, nanostore and other state stores."
+		href="/integrations/react/"
+	/>
+	<LinkCard
+		title="Bunshi Vue"
+		description="Declaractively build your refs, jotai, nanostore and other state stores."
+		href="/integrations/vue/"
+	/>
+</CardGrid>

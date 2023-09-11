@@ -1,5 +1,5 @@
-import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { MoleculeOrInterface } from "../vanilla";
+import type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
+import type { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
 import { useScopes } from "./useScopes";
 

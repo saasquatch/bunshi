@@ -1,6 +1,7 @@
 import { inject, onUnmounted } from 'vue';
-import { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
-import { ScopeTuple, getDownstreamScopes } from '../vanilla';
+import type { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
+import type { ScopeTuple, } from '../vanilla';
+import { getDownstreamScopes } from '../vanilla';
 import { ScopeSymbol } from './internal/symbols';
 import { useInjector } from './useInjector';
 

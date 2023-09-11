@@ -1,11 +1,10 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "Molecules"
+sidebar:
+    order: 1
 ---
 
-# Molecules
-
-Molecules are the core building block of bunshi. Molecules are just functions that return a value.
+Molecules are the core building block of bunshi. They are functions that return a value.
 
 ```ts
 import { molecule } from "bunshi";

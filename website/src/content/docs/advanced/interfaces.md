@@ -1,9 +1,8 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "Interfaces"
+sidebar:
+    order: 1
 ---
-
-# Interfaces
 
 Molecules can have dependencies but sometimes you don't care or know about the implementation details. To help Bunshi support interfaces for molecules.
 

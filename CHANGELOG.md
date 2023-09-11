@@ -40,7 +40,8 @@ Moving for `jotai-molecules` to `bunshi`? To migrate change your imports from `j
 ### Added
 - Vue support
 - Vanilla JS support
-
+- Molecule interfaces and bindings
+- Access to the internal injector
 
 ## [1.1.1] - 2023-04-20
 

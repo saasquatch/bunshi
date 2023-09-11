@@ -1,9 +1,6 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "Motivation"
 ---
-
-# Motivation
 
 In jotai, it is easy to do global state, but jotai is [much more powerful](https://jotai.org/docs/guides/atoms-in-atom) when used for more than just global state!
 

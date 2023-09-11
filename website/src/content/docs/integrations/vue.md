@@ -1,9 +1,6 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "Vue"
 ---
-
-# Vue
 
 Bunshi ships with support for Vue out of the box. Support is based on the [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html) introduced in Vue 3.
 
@@ -13,7 +10,9 @@ To use with vue change your imports.
 import {molecule} from "bunshi/vue"
 ```
 
-## useMolecule
+## Basic API
+
+### useMolecule
 
 Use a molecule for the current scope. Will produce a different value depending on the scope of the component that uses it.
 
@@ -40,7 +39,7 @@ By default `useMolecule` will provide a molecule based off the _implicit_ scope 
 
 Instead of implicit scopes from `provideScope`, you can use an explicit scope when using a molecule. This can simplify integrating with other libraries.
 
-## provideScope
+### provideScope
 
 Provides a new value for Scope. This will provide scope to any calles to `useMolecule` in components inside of the components `<slot>`.
 
@@ -61,6 +60,12 @@ provideScope([formIdScope,formId])
   <form>
 </template>
 ```
+
+## Advanced API
+
+
+### provideInjector
+
 
 
 ## Vue 2 and Options API

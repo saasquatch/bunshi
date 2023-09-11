@@ -1,9 +1,6 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "Comparisons"
 ---
-
-# Comparisons
 
 At it's core Bunshi is a dependency injection framework, not a state management framework. It was designed to be complimentary to the ecosystem of state management tools and frontend frameworks.
 

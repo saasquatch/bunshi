@@ -24,6 +24,9 @@
     "moduleResolution": "node",
     // transpile JSX to React.createElement
     "jsx": "react",
+    "paths": {
+      "react": [ "./node_modules/@types/react" ]
+    },
     // interop between ESM and CJS modules. Recommended by TS
     "esModuleInterop": true,
     // significant perf increase by skipping checking .d.ts files, particularly those in node_modules. Recommended by TS

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
-import React, { useContext, useRef, useState } from "react";
+import React, { ReactNode, useContext, useRef, useState } from "react";
 import { createScope, molecule } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
@@ -132,7 +132,7 @@ describe("String scopes", () => {
       return props;
     };
     const sharedKey = "shared@example.com";
-    const TestStuffProvider: React.FC = ({ children }) => {
+    const TestStuffProvider: React.FC<{children:ReactNode}> = ({ children }) => {
       const props = useTextHook();
       return (
         <StringScopeTestContext.Provider value={props}>

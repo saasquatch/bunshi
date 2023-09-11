@@ -1,11 +1,11 @@
 ---
-layout: ../layouts/BaseLayout.astro
-title: "Molecules"
+title: "Scopes"
+description: Scopes let you declaratively build graphs of molecules for different components, forms, sections, users, companies or applications and have them run in a shared environment.
+sidebar:
+  order: 2
 ---
 
-# Scopes
-
-Scopes let you declaratively building graphs of molecules for different components, forms, sections, users, companies or applications and have them run in a shared environment.
+Scopes let you declaratively build graphs of molecules for different components, forms, sections, users, companies or applications and have them run in a shared environment.
 
 ## API
 

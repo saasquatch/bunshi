@@ -1,17 +1,16 @@
 ---
-layout: ../layouts/BaseLayout.astro
 title: "React"
 ---
-
-# React 
 
 Bunshi ships with support for React out of the box.
 
 ```ts
-import { useMolecule } from "bunshi/react";
+import { molecule, useMolecule, ScopeProvider } from "bunshi/react";
 ```
 
-## useMolecule
+## Basic API
+
+### useMolecule
 
 Use a molecule for the current scope. Will produce a different value depending on the React context it is run in.
 
@@ -79,3 +78,14 @@ const App = () => (
 
 - `scope` the `MoleculeScope` reference to provide
 - `value` a new value for that scope
+
+
+## Advanced APIs
+
+### useScopes
+
+
+### useInjector
+
+
+### InjectorProvider

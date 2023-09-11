@@ -1,5 +1,6 @@
 import { inject, provide } from 'vue';
-import { MoleculeInjector, defaultInjector } from '../vanilla';
+import type { MoleculeInjector } from '../vanilla';
+import { defaultInjector } from '../vanilla';
 import { InjectorSymbol } from './internal/symbols';
 
 
