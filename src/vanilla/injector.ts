@@ -1,8 +1,8 @@
 import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./internal/errors";
 import { MoleculeInternal } from "./internal/internal-types";
 import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
-import { GetterSymbol } from "./internal/symbols";
-import { isMolecule, isMoleculeInterface } from "./internal/utils";
+import { DefaultInjector, GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
+import { isInjector, isMolecule, isMoleculeInterface } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
 import { Molecule, MoleculeGetter, MoleculeOrInterface, ScopeGetter } from "./molecule";
 import { AnyMolecule, AnyMoleculeScope, AnyScopeTuple, BindingMap, Bindings } from "./types";
@@ -68,7 +68,8 @@ export type MoleculeInjector = {
    */
   useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
 
-};
+} & Record<symbol, unknown>;
+
 export type CreateInjectorProps = {
   bindings?: Bindings;
 }
@@ -225,11 +226,29 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   }
 
   return {
+    [TypeSymbol]: Injector,
     get,
     use,
-    useScopes
+    useScopes,
   };
 }
 
 
-export const defaultInjector = createInjector();
+export const getDefaultInjector = () => {
+
+  const defaultInjector = (globalThis as any)[DefaultInjector];
+
+  if (defaultInjector === undefined) {
+    const newInjector = createInjector();
+    (globalThis as any)[DefaultInjector] = newInjector;
+    return newInjector;
+  }
+
+  if (isInjector(defaultInjector)) {
+    return defaultInjector;
+  }
+
+  throw new Error("Global namespace conflict. Default injector is not a bunshi injector.")
+}
+
+export const defaultInjector = getDefaultInjector();
