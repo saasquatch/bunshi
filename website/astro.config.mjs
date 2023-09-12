@@ -1,11 +1,37 @@
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
-// import { generateTypeDoc } from 'starlight-typedoc';
+import { generateTypeDoc } from 'starlight-typedoc';
 
-// const typeDocSidebarGroup = await generateTypeDoc({
-// 	entryPoints: ['../dist/index.d.ts'],
-// 	tsconfig: '../tsconfig.json',
-// })
+const apiSidebarGroup = await generateTypeDoc({
+	output: "reference/vanilla",
+	sidebar: {
+		label: "Vanilla Reference",
+		collapsed: true
+	},
+
+	entryPoints: ['../src/vanilla/index.ts'],
+	tsconfig: '../tsconfig.docs.json',
+})
+
+const reactSidebar = await generateTypeDoc({
+	output: "reference/react",
+	sidebar: {
+		label: "React Reference",
+		collapsed: true
+	},
+	entryPoints: ['../src/react/index.ts'],
+	tsconfig: '../tsconfig.docs.json',
+})
+const vueSidebar = await generateTypeDoc({
+	output: "reference/vue",
+	sidebar: {
+		label: "Vue Reference",
+		collapsed: true
+	},
+	entryPoints: ['../src/vue/index.ts'],
+	tsconfig: '../tsconfig.docs.json',
+})
+
 
 // https://astro.build/config
 export default defineConfig({
@@ -36,6 +62,9 @@ export default defineConfig({
 					label: 'Advanced',
 					autogenerate: { directory: 'advanced' },
 				},
+				reactSidebar,
+				vueSidebar,
+				apiSidebarGroup,
 			],
 		}),
 	],

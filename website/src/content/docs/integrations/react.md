@@ -5,7 +5,7 @@ title: "React"
 Bunshi ships with support for React out of the box.
 
 ```ts
-import { molecule, useMolecule, ScopeProvider } from "bunshi/react";
+import { useMolecule, ScopeProvider } from "bunshi/react";
 ```
 
 ## Basic API
@@ -78,14 +78,3 @@ const App = () => (
 
 - `scope` the `MoleculeScope` reference to provide
 - `value` a new value for that scope
-
-
-## Advanced APIs
-
-### useScopes
-
-
-### useInjector
-
-
-### InjectorProvider

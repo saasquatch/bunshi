@@ -1,0 +1,75 @@
+---
+title: "Quick Start"
+sidebar:
+    order: 0
+---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+
+## Installation
+
+Bunshi is distributed on NPM as both a CommonJS and ES Module. It comes with type definitions for Typescript support.
+
+```sh
+npm i -D bunshi
+```
+
+## Create a Molecule
+
+Molecules are the core building block of bunshi. They are functions that return a value.
+
+```ts
+import { molecule } from "bunshi";
+
+export const ResizeMolecule = molecule(() => new ResizeObserver((e)=>console.log("Resize",e)));
+```
+
+> When this `ResizeMolecule` is used it will always return the same ResizeObserver. The value is memoized and cached.
+
+## Use a Molecule
+
+To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue).
+
+<Tabs>
+	<TabItem label="React">
+
+```ts
+import { useMolecule } from "bunshi/react";
+import { ResizeMolecule } from '../molecules'
+
+export const Resized = ()=>{
+    const observer = useMolecule(ResizeMolecule);
+    return <div ref={el=>observer.observe(el)}>My size is being watched.</div>
+}
+```    
+    </TabItem>
+	<TabItem label="Vue">
+```vue
+<script setup>
+import { useMolecule } from 'bunshi/vue';
+import { ResizeMolecule } from '../molecules'
+
+const observer = useMolecule(FormErrors);
+
+mounted(()=>observer.observe(this.$el));
+unmounted(()=>observer.unobserve(this.$el));
+
+</script>
+
+<template>
+  <div>My size is being watched.</div>
+</template>
+```
+
+</TabItem>
+</Tabs>
+
+## Decoupled and Lazy
+
+The code that you wrote is now decoupled and lazy. 
+
+- **Decoupled**: You can refactor the `ResizeMolecule` without affecting the thing that depend on it. For example, by adding a [scope](/concepts/scopes/) 
+or changing how the ResizeObserver gets created.
+- **Lazy**: A resize observer is only created lazily when it's needed. It's not eagerly created and sitting around in a global variable.
+
+When your write code with molecules, you can pull state up or push state down, without having to refactor your components.

@@ -4,17 +4,15 @@ title: "Vue"
 
 Bunshi ships with support for Vue out of the box. Support is based on the [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html) introduced in Vue 3.
 
-To use with vue change your imports.
-
 ```js
-import {molecule} from "bunshi/vue"
+import { useMolecule, provideScope } from "bunshi/vue"
 ```
 
 ## Basic API
 
 ### useMolecule
 
-Use a molecule for the current scope. Will produce a different value depending on the scope of the component that uses it.
+Use a molecule for the current scopes. Will produce a different value depending on the scope of the component that uses it.
 
 ```vue
 <script setup>
@@ -60,13 +58,6 @@ provideScope([formIdScope,formId])
   <form>
 </template>
 ```
-
-## Advanced API
-
-
-### provideInjector
-
-
 
 ## Vue 2 and Options API
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { defaultInjector } from "../../vanilla";
+import { getDefaultInjector } from "../../vanilla";
 
-export const InjectorContext = React.createContext(defaultInjector);
+export const InjectorContext = React.createContext(getDefaultInjector());
 InjectorContext.displayName = "BunshiMoleculeInjectorContext";

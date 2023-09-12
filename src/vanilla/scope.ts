@@ -1,43 +1,33 @@
-import { ScopeTuple } from "./types";
+import { ScopeSymbol, TypeSymbol } from "./internal/symbols";
 
+/**
+ * A scope that can be used to create scoped molecules.
+ * 
+ * When a molecule depends on a scope, this it becomes a scoped molecule
+ * and the molecule will be called to provide a value once per unique scope value.
+ * 
+ */
 export type MoleculeScope<T> = {
   defaultValue: T;
   displayName?: string;
-};
+} & Record<symbol, unknown>;
 
-export function createScope<T = undefined>(): MoleculeScope<undefined>;
-export function createScope<T>(defaultValue: T): MoleculeScope<T>;
+
 /**
- * Create a scope key
+ * Create a {@link MoleculeScope}
  * 
  * A scope tuple is a combination of both a scope key and a scope value. For example,
  * a scope key would be "User" and the scope value would be "user1@example.com"
  * 
  * 
+ * @typeParam T - the type that this scope provides
  * @param defaultValue 
- * @returns 
+ * @returns a new unique {@link MoleculeScope}
  */
-export function createScope(defaultValue?: unknown): MoleculeScope<unknown> {
+export function createScope<T = undefined>(defaultValue: T): MoleculeScope<T> {
   return {
     defaultValue,
+    [TypeSymbol]: ScopeSymbol
   };
 }
 
-export function getDownstreamScopes(parentScopes: ScopeTuple<unknown>[], nextTuple: ScopeTuple<unknown>) {
-  const [scope] = nextTuple;
-  const found = parentScopes.findIndex((scopeTuple) => {
-    const foundScope = scopeTuple[0];
-    return foundScope === scope;
-  });
-
-  const downstreamScopes = found >= 0
-    ? // Replace inline (when found)
-    [
-      ...parentScopes.slice(0, found),
-      nextTuple,
-      ...parentScopes.slice(found + 1),
-    ]
-    : // Append to the end (when not found)
-    [...parentScopes, nextTuple];
-  return downstreamScopes;
-}

@@ -1,11 +1,18 @@
 import { inject, onUnmounted } from 'vue';
 import type { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
-import type { ScopeTuple, } from '../vanilla';
-import { getDownstreamScopes } from '../vanilla';
+import { getDownstreamScopes } from "../shared/getDownstreamScopes";
+import type { ScopeTuple } from '../vanilla';
 import { ScopeSymbol } from './internal/symbols';
 import { useInjector } from './useInjector';
 
-
+/**
+ * Gets the scopes implicitly in context for the current component.
+ * 
+ * Scope can also be explicitly provided to this hook.
+ * 
+ * @param options - to provide explicit scopes or scope overrides
+ * @returns a set of scopes
+ */
 export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknown>[] => {
     const parentScopes = inject(ScopeSymbol, [] as ScopeTuple<unknown>[]);
 

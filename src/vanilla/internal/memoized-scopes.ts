@@ -1,4 +1,4 @@
-import { AnyMoleculeScope, AnyScopeTuple, AnyScopeValue, ScopeTuple } from "../";
+import { AnyMoleculeScope, AnyScopeTuple, ScopeTuple } from "../internal/internal-types";
 import { DeepCache } from "./weakCache";
 
 export type TupleAndReferences = {
@@ -8,7 +8,7 @@ export type TupleAndReferences = {
 
 export type PrimitiveScopeMap = WeakMap<
     AnyMoleculeScope,
-    Map<AnyScopeValue, TupleAndReferences>
+    Map<unknown, TupleAndReferences>
 >;
 
 

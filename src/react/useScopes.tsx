@@ -1,9 +1,18 @@
 import { useContext, useEffect, useMemo } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { ScopeTuple, getDownstreamScopes } from "../vanilla";
+import { ScopeTuple } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useInjector } from "./useInjector";
+import { getDownstreamScopes } from "../shared/getDownstreamScopes";
 
+/**
+ * Gets the scopes that are implicitly in context for the current component.
+ * 
+ * Scopes can also be set and overridden explicitly by passing in options to this hook.
+ * 
+ * @param options 
+ * @returns 
+ */
 export function useScopes(
   options?: MoleculeScopeOptions
 ): ScopeTuple<unknown>[] {

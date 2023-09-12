@@ -1,23 +1,25 @@
 import { MoleculeInjector } from "../injector";
-import { AnyMolecule } from "../types";
-import { Injector, MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./symbols";
+import { AnyMolecule, AnyMoleculeScope } from "./internal-types";
+import { Injector, MoleculeInterfaceSymbol, MoleculeSymbol, ScopeSymbol, TypeSymbol } from "./symbols";
 
-export function isMolecule(value: unknown): value is AnyMolecule {
+function __isInternalType<T>(value: unknown, typeSymbol: symbol): value is T {
   if (!value) return false;
   if (typeof value !== "object") return false;
-  const type = (value as any)[TypeSymbol];
-  return type === MoleculeSymbol;
+  return (value as any)[TypeSymbol] === typeSymbol;
+}
+
+export function isMolecule(value: unknown): value is AnyMolecule {
+  return __isInternalType(value, MoleculeSymbol);
+}
+
+export function isMoleculeScope(value: unknown): value is AnyMoleculeScope {
+  return __isInternalType(value, ScopeSymbol);
 }
 
 export function isMoleculeInterface(value: unknown): value is AnyMolecule {
-  if (!value) return false;
-  if (typeof value !== "object") return false;
-  const type = (value as any)[TypeSymbol];
-  return type === MoleculeInterfaceSymbol;
+  return __isInternalType(value, MoleculeInterfaceSymbol);
 }
 
 export function isInjector(value: unknown): value is MoleculeInjector {
-  if (typeof value !== "object") return false;
-  const objType = (value as any)[TypeSymbol];
-  return objType === Injector
+  return __isInternalType(value, Injector);
 }

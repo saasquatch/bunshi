@@ -18,7 +18,10 @@ export type ProviderProps<T> = {
  * Provides scope for all molecules lower down in the React component tree.
  *
  * Will continue to provide parent scopes down, and either override a scope value or add a new scope.
+ * 
+ * Either `value` or `uniqueValue` should be passed as props
  *
+ * @typeParam T - the type that should match the {@link MoleculeScope} and the value provided
  */
 export function ScopeProvider<T>(props: ProviderProps<T>):ReturnType<React.FC> {
   const { value, scope, uniqueValue } = props;

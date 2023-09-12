@@ -1,21 +1,21 @@
-import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorUnboundMolecule } from "./internal/errors";
-import { MoleculeInternal } from "./internal/internal-types";
+import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorInvalidGlobalInjector, ErrorInvalidMolecule, ErrorInvalidScope, ErrorUnboundMolecule } from "./internal/errors";
+import type { AnyMolecule, AnyMoleculeScope, AnyScopeTuple, MoleculeInternal } from "./internal/internal-types";
 import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
 import { DefaultInjector, GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
-import { isInjector, isMolecule, isMoleculeInterface } from "./internal/utils";
+import { isInjector, isMolecule, isMoleculeInterface, isMoleculeScope } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import { Molecule, MoleculeGetter, MoleculeOrInterface, ScopeGetter } from "./molecule";
-import { AnyMolecule, AnyMoleculeScope, AnyScopeTuple, BindingMap, Bindings } from "./types";
+import type { Molecule, MoleculeGetter, MoleculeOrInterface, ScopeGetter } from "./molecule";
+import type { BindingMap, Bindings } from "./types";
 
 type Deps = {
   scopes: AnyMoleculeScope[];
   transitiveScopes: AnyMoleculeScope[];
   molecules: AnyMolecule[];
 };
-type AnyValue = unknown;
+
 type Mounted = {
   deps: Deps;
-  value: AnyValue;
+  value: unknown;
 };
 type Unsub = () => unknown;
 
@@ -23,8 +23,6 @@ type Unsub = () => unknown;
  * Builds the graphs of molecules that make up your application. 
  * 
  * The injector tracks the dependencies for each molecule and uses bindings to inject them. 
- * 
- * This is the core of bunshi, although you may rarely interact with it directly.
  * 
  * This "behind-the-scenes" operation is what distinguishes dependency injection from its cousin, the service locator pattern.
  * 
@@ -38,6 +36,7 @@ type Unsub = () => unknown;
  * > Because the framework handles creating services, the programmer tends to only directly construct value objects which represents entities 
  * > in the program's domain (such as an Employee object in a business app or an Order object in a shopping app).
  * 
+ * This is the core of bunshi, although you may rarely interact with it directly.
  */
 export type MoleculeInjector = {
   /**
@@ -70,7 +69,18 @@ export type MoleculeInjector = {
 
 } & Record<symbol, unknown>;
 
+/**
+ * 
+ */
 export type CreateInjectorProps = {
+  /**
+   * A set of bindings to replace the implemenation of a {@link MoleculeInterface} or 
+   * a {@link Molecule} with another {@link Molecule}.
+   * 
+   * Bindings are useful for swapping out implementations of molecules during testing,
+   * and for library authors to create shareable molecules that may not have a default
+   * implementation
+   */
   bindings?: Bindings;
 }
 
@@ -79,14 +89,27 @@ function bindingsToMap(bindings?: Bindings): BindingMap {
   if (Array.isArray(bindings)) {
     return new Map(bindings);
   }
-  return bindings;
+  // Clones the map to prevent future editing of the original
+  return new Map(bindings.entries());
 }
+
+
 /**
- * Creates a molecule injector.
+ * Creates a {@link MoleculeInjector}
  *
- * Internally this is just a tree of WeapMaps of WeakMaps
- *
- * @returns
+ * This is the core stateful component of `bunshi` and can have interfaces bound to implementations here.
+ * 
+ * @example
+ * Create an injector with bindings
+ * 
+ * ```ts
+ * const NumberMolecule = moleculeInterface<number>();
+ * const RandomNumberMolecule = molecule<number>(()=>Math.random());
+ * 
+ * const injector = createInjector({
+ *     bindings:[[NumberMolecule,RandomNumberMolecule]]
+ * })
+ * ```
  */
 export function createInjector(props: CreateInjectorProps = {}): MoleculeInjector {
 
@@ -131,6 +154,7 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
     let running = true;
     const trackingScopeGetter: ScopeGetter = (s) => {
       if (!running) throw new Error(ErrorAsyncGetScope)
+      if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope)
       dependentScopes.add(s);
       return getScopeValue(s);
     };
@@ -196,7 +220,7 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   }
 
   function get<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T {
-    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error("Expected a molecule or molecule interface");
+    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error(ErrorInvalidMolecule);
     const bound = getTrueMolecule(m);
     return getInternal(bound, ...scopes).value as T;
   }
@@ -218,7 +242,7 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   }
 
   function use<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): [T, Unsub] {
-    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error("Expected a molecule or molecule interface");
+    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error(ErrorInvalidMolecule);
 
     const [tuples, unsub] = useScopes(...scopes);
     const value = get<T>(m, ...tuples);
@@ -233,7 +257,11 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   };
 }
 
-
+/**
+ * Returns the globally defined {@link MoleculeInjector}
+ * 
+ * @returns 
+ */
 export const getDefaultInjector = () => {
 
   const defaultInjector = (globalThis as any)[DefaultInjector];
@@ -248,7 +276,5 @@ export const getDefaultInjector = () => {
     return defaultInjector;
   }
 
-  throw new Error("Global namespace conflict. Default injector is not a bunshi injector.")
+  throw new Error(ErrorInvalidGlobalInjector)
 }
-
-export const defaultInjector = getDefaultInjector();

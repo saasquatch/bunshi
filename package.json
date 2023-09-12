@@ -12,35 +12,32 @@
     "node": ">=10"
   },
   "scripts": {
-    "build": "run-p build:*",
-    "build:vanilla": "tsup src/vanilla/index.ts --outDir dist --format esm,cjs --dts",
-    "build:react": "tsup src/react/index.ts --outDir dist/react --format esm,cjs --dts",
-    "build:vue": "tsup src/vue/index.ts --outDir dist/vue --format esm,cjs --dts --external vue",
+    "build": "tsup --dts",
     "dev": "run-p dev:*",
-    "dev:build": "run-p build -- --watch",
+    "dev:build": "tsup --watch",
     "dev:test": "vitest --watch",
     "test": "run-s test:*",
     "test:code": "vitest run",
     "test:size": "size-limit"
   },
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "typings": "dist/index.d.ts",
+  "main": "dist/vanilla.js",
+  "module": "dist/vanilla.mjs",
+  "typings": "dist/vanilla.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "default": "./dist/index.js"
+      "types": "./dist/vanilla.d.ts",
+      "import": "./dist/vanilla.mjs",
+      "default": "./dist/vanilla.js"
     },
     "./react": {
-      "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.mjs",
-      "default": "./dist/react/index.js"
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "default": "./dist/react.js"
     },
     "./vue": {
-      "types": "./dist/vue/index.d.ts",
-      "import": "./dist/vue/index.mjs",
-      "default": "./dist/vue/index.js"
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.mjs",
+      "default": "./dist/vue.js"
     }
   },
   "peerDependencies": {
@@ -63,19 +60,19 @@
   "prettier": {},
   "size-limit": [
     {
-      "path": "dist/index.js",
+      "path": "dist/vanilla.js",
       "limit": "2 KB"
     },
     {
-      "path": "dist/react/index.js",
-      "limit": "2.1 KB"
+      "path": "dist/react.js",
+      "limit": "2.3 KB"
     },
     {
-      "path": "dist/vue/index.js",
-      "limit": "2 KB"
+      "path": "dist/vue.js",
+      "limit": "2.3 KB"
     },
     {
-      "path": "dist/index.mjs",
+      "path": "dist/vanilla.mjs",
       "limit": "2 KB"
     }
   ],

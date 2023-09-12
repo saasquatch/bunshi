@@ -1,9 +1,11 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, getDefaultStore, useAtomValue } from "jotai";
 import React from "react";
-import { MoleculeInjector, MoleculeOrInterface, createInjector, defaultInjector, molecule, moleculeInterface } from "../vanilla";
+import { MoleculeInjector, MoleculeOrInterface, createInjector, getDefaultInjector, molecule, moleculeInterface } from "../vanilla";
 import { InjectorProvider } from "./InjectorProvider";
 import { useMolecule } from "./useMolecule";
+
+const defaultInjector = getDefaultInjector();
 
 const NumberMolecule = moleculeInterface<number>();
 const ZeroMolecule = molecule(() => 0);
