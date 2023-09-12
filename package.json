@@ -4,6 +4,8 @@
   "version": "0.0.1",
   "license": "MIT",
   "author": "ReferralSaaSquatch.com, Inc.",
+  "homepage": "https://bunshi.org",
+  "repository": "https://github.com/saasquatch/bunshi",
   "files": [
     "dist",
     "src"

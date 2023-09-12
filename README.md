@@ -14,13 +14,14 @@ Works well with state solutions like:
 
 Comes out of the box with support for:
 
- - React
- - Vue
- - Vanilla Javascript
- - Vanilla Typescript
+- React
+- Vue
+- Vanilla Javascript
+- Vanilla Typescript
 
-See [Motivation](#motivation) for more details on why we created this library. Inspired by [jotai](https://jotai.org/) and [guice](https://github.com/google/guice).
+See [the docs](https://bunshi.org) for more details on why we created this library and how to use it.
 
+Inspired by [jotai](https://jotai.org/) and [guice](https://github.com/google/guice).
 
 ## Installation
 
@@ -29,7 +30,6 @@ This module is published on NPM as `bunshi`
 ```sh
 npm i bunshi
 ```
-
 
 ## Migrating from jotai-molecules
 
