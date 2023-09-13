@@ -23,10 +23,10 @@ jobs:
         uses: bahmutov/npm-install@v1
 
       - name: Test (vitest)
-        run: npm test:code
-        
+        run: npm run test:code
+
       - name: Build
         run: npm run build
 
       - name: Size Test
-        run: npm test:size
+        run: npm run test:size
