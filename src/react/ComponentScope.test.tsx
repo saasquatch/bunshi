@@ -9,8 +9,10 @@ const ComponentScopedCountMolecule = molecule((_, scope) => {
     return atom(0);
 });
 
+
+const useCounter = () => useAtom(useMolecule(ComponentScopedCountMolecule));
 const Counter = () => {
-    const [count, setCount] = useAtom(useMolecule(ComponentScopedCountMolecule));
+    const [count, setCount] = useCounter();
     return <div>
         Count is {count}
         <button onClick={() => setCount(c => c + 1)}>Increment</button>
