@@ -24,7 +24,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </div>
 `
 
-for (let counter of document.querySelectorAll<HTMLButtonElement>('[data-element=counter]')) {
+for (let counter of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-element=counter]'))) {
   setupCounter(counter)
 }
 

@@ -1,9 +1,9 @@
-import { defaultInjector } from "bunshi";
+import { getDefaultInjector } from "bunshi";
 import { getDefaultStore } from "jotai/vanilla";
 import { countMolecule } from "./Molecules";
 
 const jotai = getDefaultStore();
-const injector = defaultInjector;
+const injector = getDefaultInjector();
 
 
 export function setupCounter(element: HTMLButtonElement) {
