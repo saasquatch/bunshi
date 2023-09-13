@@ -69,13 +69,8 @@ export const createDeepCache = () => {
     setWeakCacheItem(cache, deps, newObject);
     return newObject;
   };
-  
+
   return {
-    getWeakCacheItem: (deps: Deps) => getWeakCacheItem(cache, deps),
-    setWeakCacheItem: <T extends {}>(deps: Deps, newObject: T) => setWeakCacheItem(cache, deps, newObject),
-    clear: ()=>{
-      cache = new WeakMap();
-    },
     cache,
     deepCache
   };

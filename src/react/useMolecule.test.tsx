@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react-hooks";
 import React, { useContext } from "react";
-import { ScopeContext } from "./contexts/ScopeContext";
 import { ScopeProvider } from "./ScopeProvider";
 import { UserMolecule, UserScope } from "./ScopeProvider.test";
+import { ScopeContext } from "./contexts/ScopeContext";
 import { useMolecule } from "./useMolecule";
 
 describe("useMolecule", () => {
@@ -18,7 +18,7 @@ describe("useMolecule", () => {
 
     expect(result.current.molecule.userId).toBe("jeffrey@example.com");
   });
-  test("Exclusive scope ignores wrappers scope", () => {
+  test("Provided scope ignores wrappers scope", () => {
     const Wrapper = ({ children }: { children?: React.ReactNode }) => (
       <ScopeProvider scope={UserScope} value={"sam@example.com"}>
         {children}
@@ -42,6 +42,34 @@ describe("useMolecule", () => {
     ]);
     expect(result.current.molecule.userId).toBe("jeffrey@example.com");
   });
+
+
+  test("Exclusive scope ignores wrappers scope", () => {
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <ScopeProvider scope={UserScope} value={"implicit@example.com"}>
+        {children}
+      </ScopeProvider>
+    );
+
+    const useUserMolecule = () => {
+      return {
+        molecule: useMolecule(UserMolecule, {
+          exclusiveScope: [UserScope, "exclusive@example.com"],
+        }),
+        context: useContext(ScopeContext),
+      };
+    };
+    const { result } = renderHook(useUserMolecule, {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.context).toStrictEqual([
+      [UserScope, "implicit@example.com"],
+    ]);
+    expect(result.current.molecule.userId).toBe("exclusive@example.com");
+  });
+
+
   test("Unique scope will generate a new value for each use", () => {
     const useUserMolecule = () => {
       return {
@@ -58,5 +86,17 @@ describe("useMolecule", () => {
     expect(result.current.molecule1.userId).not.toBe(
       result.current.molecule2.userId
     );
+  });
+
+
+  test("Empty options breaks nothing", () => {
+    const useUserMolecule = () => {
+      return {
+        molecule: useMolecule(UserMolecule, {}),
+      };
+    };
+    const { result } = renderHook(useUserMolecule, {});
+
+    expect(result.current.molecule.userId).toBe("user@example.com");
   });
 });

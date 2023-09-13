@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { ReactNode, useContext, useRef, useState } from "react";
 import { createScope, molecule } from "../vanilla";
+import { ComponentScope } from "./ComponentScope";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useMolecule } from "./useMolecule";
@@ -132,7 +133,7 @@ describe("String scopes", () => {
       return props;
     };
     const sharedKey = "shared@example.com";
-    const TestStuffProvider: React.FC<{children:ReactNode}> = ({ children }) => {
+    const TestStuffProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       const props = useTextHook();
       return (
         <StringScopeTestContext.Provider value={props}>
@@ -142,7 +143,7 @@ describe("String scopes", () => {
       );
     };
     const Child = () => {
-      const scopes = useScopes();
+      const scopes = useScopes().filter(([scope]) => scope !== ComponentScope);
       const context = useContext(StringScopeTestContext);
       context.insideValue.current = scopes;
       return <div>Bad</div>

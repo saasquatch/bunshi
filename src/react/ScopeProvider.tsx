@@ -1,6 +1,7 @@
 import React from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { MoleculeScope } from "../vanilla";
+import { ComponentScope } from "./ComponentScope";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useScopes } from "./useScopes";
 
@@ -23,7 +24,7 @@ export type ProviderProps<T> = {
  *
  * @typeParam T - the type that should match the {@link MoleculeScope} and the value provided
  */
-export function ScopeProvider<T>(props: ProviderProps<T>):ReturnType<React.FC> {
+export function ScopeProvider<T>(props: ProviderProps<T>): ReturnType<React.FC> {
   const { value, scope, uniqueValue } = props;
 
   let options: MoleculeScopeOptions;
@@ -36,6 +37,6 @@ export function ScopeProvider<T>(props: ProviderProps<T>):ReturnType<React.FC> {
       withScope: [scope, value],
     };
   }
-  const downstreamScopes = useScopes(options);
+  const downstreamScopes = useScopes(options).filter(([scope]) => scope !== ComponentScope);
   return React.createElement(ScopeContext.Provider, { value: downstreamScopes }, props.children);
 }

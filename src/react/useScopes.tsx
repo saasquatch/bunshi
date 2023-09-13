@@ -1,9 +1,11 @@
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
+import { getDownstreamScopes } from "../shared/getDownstreamScopes";
 import { ScopeTuple } from "../vanilla";
+import { AnyScopeTuple } from "../vanilla/internal/internal-types";
+import { ComponentScope } from "./ComponentScope";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useInjector } from "./useInjector";
-import { getDownstreamScopes } from "../shared/getDownstreamScopes";
 
 /**
  * Gets the scopes that are implicitly in context for the current component.
@@ -18,11 +20,12 @@ export function useScopes(
 ): ScopeTuple<unknown>[] {
   const parentScopes = useContext(ScopeContext);
 
-
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
     []
   );
+
+  const componentScopeTuple = useRef([ComponentScope, generatedValue] as const).current as ScopeTuple<unknown>;
 
   const tuple: ScopeTuple<unknown> | undefined = (() => {
     if (!options) return undefined;
@@ -38,30 +41,32 @@ export function useScopes(
     return undefined;
   })();
 
-
-  if (!tuple) {
-    /**
-     * This is the default case, when we don't have any tuples
-     */
-    return parentScopes;
-  }
-
-  if (options?.exclusiveScope) {
-    /**
-     *  Exclusive scopes means ignore scopes from context
-     */
-    return [options.exclusiveScope];
-  }
-
   const injector = useInjector();
-  const [[memoizedTuple], unsub] = useMemo(() => injector.useScopes(tuple), tuple);
+
+  const [[memoizedTupleOrUndefind], unsub]: [(AnyScopeTuple | undefined)[], Function] = useMemo(() => {
+    const handle: ReturnType<typeof injector.useScopes> = tuple ? injector.useScopes(tuple) : [[], () => { }]
+    return handle;
+  }, tuple);
 
   useEffect(() => {
     // Cleanup effect
     return () => { unsub() };
   }, [unsub]);
 
-  return getDownstreamScopes(parentScopes, memoizedTuple as ScopeTuple<unknown>);
+
+  if (options?.exclusiveScope) {
+    /**
+     *  Exclusive scopes means ignore scopes from context
+     */
+    return [memoizedTupleOrUndefind];
+  }
+
+  if (!memoizedTupleOrUndefind) {
+    /**
+     * This is the default case, when we don't have any tuples
+     */
+    return getDownstreamScopes(parentScopes, componentScopeTuple);
+  }
+
+  return getDownstreamScopes(getDownstreamScopes(parentScopes, memoizedTupleOrUndefind as ScopeTuple<unknown>), componentScopeTuple);
 }
-
-
