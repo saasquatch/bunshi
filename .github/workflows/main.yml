@@ -22,8 +22,11 @@ jobs:
       - name: Install deps and build (with cache)
         uses: bahmutov/npm-install@v1
 
-      - name: Test
-        run: npm test
-
+      - name: Test (vitest)
+        run: npm test:code
+        
       - name: Build
         run: npm run build
+
+      - name: Size Test
+        run: npm test:size
