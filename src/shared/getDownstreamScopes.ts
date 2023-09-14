@@ -1,5 +1,4 @@
-import { ScopeTuple } from "../vanilla/types";
-
+import type { ScopeTuple } from "../vanilla/types";
 
 export function getDownstreamScopes(parentScopes: ScopeTuple<unknown>[], nextTuple: ScopeTuple<unknown>) {
   const [scope] = nextTuple;

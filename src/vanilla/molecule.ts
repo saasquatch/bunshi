@@ -1,6 +1,6 @@
-import { MoleculeInterfaceInternal, MoleculeInternal } from "./internal/internal-types";
+import type { MoleculeInterfaceInternal, MoleculeInternal } from "./internal/internal-types";
 import { GetterSymbol, MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./internal/symbols";
-import { MoleculeScope } from "./scope";
+import type { MoleculeScope } from "./scope";
 import type { MoleculeInjector } from "./injector";
 
 /**

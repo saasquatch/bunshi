@@ -1,5 +1,5 @@
-import { AnyMoleculeScope, AnyScopeTuple, ScopeTuple } from "../internal/internal-types";
-import { DeepCache } from "./weakCache";
+import type { AnyMoleculeScope, AnyScopeTuple, ScopeTuple } from "../internal/internal-types";
+import type { DeepCache } from "./weakCache";
 
 export type TupleAndReferences = {
     references: Set<Symbol>;

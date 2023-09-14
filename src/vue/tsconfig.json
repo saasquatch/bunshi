@@ -1,8 +1,7 @@
 {
-    "extends": "@vue/tsconfig/tsconfig.json",
-    "compilerOptions": {
-        "types": [
-            "vitest/globals"
-        ]
-    },
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "ignoreDeprecations": "5.0"
+  }
 }

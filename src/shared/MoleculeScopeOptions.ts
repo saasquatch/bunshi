@@ -1,5 +1,4 @@
-import { MoleculeScope, ScopeTuple } from "../vanilla";
-
+import type { MoleculeScope, ScopeTuple } from "../vanilla";
 
 export type MoleculeScopeOptions = {
   /**

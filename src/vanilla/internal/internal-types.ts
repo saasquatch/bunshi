@@ -1,6 +1,6 @@
-import { Molecule, MoleculeConstructor, MoleculeInterface } from "../molecule";
-import { MoleculeScope } from "../scope";
-import { ScopeTuple } from "../types";
+import type { Molecule, MoleculeConstructor, MoleculeInterface } from "../molecule";
+import type { MoleculeScope } from "../scope";
+import type { ScopeTuple } from "../types";
 import { GetterSymbol, MoleculeInterfaceSymbol, MoleculeSymbol, TypeSymbol } from "./symbols";
 
 export * from "../types";
