@@ -10,7 +10,6 @@ export default defineConfig({
         coverage: {
             include: ['src/**/*.{ts,tsx}'],
             exclude: ['src/**/*.test.{ts,tsx}'],
-            enabled: true,
             branches: 90,
             lines: 90,
             statements: 90
