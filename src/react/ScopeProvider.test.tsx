@@ -214,7 +214,7 @@ describe("String scopes", () => {
 });
 
 test("Void scopes can be used to create unique molecules", () => {
-  const VoidScope = createScope();
+  const VoidScope = createScope(undefined);
 
   const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
     <ScopeProvider scope={VoidScope} children={children} uniqueValue />
