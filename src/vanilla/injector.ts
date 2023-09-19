@@ -70,7 +70,7 @@ export type MoleculeInjector = {
 } & Record<symbol, unknown>;
 
 /**
- * 
+ * Optional properties for creating a {@link MoleculeInjector} via {@link createInjector}
  */
 export type CreateInjectorProps = {
   /**
@@ -159,7 +159,8 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
       return getScopeValue(s);
     };
     const trackingGetter: MoleculeGetter = (molOrInterface) => {
-      if (!running) throw new Error(ErrorAsyncGetMol)
+      if (!running) throw new Error(ErrorAsyncGetMol);
+      if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface)) throw new Error(ErrorInvalidMolecule);
 
       const dependentMolecule = getTrueMolecule(molOrInterface);
       dependentMolecules.add(dependentMolecule);

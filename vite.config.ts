@@ -12,8 +12,9 @@ export default defineConfig({
             exclude: ['src/**/*.test.{ts,tsx}'],
             branches: 90,
             lines: 90,
-            statements: 90
-        }
+            statements: 90,
+            reporter: ['text', 'json', 'clover', 'html'],
+        },
     },
     plugins: [vue()],
 })

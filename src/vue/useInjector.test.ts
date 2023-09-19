@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/vue'
+import { createInjector, getDefaultInjector, useInjector } from '.'
+import { InjectorSymbol } from './internal/symbols'
 import Component from "./tests/Component.vue"
 import DualComponent from "./tests/DualComponent.vue"
 import UserComponent from "./tests/UserComponent.vue"
+import { withSetup } from './tests/test-utils'
 
 test('increments value on click', async () => {
     render(Component)
@@ -97,3 +100,31 @@ export async function testWithinProvider(
     within(counterOne).getByText(`Username: ${username}`);
 
 }
+
+describe("Providing values ", () => {
+
+    test("Returns default injector by default", () => {
+        const [result, mount, app] = withSetup(() => useInjector())
+
+        mount();
+
+        expect(result.value).toBe(getDefaultInjector());
+
+        app.unmount();
+    })
+
+    test("useInjector can use global value", () => {
+        const injector1 = createInjector();
+        const [result, mount, app] = withSetup(() => useInjector())
+
+        // mock provide for testing injections
+        app.provide(InjectorSymbol, injector1);
+
+        mount();
+
+        expect(result.value).toBe(injector1);
+
+        app.unmount();
+    })
+    
+})

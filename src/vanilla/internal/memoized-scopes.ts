@@ -80,14 +80,12 @@ export function deregisterScopeTuple<T>(
     if (typeof value === "object") return;
 
     const scopeMap = primitiveScopeMap.get(scope);
-    if (!scopeMap) return;
+    const cached = scopeMap?.get(value);
 
-    const cached = scopeMap.get(value);
-    if (!cached) return;
+    const references = cached?.references;
+    references?.delete(id);
 
-    cached.references.delete(id);
-
-    if (cached.references.size <= 0) {
-        scopeMap.delete(value);
+    if (references && references.size <= 0) {
+        scopeMap?.delete(value);
     }
 }

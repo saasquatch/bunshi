@@ -19,7 +19,7 @@
     "dev:build": "tsup --watch",
     "dev:test": "vitest --watch",
     "test": "run-s test:*",
-    "test:code": "vitest run",
+    "test:code": "vitest run --coverage",
     "test:size": "size-limit"
   },
   "main": "dist/vanilla.js",

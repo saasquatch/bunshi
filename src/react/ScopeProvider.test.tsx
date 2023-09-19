@@ -51,8 +51,8 @@ test("Alternating scopes", () => {
   const ScopeC = createScope(undefined);
 
   const ScopeAMolecule = molecule(
-    (getMol, getScope) =>
-      `${getScope(ScopeA)}/${getScope(ScopeB)}/${getScope(ScopeC)}`
+    (mol, scope) =>
+      `${scope(ScopeA)}/${scope(ScopeB)}/${scope(ScopeC)}`
   );
   const Wrapper = ({ children }: { children?: React.ReactNode }) => (
     <ScopeProvider scope={ScopeA} value={"a1"}>
@@ -223,7 +223,7 @@ test("Void scopes can be used to create unique molecules", () => {
     <ScopeProvider scope={VoidScope} children={children} uniqueValue />
   );
 
-  const voidMolecule = molecule((getMol, getScope) => {
+  const voidMolecule = molecule((_, getScope) => {
     getScope(VoidScope);
     return {
       example: Math.random(),

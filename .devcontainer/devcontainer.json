@@ -14,7 +14,8 @@
 				"Vue.volar",
 				"GitHub.codespaces",
 				"GitHub.vscode-pull-request-github",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"esbenp.prettier-vscode"
 			]
 		}
 	}
