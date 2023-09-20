@@ -1,8 +1,7 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { ReactNode, useContext, useRef, useState } from "react";
-import { createScope, molecule } from "../vanilla";
-import { ComponentScope } from "./ComponentScope";
+import { ComponentScope, createScope, molecule } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useMolecule } from "./useMolecule";

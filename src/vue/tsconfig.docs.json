@@ -1,0 +1,10 @@
+{
+    "extends": "./tsconfig.json",
+    // Ignore tests in docs
+    // LV: This special line is what makes typedoc work for the website
+    // but also would break vitest and tsup if included in the default tsconfig.json
+    "exclude": [
+        "**/*.test.ts",
+        "**/*.vue"
+    ]
+}

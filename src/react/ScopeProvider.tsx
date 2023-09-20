@@ -1,7 +1,6 @@
 import React from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { MoleculeScope } from "../vanilla";
-import { ComponentScope } from "./ComponentScope";
+import { MoleculeScope, ComponentScope } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useScopes } from "./useScopes";
 

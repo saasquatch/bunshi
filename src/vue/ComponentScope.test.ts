@@ -1,23 +1,22 @@
-import { act, renderHook } from '@testing-library/react-hooks';
-import { atom, useAtom } from "jotai";
-import { ComponentScope, molecule } from "./";
-import { createTestInjectorProvider } from './internal/TestInjectorProvider';
-import { useMolecule } from "./useMolecule";
+import { ref } from "vue";
+import { ComponentScope, createInjector, molecule, useMolecule } from ".";
+import { InjectorSymbol } from "./internal/symbols";
+import { withSetup } from "./tests/test-utils";
 
 const ComponentScopedCountMolecule = molecule((_, scope) => {
     scope(ComponentScope);
-    return atom(0);
+    return ref(0);
 });
 
 const GlobalScopedMoleculeCountMolecule = molecule((_, scope) => {
-    return atom(0);
+    return ref(0);
 });
 
 const useCounter = (mol: typeof ComponentScopedCountMolecule) => {
-    const [count, setCount] = useAtom(useMolecule(mol))
+    const count = useMolecule(mol)
     return {
         count,
-        increment: () => setCount(c => c + 1)
+        increment: () => count.value++
     }
 };
 
@@ -47,31 +46,38 @@ describe("Component scoped molecules", () => {
 
 function testOneCounter(mol: typeof ComponentScopedCountMolecule, expectedResult: number) {
 
-    const TestInjectorProvider = createTestInjectorProvider();
+    const injector1 = createInjector();
+    const [result, mount, app] = withSetup(() => useCounter(mol))
 
-    const { result } = renderHook(() => useCounter(mol), { wrapper: TestInjectorProvider });
+    // mock provide for testing injections
+    app.provide(InjectorSymbol, injector1);
 
-    act(() => {
-        result.current.increment();
-    });
+    mount();
+    result.value?.increment();
+    expect(result.value?.count.value).toBe(expectedResult);
 
-    expect(result.current.count).toBe(expectedResult);
+    app.unmount();
+
 }
 
 function testTwoCounters(mol: typeof ComponentScopedCountMolecule, expectedResult: number) {
 
-    const TestInjectorProvider = createTestInjectorProvider();
+    const injector1 = createInjector();
+    const [result1, mount1, app1] = withSetup(() => useCounter(mol))
+    const [result2, mount2, app2] = withSetup(() => useCounter(mol))
 
-    const { result: result1 } = renderHook(() => useCounter(mol), { wrapper: TestInjectorProvider });
-    const { result: result2 } = renderHook(() => useCounter(mol), { wrapper: TestInjectorProvider });
+    app1.provide(InjectorSymbol, injector1);
+    app2.provide(InjectorSymbol, injector1);
 
-    act(() => {
-        result1.current.increment();
-    });
-    act(() => {
-        result2.current.increment();
-    });
+    mount1();
+    mount2();
+    result1.value?.increment();
+    result2.value?.increment();
 
-    expect(result1.current.count).toBe(expectedResult);
-    expect(result2.current.count).toBe(expectedResult);
+    expect(result1.value?.count.value).toBe(expectedResult);
+    expect(result2.value?.count.value).toBe(expectedResult);
+
+    app1.unmount();
+    app2.unmount();
+
 }

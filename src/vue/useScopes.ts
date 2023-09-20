@@ -1,9 +1,11 @@
 import { inject, onUnmounted } from 'vue';
 import type { MoleculeScopeOptions } from '../shared/MoleculeScopeOptions';
 import { getDownstreamScopes } from "../shared/getDownstreamScopes";
-import type { ScopeTuple } from '../vanilla';
+import { ComponentScope, type ScopeTuple } from '../vanilla';
 import { ScopeSymbol } from './internal/symbols';
 import { useInjector } from './useInjector';
+
+
 
 /**
  * Gets the scopes implicitly in context for the current component.
@@ -23,6 +25,7 @@ export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknow
          */
         return [options.exclusiveScope];
     }
+    const componentScopeTuple = [ComponentScope, generatedValue] as ScopeTuple<unknown>;
 
     const tuple: ScopeTuple<unknown> | undefined = (() => {
         if (options.withUniqueScope) {
@@ -38,9 +41,9 @@ export const useScopes = (options: MoleculeScopeOptions = {}): ScopeTuple<unknow
         const injector = useInjector();
         const [[memoizedTuple], unsub] = injector.useScopes(tuple);
         onUnmounted(unsub);
-        return getDownstreamScopes(parentScopes, memoizedTuple);
+        return getDownstreamScopes(getDownstreamScopes(parentScopes, memoizedTuple), componentScopeTuple);
     }
 
-    return parentScopes;
+    return getDownstreamScopes(parentScopes, componentScopeTuple);
 }
 

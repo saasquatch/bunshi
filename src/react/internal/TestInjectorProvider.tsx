@@ -1,6 +1,6 @@
 import React from "react";
-import { createInjector } from "../vanilla";
-import { InjectorProvider } from "./InjectorProvider";
+import { createInjector } from "../";
+import { InjectorProvider } from "../InjectorProvider";
 
 
 export function createTestInjectorProvider() {

@@ -1,9 +1,21 @@
 import { renderHook } from "@testing-library/react-hooks";
 import React, { useContext } from "react";
 import { ScopeProvider } from "./ScopeProvider";
-import { UserMolecule, UserScope } from "./ScopeProvider.test";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useMolecule } from "./useMolecule";
+import { createScope, molecule } from ".";
+
+
+export const UserScope = createScope("user@example.com");
+
+export const UserMolecule = molecule((_, getScope) => {
+  const userId = getScope(UserScope);
+
+  return {
+    example: Math.random(),
+    userId,
+  };
+});
 
 describe("useMolecule", () => {
   test("Use molecule can have scope provided", () => {
@@ -99,4 +111,9 @@ describe("useMolecule", () => {
 
     expect(result.current.molecule.userId).toBe("user@example.com");
   });
+
+
+  test("Empty",()=>{
+
+  })
 });

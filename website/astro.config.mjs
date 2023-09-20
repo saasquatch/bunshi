@@ -10,7 +10,7 @@ const apiSidebarGroup = await generateTypeDoc({
 	},
 
 	entryPoints: ['../src/vanilla/index.ts'],
-	tsconfig: '../tsconfig.docs.json',
+	tsconfig: '../src/vanilla/tsconfig.docs.json',
 })
 
 const reactSidebar = await generateTypeDoc({
@@ -20,7 +20,7 @@ const reactSidebar = await generateTypeDoc({
 		collapsed: true
 	},
 	entryPoints: ['../src/react/index.ts'],
-	tsconfig: '../tsconfig.docs.json',
+	tsconfig: '../src/react/tsconfig.docs.json',
 })
 const vueSidebar = await generateTypeDoc({
 	output: "reference/vue",
@@ -29,7 +29,7 @@ const vueSidebar = await generateTypeDoc({
 		collapsed: true
 	},
 	entryPoints: ['../src/vue/index.ts'],
-	tsconfig: '../tsconfig.docs.json',
+	tsconfig: '../src/vue/tsconfig.docs.json',
 })
 
 

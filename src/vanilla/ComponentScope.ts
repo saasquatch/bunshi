@@ -8,17 +8,35 @@ import { createScope } from "../vanilla";
  * way that global state or other scoped state is created.
  * 
  * @example
- * Counter state
+ * Counter state (React)
  * ```ts
  * const CounterM = molecule((_, scope) => {
  *    scope(ComponentScope);
  *    return atom(0);
  * });
  * 
- * // Similar to useState, but allows for the state to be hoisted, moved,
- * // depended on in other molecules and refactored without updating the component
+ * // State will NOT be shared between components
  * const useCounter = () => useAtom(useMolecule(CounterM));
+ * 
+ * // The above is equivalent to:
+ * // const useCounter = useAtom(useRef(atom(0)).current);
+ * 
+ * // The above is also equivalent to:
  * // const useCounter = useState(0)
-* ```
+ * ```
+ * @example
+ * Counter state (Vue)
+ * ```ts
+ * const CounterM = molecule((_, scope) => {
+ *    scope(ComponentScope);
+ *    return ref(0);
+ * });
+ * 
+ * // State will NOT be shared between components
+ * const useCounter = () => useMolecule(CounterM);
+ * 
+ * // The above is equivalent to:
+ * // const useCounter = () => ref(0)
+ * ```
  */
 export const ComponentScope = createScope<undefined>(undefined);

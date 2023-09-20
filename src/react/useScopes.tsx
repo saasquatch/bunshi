@@ -1,9 +1,8 @@
 import { useContext, useEffect, useMemo, useRef } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { getDownstreamScopes } from "../shared/getDownstreamScopes";
-import { ScopeTuple } from "../vanilla";
+import { ScopeTuple, ComponentScope } from "../vanilla";
 import { AnyScopeTuple } from "../vanilla/internal/internal-types";
-import { ComponentScope } from "./ComponentScope";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useInjector } from "./useInjector";
 
