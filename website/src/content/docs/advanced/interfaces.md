@@ -7,7 +7,7 @@ sidebar:
 Sometimes you don't care about the implementation details. Your molecules need a dependency, but it doesn't matter where it comes from or how it's
 implemented. Bunshi supports **interfaces** as a tool to fix this problem.
 
-An interface defines a depencency, but not the implementation for the dependency or how it gets created.
+An interface defines a dependency, but not the implementation for the dependency or how it gets created.
 
 ## API
 
