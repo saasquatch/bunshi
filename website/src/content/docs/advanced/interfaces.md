@@ -12,7 +12,7 @@ An interface defines a dependency, but not the implementation for the dependency
 ## API
 
 In other programming languages interfaces can be referenced at build time or runtime, but Javascript doesn't have interfaces and 
-Typescript interfaceds don't exist at runtime.
+Typescript interfaces don't exist at runtime.
 
 Bunshi has `moleculeInterface` to create molecule interfaces that can be referenced and used at runtime.
 
