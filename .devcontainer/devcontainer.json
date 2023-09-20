@@ -15,7 +15,8 @@
 				"GitHub.codespaces",
 				"GitHub.vscode-pull-request-github",
 				"github.vscode-github-actions",
-				"esbenp.prettier-vscode"
+				"esbenp.prettier-vscode",
+				"ZixuanChen.vitest-explorer"
 			]
 		}
 	}
