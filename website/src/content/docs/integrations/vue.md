@@ -5,7 +5,7 @@ title: "Vue"
 Bunshi ships with support for Vue out of the box. Support is based on the [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html) introduced in Vue 3.
 
 ```js
-import { useMolecule, provideScope } from "bunshi/vue"
+import { useMolecule, provideScope } from "bunshi/vue";
 ```
 
 ## Basic API
@@ -16,12 +16,12 @@ Use a molecule for the current scopes. Will produce a different value depending 
 
 ```vue
 <script setup>
-import { useMolecule } from 'bunshi/vue';
-import { useStore } from '@nanostores/vue'
-import { FormErrors } from '../molecules'
+import { useMolecule } from "bunshi/vue";
+import { useStore } from "@nanostores/vue";
+import { FormErrors } from "../molecules";
 
 const { errors } = useMolecule(FormErrors);
-const list = useStore(errors)
+const list = useStore(errors);
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const list = useStore(errors)
 By default `useMolecule` will provide a molecule based off the _implicit_ scope of the component. You can override this behaviour by passing options to `useMolecule`.
 
 - `withScope` - will overide a scope value
-- `withUniqueScope` - will override a scope value with a new unique value 
+- `withUniqueScope` - will override a scope value with a new unique value
 - `exclusiveScope` - will override ALL scopes
 
 Instead of implicit scopes from `provideScope`, you can use an explicit scope when using a molecule. This can simplify integrating with other libraries.
@@ -61,4 +61,4 @@ provideScope([formIdScope,formId])
 
 ## Vue 2 and Options API
 
-We have decided intentionally not to provide support for the options API. But since Bunshi provides a [vanilla javascript interface](/vanilla), it should be possible to use Bunshi with older version of Vue.
+Bunshi does not yet support the options API. But since Bunshi provides a [vanilla javascript interface](/vanilla), it should be possible to use Bunshi with older version of Vue.

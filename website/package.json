@@ -19,5 +19,6 @@
     "starlight-typedoc": "^0.5.0",
     "typedoc": "^0.25.1",
     "typedoc-plugin-markdown": "^4.0.0-next.20"
-  }
+  },
+  "prettier":{}
 }

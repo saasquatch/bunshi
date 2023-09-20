@@ -18,7 +18,7 @@ Jotai and Bunshi both share the concept of "scope", but they are very different.
 
 - **Molecule scopes can be interconnected**, but atom scopes are "separate universes".
 - **Molecules can depend on molecules AND scope**, but atoms only depend on other atoms.
-- You are unlikely to ever use `jotai` scope, but you should definitely use `bunshi` scope as much as possible.
+- You are unlikely to ever use Jotai scope, but you should definitely use Bunshi scope as much as possible.
 
 ## Bunshi vs TSyringe
 
@@ -27,12 +27,14 @@ Jotai and Bunshi both share the concept of "scope", but they are very different.
 Molecules in Bunshi are similar to Providers in TSyringe and accomplish a similar goal to dependency injection.
 
 Pros for Bunshi:
+
 - Bunshi has scoping
 - Bunshi has React and Vue support
 - Bunshi doesn't rely on decorators. It is hard to use `reflect-metadata` with starters like CRA, Next.js etc. You need to eject or hack starters and it is far from ideal.
 - Bunshi doesn't automatically handle classes
 
 Pros for TSyringe:
+
 - Support constructor injection on classes with decorators
 - Disposable instances
 - Circular dependencies

@@ -14,6 +14,8 @@ The challenge with jotai is getting a reference to an atom outside of a componen
 - You can [lift state up](https://reactjs.org/docs/lifting-state-up.html), by changing your molecule definitions
 - When you lift state up, or push state down, you don't need to refactor your component
 
+## Before Bunshi
+
 Let's examine this idea by looking at an example `Counter` component.
 
 The most important function in these examples is the `createAtom` function, it creates all the state:
@@ -21,6 +23,8 @@ The most important function in these examples is the `createAtom` function, it c
 ```ts
 const createAtom = () => atom(0);
 ```
+
+### Global state
 
 Here is an example of the two synchronized `Counter` components using **global state**.
 
@@ -46,6 +50,8 @@ export const App = () => (
 );
 ```
 
+### Component state
+
 Here is the same component with **Component State**. Notice the use of `useMemo`:
 
 ```tsx
@@ -69,6 +75,8 @@ export const App = () => (
   </>
 );
 ```
+
+### Scoped state
 
 Here is a component with **context-based state**:
 
@@ -151,12 +159,18 @@ export const App = () => (
 );
 ```
 
+### Summary
+
 For all of these examples;
 
 - to lift state up, or push state down, we had to refactor `<Counter>`
 - the more specific we want the scope of our state, the more boilerplate is required
 
+## Using Bunshi
+
 With molecules, you can change how atoms are created **without having to refactor your components**.
+
+### Global State
 
 Here is an example of the `<Counter>` component with **global state**:
 
@@ -179,10 +193,28 @@ const Counter = () => {
 export const App = () => <Counter />;
 ```
 
-For a scoped molecule, change the molecule definition and don't refactor the component.
-Now, you can follow the React best practice of [Lifting State Up](https://reactjs.org/docs/lifting-state-up.html) by adding a molecule, and then lifting the state up, or pushing the state down.
+### Component state
 
-Here is an example of the `<Counter>` component with **scoped context state**:
+To have unique state per component, change the molecule definition to use `ComponentScope` and don't refactor the component. Here is an example of the `<Counter>` component with **component state**:
+
+```tsx
+import { atom, useAtom } from "jotai";
+import { molecule, useMolecule, ComponentScope } from "bunshi/react";
+
+const countMolecule = molecule((mol, scope) => {
+  scope(ComponentScope);
+  console.log("Creating a new atom for component");
+  return atom(0);
+});
+
+// ... Counter unchanged
+
+export const App = () => <Counter />;
+```
+
+### Scoped state
+
+For a scoped molecule, change the molecule definition and don't refactor the component. Here is an example of the `<Counter>` component with **scoped context state**:
 
 ```tsx
 import { atom, useAtom } from "jotai";
@@ -194,8 +226,8 @@ import {
 } from "bunshi/react";
 
 const UserScope = createScope(undefined);
-const countMolecule = molecule((getMol, getScope) => {
-  const userId = getScope(UserScope);
+const countMolecule = molecule((mol, scope) => {
+  const userId = scope(UserScope);
   console.log("Creating a new atom for", userId);
   return atom(0);
 });
@@ -208,3 +240,9 @@ export const App = () => (
   </ScopeProvider>
 );
 ```
+
+## Summary
+
+Now, you can follow the React best practice of [Lifting State Up](https://reactjs.org/docs/lifting-state-up.html) by adding a molecule, and then lifting the state up, or pushing the state down.
+
+You can also choose to use the favorite state management library and use it for individual components, sections of your application, or your entire application.

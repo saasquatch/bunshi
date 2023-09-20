@@ -54,20 +54,18 @@ const App = () => (
 );
 ```
 
-
 **Explicit scope:**
 
 ```tsx
 useMolecule(UserMolecule, { withScope: [UserScope, "sam@example.com"] });
 ```
 
-
 ### ScopeProvider
 
 Provides a new value for Scope, similar to React Context. This will create new molecules in the react tree that depend on it.
 
 ```tsx
-import {ScopeProvider} from "bunshi/react"
+import { ScopeProvider } from "bunshi/react";
 
 const App = () => (
   <ScopeProvider scope={UserScope} value={"sam@example.com"}>
