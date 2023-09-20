@@ -1,8 +1,12 @@
+![Jotai (light mode)](./logo/bunshi.svg)
+
 # Bunshi (formerly `jotai-molecules`)
 
-> Bunshi (分子 / ぶんし) - Japanese for molecule, member or element.
+- **[Documentation](https://bunshi.org)**
 
 A tiny, fast, dependency-free 1.18kb library for creating states stores and other dependencies that lets you lift state up or push state down. Works out of the box with React, Vue and vanilla javascript and Typescript.
+
+> Definition: Bunshi (分子 / ぶんし) - Japanese for molecule, member or element.
 
 Works well with state solutions like:
 
@@ -16,8 +20,7 @@ Comes out of the box with support for:
 
 - React
 - Vue
-- Vanilla Javascript
-- Vanilla Typescript
+- Vanilla Javascript & Typescript
 
 See [the docs](https://bunshi.org) for more details on why we created this library and how to use it.
 
@@ -30,6 +33,10 @@ This module is published on NPM as `bunshi`
 ```sh
 npm i bunshi
 ```
+
+## Documentation
+
+Check out the docs on [bunshi.org](https://bunshi.org).
 
 ## Migrating from jotai-molecules
 
