@@ -49,7 +49,7 @@ export const Resized = ()=>{
 import { useMolecule } from 'bunshi/vue';
 import { ResizeMolecule } from '../molecules'
 
-const observer = useMolecule(FormErrors);
+const observer = useMolecule(ResizeMolecule);
 
 mounted(()=>observer.observe(this.$el));
 unmounted(()=>observer.unobserve(this.$el));

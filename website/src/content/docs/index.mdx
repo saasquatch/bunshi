@@ -7,29 +7,35 @@ hero:
   image:
     file: ../../assets/bunshi.svg
   actions:
-    - text: Getting Started - React
-      link: /integrations/react/
+    - text: Documentation
+      link: /concepts/quickstart/
       icon: right-arrow
       variant: primary
-    - text: Getting Started - Vue
-      link: /integrations/vue/
-      icon: right-arrow
-      variant: primary	  
 ---
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
  
 
-> bunshi - ぶん‐し【分子】- Japanese for molecule
+Bunshi (formerly known as `jotai-molecules`) was born out of the need to create lots of state atoms for jotai, but it evolved as a general dependency injection tool
+for various state managers including [jotai](https://jotai.org/) atoms, [valtio](https://valtio.pmnd.rs/) proxies, [zustand](https://zustand-demo.pmnd.rs/) stores,
+[nanostores](https://github.com/nanostores/nanostores), [vue refs](https://vuejs.org/guide/scaling-up/state-management.html#simple-state-management-with-reactivity-api) and
+others. Stay tuned for how to use bunshi with your favorite state management library, form or RPC library.
 
+> **Definition**: bunshi - ぶん‐し【分子】- Japanese for molecule
 
 ## Features
 
 <CardGrid>
-	<Card title="Small" icon="approve-check">
+	<Card title="Small" icon="right-arrow">
 		Dependency-free and only 1.18kb minified and gzipped.
 	</Card>
-	<Card title="Flexible" icon="random">
+	<Card title="Flexible" icon="puzzle">
 		Works with any frontend or backed javascript framework. Ships with React and Vue integrations.
+	</Card>
+    <Card title="Tested" icon="approve-check">
+		Rigorously tested with high test coverage.
+	</Card>
+    <Card title="Efficient" icon="list-format">
+		Based on WeakMap to prevent memory leaks. Uses memoization to pevent unnecessary re-renders.
 	</Card>
 </CardGrid>
 
