@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2023-04-20
+## [2.0.0] - 2023-09-20
 
 Bunshi 2.0 is the next big release of `jotai-molecules`. We were working on adding `vue` support, and in the process realized that not only did
 we not rely on any code from `jotai`, but also that the concept of dependency injection for the frontend that we were working on was actually
@@ -34,14 +34,18 @@ Moving for `jotai-molecules` to `bunshi`? To migrate change your imports from `j
 ```
 
 ### Changed
-- Default export no longer returns react.
 - Renamed from `jotai-molecules` to `bunshi`
+- Default export no longer returns react. Users will need to change imports from `jotai-molecules` to `bunshi/react`
 
 ### Added
-- Vue support
-- Vanilla JS support
-- Molecule interfaces and bindings
-- Access to the internal injector
+- `bunshi` Vanilla JS support
+- `bunshi/vue` Vue support
+- `bunshi/react` React-specific import
+- `createInjector` and `getDefaultInjector` to access internal state
+- `moleculeInterface` for creating bindable interfaces
+- `ComponentScope` for pushing state down into components
+- Documentation website
+
 
 ## [1.1.1] - 2023-04-20
 
