@@ -1,9 +1,22 @@
 import { renderHook } from "@testing-library/react-hooks";
-import React, { useContext } from "react";
-import { ScopeContext } from "./contexts/ScopeContext";
-import { ScopeProvider } from "./ScopeProvider";
-import { UserMolecule, UserScope } from "./ScopeProvider.test";
-import { useMolecule } from "./useMolecule";
+import React from "react";
+import { describe, expect, test } from "vitest";
+import { ScopeProvider, createScope, molecule, useMolecule } from "../";
+
+import { ComponentScope, useScopes as useOriginalScopes } from "bunshi/react";
+const useScopes = () =>
+  useOriginalScopes().filter(([scope]) => scope !== ComponentScope);
+
+export const UserScope = createScope("user@example.com");
+
+export const UserMolecule = molecule((_, getScope) => {
+  const userId = getScope(UserScope);
+
+  return {
+    example: Math.random(),
+    userId,
+  };
+});
 
 describe("useMolecule", () => {
   test("Use molecule can have scope provided", () => {
@@ -30,7 +43,7 @@ describe("useMolecule", () => {
         molecule: useMolecule(UserMolecule, {
           withScope: [UserScope, "jeffrey@example.com"],
         }),
-        context: useContext(ScopeContext),
+        context: useScopes(),
       };
     };
     const { result } = renderHook(useUserMolecule, {
