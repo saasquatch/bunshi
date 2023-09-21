@@ -64,6 +64,6 @@
     "vitest": "^0.34.5"
   },
   "dependencies": {
-    "bunshi": "^2.0.0"
+    "bunshi": "^2.0.1"
   }
 }
