@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - 2023-04-20
+## [1.2.0] - 2023-09-21
 
 Version 1.2.0 of `jotai-molecules` will be the final release in the 1.x branch (except for security patches).
 
