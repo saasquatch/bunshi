@@ -1,10 +1,10 @@
 import {
-  Molecule,
-  MoleculeScope,
+  type Molecule,
+  type MoleculeScope,
   molecule,
   createScope as newCreateScope,
 } from "bunshi";
-import { MoleculeScopeOptions, ScopeProvider, useMolecule } from "bunshi/react";
+import { type MoleculeScopeOptions, ScopeProvider, useMolecule } from "bunshi/react";
 
 export function createScope<T = undefined>(): MoleculeScope<undefined>;
 export function createScope<T>(defaultValue: T): MoleculeScope<T>;
@@ -14,9 +14,9 @@ export function createScope(defaultValue?: unknown): MoleculeScope<unknown> {
 }
 
 export {
-  Molecule,
-  MoleculeScope,
-  MoleculeScopeOptions,
+  type Molecule,
+  type MoleculeScope,
+  type MoleculeScopeOptions,
   ScopeProvider,
   molecule,
   useMolecule,
