@@ -1,5 +1,9 @@
 import type { MoleculeScope } from "./scope";
-import type { TupleAndReferences } from "./useMemoizedScopeTuple";
+
+export type TupleAndReferences = {
+  references: Set<Symbol>;
+  tuple: AnyScopeTuple;
+};
 
 export type ScopeTuple<T> = [MoleculeScope<T>, T];
 

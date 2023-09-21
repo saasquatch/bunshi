@@ -23,7 +23,15 @@ jobs:
         uses: bahmutov/npm-install@v1
 
       - name: Test
-        run: npm test -- --ci --coverage --maxWorkers=2
+        run: npm test
 
       - name: Build
         run: npm run build
+
+  size:
+    needs: build
+    name: Size limit check
+
+    steps:
+      - name: Build
+        run: npm run size

@@ -1,12 +1,14 @@
 {
   "name": "jotai-molecules",
   "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "license": "MIT",
   "main": "dist/index.js",
-  "module": "dist/jotai-molecules.esm.js",
+  "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
   "author": "ReferralSaaSquatch.com, Inc.",
+  "homepage": "https://bunshi.org",
+  "repository": "https://github.com/saasquatch/bunshi",
   "files": [
     "dist",
     "src"
@@ -15,18 +17,16 @@
     "node": ">=10"
   },
   "scripts": {
-    "start": "tsdx watch",
-    "build": "tsdx build",
-    "test": "tsdx test --passWithNoTests",
-    "prepare": "tsdx build",
+    "start": "vitest --watch",
+    "build": "tsup",
+    "test": "vitest run",
     "size": "size-limit",
     "analyze": "size-limit --why",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook"
   },
   "peerDependencies": {
-    "react": ">=16",
-    "jotai": ">=1"
+    "react": ">=16"
   },
   "husky": {
     "hooks": {
@@ -36,35 +36,34 @@
   "prettier": {},
   "size-limit": [
     {
-      "path": "dist/jotai-molecules.cjs.production.min.js",
+      "path": "dist/index.mjs",
       "limit": "2 KB"
     },
     {
-      "path": "dist/jotai-molecules.esm.js",
+      "path": "dist/index.js",
       "limit": "2 KB"
     }
   ],
   "devDependencies": {
     "@babel/core": "^7.17.8",
-    "@size-limit/preset-small-lib": "^7.0.8",
-    "@storybook/addon-essentials": "^6.4.19",
-    "@storybook/addon-info": "^5.3.21",
-    "@storybook/addon-links": "^6.4.19",
-    "@storybook/addons": "^6.4.19",
-    "@storybook/react": "^6.4.19",
-    "@types/react": "^17.0.43",
-    "@types/react-dom": "^17.0.14",
+    "@size-limit/preset-small-lib": "^9.0.0",
+    "@types/react": "^16.0.0",
+    "@types/react-dom": "^16.0.0",
     "babel-loader": "^8.2.4",
     "husky": "^7.0.4",
     "jotai": ">=1",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "npm-run-all": "^4.1.5",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
     "react-hooks-testing-library": "^0.6.0",
-    "react-is": "^18.0.0",
-    "react-test-renderer": "^18.0.0",
+    "react-is": "^16.0.0",
+    "react-test-renderer": "^16.0.0",
     "size-limit": "^7.0.8",
-    "tsdx": "^0.14.1",
-    "tslib": "^2.3.1",
-    "typescript": "^4.6.3"
+    "tsup": "^7.2.0",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.5"
+  },
+  "dependencies": {
+    "bunshi": "^2.0.1"
   }
 }

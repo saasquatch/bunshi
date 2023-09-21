@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2023-09-21
+
+Version 1.2.0 of `jotai-molecules` will be the final release in the 1.x branch (except for security patches).
+
+Version 2 of `jotai-molecules` has been renamed to `bunshi` and is mostly backwards compatible with the API,
+but requires changes to imports and uses different internals. Because of this, we release 1.2 as a shim to 
+simplify the migration process.
+
+This version should be able to interoperate with `bunshi`, so you can gradually move your imports over.
+
+### Changed
+- Internally uses `bunshi`, the next version of jotai-molecules
+- Removed peer dependency on `jotai`
+
 ## [1.1.1] - 2023-04-20
 
 ### Changed
@@ -40,7 +54,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.1.1...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.2.0
 [1.1.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.1
 [1.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.0
 [1.0.3]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.0.3

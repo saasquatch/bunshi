@@ -1,8 +1,14 @@
+import {
+  createInjector,
+  createScope,
+  Molecule,
+  molecule,
+  ScopeTuple,
+} from "bunshi";
 import { atom, PrimitiveAtom } from "jotai";
-import { Molecule, molecule } from "./molecule";
-import { createStore } from "./store";
-import { createScope } from "./scope";
-import { ScopeTuple } from "./types";
+import { describe, it, expect } from "vitest";
+
+const createStore = createInjector;
 
 type BaseAtoms = {
   nameAtom: PrimitiveAtom<string>;
@@ -74,27 +80,30 @@ describe("Store", () => {
     expect(firstValue).toBe(secondValue);
   });
 
-  ([derivedMol, doubleDerived] as Molecule<{ base: BaseAtoms }>[]).forEach(
-    (mol) => {
-      it("returns the same value for derived molecule", () => {
-        const store = createStore();
+  function testWithBase(molIn: typeof derivedMol) {
+    const store = createStore();
 
-        const firstValue = store.get(mol);
-        const secondValue = store.get(mol);
-        const firstBaseValue = store.get(exampleMol);
-        const secondBaseValue = store.get(exampleMol);
+    const firstValue = store.get(molIn);
+    const secondValue = store.get(molIn);
+    const firstBaseValue = store.get(exampleMol);
+    const secondBaseValue = store.get(exampleMol);
 
-        // All should be the same value
-        expect(firstValue).toBe(secondValue);
-        expect(firstBaseValue).toBe(secondBaseValue);
+    // All should be the same value
+    expect(firstValue).toBe(secondValue);
+    expect(firstBaseValue).toBe(secondBaseValue);
 
-        expect(firstValue.base).toBe(firstBaseValue);
-        expect(secondValue.base).toBe(secondBaseValue);
-        expect(firstValue.base).toBe(secondBaseValue);
-        expect(secondValue.base).toBe(firstBaseValue);
-      });
-    }
-  );
+    expect(firstValue.base).toBe(firstBaseValue);
+    expect(secondValue.base).toBe(secondBaseValue);
+    expect(firstValue.base).toBe(secondBaseValue);
+    expect(secondValue.base).toBe(firstBaseValue);
+  }
+  
+  it("returns the same value for derived molecule", () => {
+    testWithBase(derivedMol);
+  });
+  it("returns the same value for double derived molecule", () => {
+    testWithBase(doubleDerived);
+  });
 
   it("two stores return different molecules", () => {
     const store1 = createStore();

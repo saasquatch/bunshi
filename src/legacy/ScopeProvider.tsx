@@ -1,7 +1,5 @@
-import React from "react";
-import { ScopeContext } from "./contexts/ScopeContext";
+import React, { createContext } from "react";
 import { MoleculeScope } from "./scope";
-import { MoleculeScopeOptions, useScopes } from "./useScopes";
 
 export type ProviderProps<T> = {
   scope: MoleculeScope<T>;
@@ -13,6 +11,8 @@ export type ProviderProps<T> = {
   children?: React.ReactNode;
 };
 
+const FakeContext = createContext<any>(undefined);
+
 /**
  * Provides scope for all molecules lower down in the React component tree.
  *
@@ -20,22 +20,7 @@ export type ProviderProps<T> = {
  *
  */
 export function ScopeProvider<T>(props: ProviderProps<T>) {
-  const { value, scope, uniqueValue } = props;
-
-  let options: MoleculeScopeOptions;
-  if (uniqueValue) {
-    options = {
-      withUniqueScope: scope,
-    };
-  } else {
-    options = {
-      withScope: [scope, value],
-    };
-  }
-  const downstreamScopes = useScopes(options);
   return (
-    <ScopeContext.Provider value={downstreamScopes}>
-      {props.children}
-    </ScopeContext.Provider>
+    <FakeContext.Provider value={props}>{props.children}</FakeContext.Provider>
   );
 }
