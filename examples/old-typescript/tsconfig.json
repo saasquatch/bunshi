@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    /* Bundler mode */
+    "noEmit": true,
+    "esModuleInterop": true,
+    "lib": ["ES2015"]
+  },
+  "include": ["src"]
+}
