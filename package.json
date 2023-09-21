@@ -18,13 +18,28 @@
     "dev": "run-p dev:*",
     "dev:build": "tsup --watch",
     "dev:test": "vitest --watch",
-    "test": "run-s test:*",
+    "test": "run-p test:*",
     "test:code": "vitest run --coverage",
+    "test:typings": "cd examples/old-typescript && npm i && npm run build",
     "test:size": "size-limit"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",
   "typings": "dist/vanilla.d.ts",
+  "types": "dist/vanilla.d.ts",
+  "typesVersions": {
+    ">=3.8": {
+      "react": [
+        "./dist/react.d.ts"
+      ],
+      "vue": [
+        "./dist/vue.d.ts"
+      ],
+      ".": [
+        "./dist/vanilla.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/vanilla.d.ts",
