@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2023-09-21
+
+### Changed
+
+- Added `typesVersions` in `package.json` to support older typescript versions
+
 ## [2.0.0] - 2023-09-20
 
 Bunshi 2.0 is the next big release of `jotai-molecules`. We were working on adding `vue` support, and in the process realized that not only did
@@ -21,7 +27,7 @@ a component or a component tree.
 
 So, instead of creating `vue-molecules` and `valtio-molecules` and others, we decided to keep it simple and rename our library.
 
-The new name for `jotai-molecules` is Bunshi. bunshi (分子, ぶんし) is the japanese word for molecule. Why bunshi? We are big fans of `valtio`, `zustand` and `jotai`, 
+The new name for `jotai-molecules` is Bunshi. bunshi (分子, ぶんし) is the japanese word for molecule. Why bunshi? We are big fans of `valtio`, `zustand` and `jotai`,
 so we wanted to keep with the tradition of naming libraries using other languages. If you didn't now, `zustand` is German for "state" and `valtio` is Finnish for "state".
 
 The other thing that is releasing at the same time here is our new documentation website. It's difficult to keep everything up to date in a single Readme, so we moved to a static site generator.
@@ -34,10 +40,12 @@ Moving for `jotai-molecules` to `bunshi`? To migrate change your imports from `j
 ```
 
 ### Changed
+
 - Renamed from `jotai-molecules` to `bunshi`
 - Default export no longer returns react. Users will need to change imports from `jotai-molecules` to `bunshi/react`
 
 ### Added
+
 - `bunshi` Vanilla JS support
 - `bunshi/vue` Vue support
 - `bunshi/react` React-specific import
@@ -46,10 +54,10 @@ Moving for `jotai-molecules` to `bunshi`? To migrate change your imports from `j
 - `ComponentScope` for pushing state down into components
 - Documentation website
 
-
 ## [1.1.1] - 2023-04-20
 
 ### Changed
+
 - Updated license copyright to be in line with SaaSquatch open-source policy.
 
 ## [1.1.0] - 2022-05-31
@@ -80,7 +88,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.1
 [2.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.0
 [1.1.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.1
 [1.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.0
