@@ -12,8 +12,8 @@ hero:
       icon: right-arrow
       variant: primary
 ---
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
- 
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
 
 Bunshi (formerly known as `jotai-molecules`) was born out of the need to create lots of state atoms for jotai, but it evolved as a general dependency injection tool
 for various state managers including [jotai](https://jotai.org/) atoms, [valtio](https://valtio.pmnd.rs/) proxies, [zustand](https://zustand-demo.pmnd.rs/) stores,
@@ -25,31 +25,33 @@ others. Stay tuned for how to use bunshi with your favorite state management lib
 ## Features
 
 <CardGrid>
-	<Card title="Small" icon="right-arrow">
-		Dependency-free and only 1.18kb minified and gzipped.
-	</Card>
-	<Card title="Flexible" icon="puzzle">
-		Works with any frontend or backed javascript framework. Ships with React and Vue integrations.
-	</Card>
-    <Card title="Tested" icon="approve-check">
-		Rigorously tested with high test coverage.
-	</Card>
-    <Card title="Efficient" icon="list-format">
-		Based on WeakMap to prevent memory leaks. Uses memoization to pevent unnecessary re-renders.
-	</Card>
+  <Card title="Small" icon="right-arrow">
+    Dependency-free and only 1.18kb minified and gzipped.
+  </Card>
+  <Card title="Flexible" icon="puzzle">
+    Works with any frontend or backed javascript framework. Ships with React and
+    Vue integrations.
+  </Card>
+  <Card title="Tested" icon="approve-check">
+    Rigorously tested with high test coverage.
+  </Card>
+  <Card title="Efficient" icon="list-format">
+    Based on WeakMap to prevent memory leaks. Uses memoization to pevent
+    unnecessary re-renders.
+  </Card>
 </CardGrid>
 
 ## Integrations
 
 <CardGrid>
-	<LinkCard
-		title="Bunshi React"
-		description="Declaratively build your jotai, valtio, zustand, nanostore and other state stores."
-		href="/integrations/react/"
-	/>
-	<LinkCard
-		title="Bunshi Vue"
-		description="Declaractively build your refs, jotai, nanostore and other state stores."
-		href="/integrations/vue/"
-	/>
+  <LinkCard
+    title="Bunshi React"
+    description="Declaratively build your jotai, valtio, zustand, nanostore and other state stores."
+    href="/integrations/react/"
+  />
+  <LinkCard
+    title="Bunshi Vue"
+    description="Declaractively build your refs, jotai, nanostore and other state stores."
+    href="/integrations/vue/"
+  />
 </CardGrid>

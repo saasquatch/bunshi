@@ -79,7 +79,7 @@ Instead, let's make each component have it's own resize observer. We can do this
 ```ts
 import { molecule, ComponentScope } from "bunshi";
 
-export const ResizeMolecule = molecule((_, scope) => {
+export const ResizeMolecule = molecule((mol, scope) => {
   scope(ComponentScope);
   return new ResizeObserver((e) => console.log("Resize", e));
 });
@@ -97,9 +97,9 @@ import { molecule, createScope } from "bunshi";
 
 export const FormScope = createScope("none");
 
-export const ResizeMolecule = molecule((,scope) => {
-    scope(FormScope);
-    return new ResizeObserver((e)=>console.log("Resize",e))
+export const ResizeMolecule = molecule((mol, scope) => {
+  scope(FormScope);
+  return new ResizeObserver((e) => console.log("Resize", e));
 });
 ```
 

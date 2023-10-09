@@ -46,7 +46,7 @@ Molecules don't just have to return one thing. For example, if you're using `jot
 import { molecule } from "bunshi";
 import { atom } from "jotai";
 
-export const FormAtom = molecule((mol, scope) => {
+export const FormAtom = molecule(() => {
   const dataAtom = atom({});
   const errorsAtom = atom([]);
   const hasErrors = atom((get) => get(errorsAtom).length > 0);
@@ -80,7 +80,6 @@ import { atomWithStore } from "jotai-zustand";
 import { atomWithProxy } from "jotai-valtio";
 
 export const CountersAtom = molecule(() => {
-
   // Zustand store
   const counterStore = create(() => ({ count: 0 }));
 
