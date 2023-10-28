@@ -15,10 +15,12 @@
     "sharp": "^0.32.5"
   },
   "devDependencies": {
+    "@astrojs/react": "^3.0.4",
+    "@codesandbox/sandpack-react": "^2.9.0",
     "@vue/tsconfig": "^0.4.0",
     "starlight-typedoc": "^0.5.0",
     "typedoc": "^0.25.1",
     "typedoc-plugin-markdown": "^4.0.0-next.20"
   },
-  "prettier":{}
+  "prettier": {}
 }

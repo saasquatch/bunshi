@@ -5,6 +5,7 @@ sidebar:
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
 
 ## Installation
 
@@ -35,17 +36,36 @@ To use a molecule, pass it to `useMolecule` in your framework integration (React
 <Tabs>
 	<TabItem label="React">
 
-```tsx
-import { useMolecule } from "bunshi/react";
-import { ResizeMolecule } from "../molecules";
+    <CodeEditor
+      files={{"App.js":`import { useMolecule } from "bunshi/react";
+    import { ResizeMolecule } from "./molecules";
 
-export const Resized = () => {
-  const observer = useMolecule(ResizeMolecule);
-  return (
-    <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
-  );
-};
-```
+    export default () => {
+      const observer = useMolecule(ResizeMolecule);
+      return (
+        <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
+      );
+    };`,
+    "molecules.js":`import { molecule } from "bunshi";
+
+export const ResizeMolecule = molecule(
+  () => new ResizeObserver((e) => console.log("Resize", e))
+);`
+    }}
+      >
+    </CodeEditor>
+
+    ```tsx
+    import { useMolecule } from "bunshi/react";
+    import { ResizeMolecule } from "./molecules";
+
+    export const Resized = () => {
+      const observer = useMolecule(ResizeMolecule);
+      return (
+        <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
+      );
+    };
+    ```
 
     </TabItem>
     <TabItem label="Vue">

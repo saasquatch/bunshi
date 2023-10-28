@@ -1,0 +1,30 @@
+---
+import { Sandpack } from "@codesandbox/sandpack-react";
+
+interface Props {
+  template?: string;
+  files?: Record<string,string>;
+}
+
+const {template, files} = Astro.props;
+
+// See docs: https://sandpack.codesandbox.io/docs/getting-started/usage#templates
+
+---
+<style is:global>
+.cm-line{
+  margin-top: 0px !important;
+}
+</style>
+
+<Sandpack
+    template={template ?? "react"}
+    client:load
+    customSetup={{
+      dependencies: {
+        // Must exist
+        "bunshi": "latest",
+      }
+    }}
+    files={files}
+  />
