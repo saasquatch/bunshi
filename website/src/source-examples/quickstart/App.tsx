@@ -1,19 +1,26 @@
 import { useMolecule } from "bunshi/react";
+import { useAtom } from "jotai";
 import React from "react";
-import { ResizeMolecule } from "./molecules";
+import { CountMolecule } from "./molecules";
 
-export default function Resized() {
-  const observer = useMolecule(ResizeMolecule);
-  const style = {
-    border: "2px solid",
-    padding: "20px",
-    width: "300px",
-    resize: "both",
-    overflow: "auto",
-  } as const;
+export default function App() {
   return (
-    <div style={style} ref={(el) => observer.observe(el)}>
-      My size is being watched.
+    <div>
+      <Counter />
+      <Counter />
+    </div>
+  );
+}
+
+function Counter() {
+  const countAtom = useMolecule(CountMolecule);
+
+  const [count, setCount] = useAtom(countAtom);
+
+  return (
+    <div>
+      <p>Times clicked: { count }</p>
+      <button onClick={() => setCount((c) => c + 1)}>Increment</button>
     </div>
   );
 }

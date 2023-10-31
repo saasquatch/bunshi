@@ -22,13 +22,13 @@ Molecules are the core building block of bunshi. They are functions that return 
 
 ```ts
 import { molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
 
-export const ResizeMolecule = molecule(
-  () => new ResizeObserver((e) => console.log("Resize", e))
-);
+export const CountMolecule = molecule(() => atom(0));
+
 ```
 
-> When this `ResizeMolecule` is used it will always return the same ResizeObserver. The value is memoized and cached.
+> When this `CountMolecule` is used it will always return the same jotai `atom`. The value is memoized and cached.
 
 ## Use a Molecule
 
@@ -39,35 +39,72 @@ To use a molecule, pass it to `useMolecule` in your framework integration (React
     <CodeEditor files={{
       "App.tsx": quickstart.ReactApp,
       "molecules.ts": quickstart.molecules
-    }} />
+    }}
+    dependencies={{
+      "jotai":"^2.5",
+    }}
+     />
   </TabItem>
   <TabItem label="Vue">
     <CodeEditor 
     files={{
       "src/App.vue": quickstart.VueApp,
+      "src/Counter.vue": quickstart.VueCounter,
       "src/molecules.ts": quickstart.molecules
     }} 
+    dependencies={{
+      "jotai":"^2.5",
+      "jotai-vue":"^0.1"
+    }}
     template="vite-vue" />
   </TabItem>
 </Tabs>
 
-An instance of `ResizeObserver` will be automatically created once and shared across the application in every call to `useMolecule`.
+An instance of `atom` will be automatically created once and shared across the application in every call to `useMolecule`.
 
 ## Scope a Molecule
 
-Molecules can also be [scoped](/concepts/scopes) instead of global. In the above example the `ResizeObserver` was shared globally across the app.
-Instead, let's make each component have it's own resize observer. We can do this using the special `ComponentScope` that comes with Bunshi.
+Molecules can also be [scoped](/concepts/scopes) instead of global. In the above example the `atom` was shared globally across the app.
+Instead, let's make each component have it's own state. We can do this using the special `ComponentScope` that comes with Bunshi.
 
 ```ts
-import { molecule, ComponentScope } from "bunshi";
+import { ComponentScope, molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
 
-export const ResizeMolecule = molecule((_, scope) => {
+export const CountMolecule = molecule((_, scope) => {
   scope(ComponentScope);
-  return new ResizeObserver((e) => console.log("Resize", e));
+  return atom(0);
 });
+
 ```
 
 Scoping is declarative. By calling `scope(ComponentScope)` the molecule will automatically be scoped.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor files={{
+      "App.tsx": quickstart.ReactApp,
+      "molecules.ts": quickstart.molecules2
+    }}
+    dependencies={{
+      "jotai":"^2.5",
+    }}
+     />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor 
+    files={{
+      "src/App.vue": quickstart.VueApp,
+      "src/Counter.vue": quickstart.VueCounter,
+      "src/molecules.ts": quickstart.molecules2
+    }} 
+    dependencies={{
+      "jotai":"^2.5",
+      "jotai-vue":"^0.1"
+    }}
+    template="vite-vue" />
+  </TabItem>
+</Tabs>
 
 ## Use a custom scope
 

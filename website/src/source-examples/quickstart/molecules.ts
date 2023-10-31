@@ -1,5 +1,4 @@
 import { molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
 
-export const ResizeMolecule = molecule(
-  () => new ResizeObserver((e) => console.log("Resize", e))
-);
+export const CountMolecule = molecule(() => atom(0));
