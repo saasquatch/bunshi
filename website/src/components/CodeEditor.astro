@@ -1,30 +1,34 @@
 ---
-import { Sandpack } from "@codesandbox/sandpack-react";
+import { getSandpackCssText } from "@codesandbox/sandpack-react";
+import { CodeEditor as ReactCodeEditor } from "./CodeEditor";
 
-interface Props {
-  template?: string;
-  files?: Record<string,string>;
-}
+import type { ComponentProps } from "react";
 
-const {template, files} = Astro.props;
+type SandpackProps = ComponentProps<typeof ReactCodeEditor>;
+type Props = {
+  template?: SandpackProps["template"];
+  files?: SandpackProps["files"];
+};
+
+const styles = getSandpackCssText();
+const { template, files } = Astro.props;
 
 // See docs: https://sandpack.codesandbox.io/docs/getting-started/usage#templates
-
 ---
-<style is:global>
-.cm-line{
-  margin-top: 0px !important;
-}
-</style>
+<style id="sandpack" is:global set:html={styles} />
 
-<Sandpack
-    template={template ?? "react"}
+<!-- This wrapper ensures the default Atro Starlight theme doesn't add stupid marings
+to all the elements in Sandpack's UI -->
+<div class="not-content">
+  <ReactCodeEditor
+    template={template ?? "react-ts"}
     client:load
     customSetup={{
       dependencies: {
         // Must exist
-        "bunshi": "latest",
-      }
+        bunshi: "latest",
+      },
     }}
     files={files}
   />
+</div>

@@ -6,6 +6,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import CodeEditor from "~/components/CodeEditor.astro";
+import { quickstart } from "~/source-examples/sources";
 
 ## Installation
 
@@ -34,59 +35,20 @@ export const ResizeMolecule = molecule(
 To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue).
 
 <Tabs>
-	<TabItem label="React">
-
-    <CodeEditor
-      files={{"App.js":`import { useMolecule } from "bunshi/react";
-    import { ResizeMolecule } from "./molecules";
-
-    export default () => {
-      const observer = useMolecule(ResizeMolecule);
-      return (
-        <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
-      );
-    };`,
-    "molecules.js":`import { molecule } from "bunshi";
-
-export const ResizeMolecule = molecule(
-  () => new ResizeObserver((e) => console.log("Resize", e))
-);`
-    }}
-      >
-    </CodeEditor>
-
-    ```tsx
-    import { useMolecule } from "bunshi/react";
-    import { ResizeMolecule } from "./molecules";
-
-    export const Resized = () => {
-      const observer = useMolecule(ResizeMolecule);
-      return (
-        <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
-      );
-    };
-    ```
-
-    </TabItem>
-    <TabItem label="Vue">
-
-```vue
-<script setup>
-import { useMolecule } from "bunshi/vue";
-import { ResizeMolecule } from "../molecules";
-
-const observer = useMolecule(ResizeMolecule);
-
-mounted(() => observer.observe(this.$el));
-unmounted(() => observer.unobserve(this.$el));
-</script>
-
-<template>
-  <div>My size is being watched.</div>
-</template>
-```
-
-</TabItem>
+  <TabItem label="React">
+    <CodeEditor files={{
+      "App.tsx": quickstart.ReactApp,
+      "molecules.ts": quickstart.molecules
+    }} />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor 
+    files={{
+      "src/App.vue": quickstart.VueApp,
+      "src/molecules.ts": quickstart.molecules
+    }} 
+    template="vite-vue" />
+  </TabItem>
 </Tabs>
 
 An instance of `ResizeObserver` will be automatically created once and shared across the application in every call to `useMolecule`.
