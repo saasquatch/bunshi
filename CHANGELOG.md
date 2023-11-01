@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2023-11-01
+
+### Fixed
+
+- Changed bundling to support splits in common JS. Fixes #29
+
 ## [2.0.1] - 2023-09-21
 
 ### Changed
@@ -88,7 +94,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.1...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.2
 [2.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.1
 [2.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.0
 [1.1.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v1.1.1
