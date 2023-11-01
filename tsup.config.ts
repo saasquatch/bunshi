@@ -11,5 +11,6 @@ export default defineConfig({
         "cjs", "esm"
     ],
     // Cleanup dist on builds
-    clean: true
+    clean: true,
+    splitting: true
 })
