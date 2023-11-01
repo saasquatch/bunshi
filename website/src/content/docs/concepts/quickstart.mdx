@@ -5,10 +5,12 @@ sidebar:
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { quickstart } from "~/source-examples/sources";
 
 ## Installation
 
-Bunshi is distributed on NPM as both a CommonJS and ES Module. It comes with type definitions for Typescript support.
+Bunshi is distributed on NPM as both a CommonJS and ES Module. It supports both Javscript and Typescript.
 
 ```sh
 npm i -D bunshi
@@ -16,90 +18,118 @@ npm i -D bunshi
 
 ## Create a Molecule
 
-Molecules are the core building block of bunshi. They are functions that return a value.
+Molecules are the core building block of bunshi. They are functions that return a value. Use molecules when you want to create a stable
+object to share with the rest of your application. For this example, a `jotai` atom.
 
 ```ts
 import { molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
 
-export const ResizeMolecule = molecule(
-  () => new ResizeObserver((e) => console.log("Resize", e))
-);
+export const CountMolecule = molecule(() => atom(0));
 ```
 
-> When this `ResizeMolecule` is used it will always return the same ResizeObserver. The value is memoized and cached.
+> When this `CountMolecule` is used it will always return the same `atom`. The value is memoized and cached.
 
 ## Use a Molecule
 
-To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue).
+To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue). An instance of `atom` will be automatically created once and shared across the application in every call to `useMolecule`.
 
 <Tabs>
-	<TabItem label="React">
-
-```tsx
-import { useMolecule } from "bunshi/react";
-import { ResizeMolecule } from "../molecules";
-
-export const Resized = () => {
-  const observer = useMolecule(ResizeMolecule);
-  return (
-    <div ref={(el) => observer.observe(el)}>My size is being watched.</div>
-  );
-};
-```
-
-    </TabItem>
-    <TabItem label="Vue">
-
-```vue
-<script setup>
-import { useMolecule } from "bunshi/vue";
-import { ResizeMolecule } from "../molecules";
-
-const observer = useMolecule(ResizeMolecule);
-
-mounted(() => observer.observe(this.$el));
-unmounted(() => observer.unobserve(this.$el));
-</script>
-
-<template>
-  <div>My size is being watched.</div>
-</template>
-```
-
-</TabItem>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": quickstart.ReactApp,
+        "molecules.ts": quickstart.molecules,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": quickstart.VueApp,
+        "src/Counter.vue": quickstart.VueCounter,
+        "src/molecules.ts": quickstart.molecules,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
 </Tabs>
-
-An instance of `ResizeObserver` will be automatically created once and shared across the application in every call to `useMolecule`.
 
 ## Scope a Molecule
 
-Molecules can also be [scoped](/concepts/scopes) instead of global. In the above example the `ResizeObserver` was shared globally across the app.
-Instead, let's make each component have it's own resize observer. We can do this using the special `ComponentScope` that comes with Bunshi.
+Molecules can be [scoped](/concepts/scopes). Scoped molecules provide a single value per scope, instead of a single value globally.
+In the above example the `atom` was shared globally across the app. Instead, let's make each component have it's own state
+using the built-in `ComponentScope`.
 
 ```ts
-import { molecule, ComponentScope } from "bunshi";
+import { ComponentScope, molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
 
-export const ResizeMolecule = molecule((_, scope) => {
+export const CountMolecule = molecule((_, scope) => {
+  // Because `scope` was called here, this molecule is component scoped
   scope(ComponentScope);
-  return new ResizeObserver((e) => console.log("Resize", e));
+  return atom(0);
 });
 ```
 
 Scoping is declarative. By calling `scope(ComponentScope)` the molecule will automatically be scoped.
 
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": quickstart.ReactApp,
+        "molecules.ts": quickstart.molecules2react,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": quickstart.VueApp,
+        "src/Counter.vue": quickstart.VueCounter,
+        "src/molecules.ts": quickstart.molecules2,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+> Important: See how the source for `Counter` didn't change? This shows how Bunshi lets you pull state up, or
+> push state down. No component changes needed, only molecule changes.
+
 ## Use a custom scope
 
-Sometimes state needs to be shared, but not globally, and not per-component. It needs to exists somewhere in the middle. Bunshi supports creating custom scopes.
+Sometimes state needs to be shared, not globally or per-component, but somewhere in the middle like a Form. Bunshi has `createScope` for this.
 There are a lot of use cases for [scopes](/concepts/scopes) for sharing data across pages, sections, forms, or even rows or columns in a table.
 
-```ts
-import { molecule, createScope } from "bunshi";
+Here let's share our state for all counters in the same form.
 
+```ts
+import { createScope, molecule } from "bunshi";
+import { atom } from "jotai/vanilla";
+
+// FormScope will be used for provided a string value to forms
 export const FormScope = createScope("none");
 
-export const ResizeMolecule = molecule((,scope) => {
-    scope(FormScope);
-    return new ResizeObserver((e)=>console.log("Resize",e))
+export const CountMolecule = molecule((_, scope) => {
+  // Since `scope` is called here, it makes `CountMolecule` scoped to the form
+  scope(FormScope);
+  return atom(0);
 });
 ```
 
@@ -108,60 +138,46 @@ export const ResizeMolecule = molecule((,scope) => {
 Custom scopes need to be provided using the framework-specific API. Bunshi comes with integrations into React and Vue to provide scope implicitly.
 
 <Tabs>
-	<TabItem label="React">
-
-```tsx
-import { ScopeProvider } from "bunshi/react";
-import { FormScope } from "../molecules";
-
-export const Form = ({ name, children }) => {
-  return (
-    <form>
-      Form {name}
-      <ScopeProvider scope={FormScope} value={name}>
-        {children}
-      </ScopeProvider>
-    </form>
-  );
-};
-```
-
-    </TabItem>
-    <TabItem label="Vue">
-
-```vue
-<script setup>
-import { provideScope } from "bunshi/vue";
-import { FormScope } from "../molecules";
-
-const {name} = defineProps(['name'])
-
-provideScope([FormScope,name])
-
-</script>
-
-<template>
-  <form>
-    Form: {{name}}
-    <slot></slot>
-  <form>
-</template>
-
-```
-
-</TabItem>
+  <TabItem label="React">
+    For React use a `ScopeProvider` as a wrapping component, and all children can implicitly use that scope.
+    <CodeEditor
+      files={{
+        "App.tsx": quickstart.ReactFormApp,
+        "molecules.ts": quickstart.molecules3,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    For Vue use `provideScope` to provide scope implicitly to all children in the `slot`.
+    <CodeEditor
+      files={{
+        "src/App.vue": quickstart.VueFormApp,
+        "src/Counter.vue": quickstart.VueCounter,
+        "src/Form.vue": quickstart.VueForm,
+        "src/molecules.ts": quickstart.molecules3,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
 </Tabs>
 
-In this example everything inside of the `<Form>` component will be share a `ResizeObserver`, it won't be unique per component
+In this example everything inside of the `<Form>` component will be share an `atom`, it won't be unique per component
 or shared across the entire application.
 
 ## Conclusion - Decoupled and Lazy
 
 The code that you wrote is decoupled and lazy.
 
-- **Decoupled**: You can refactor the `ResizeMolecule` without affecting the thing that depend on it.
-- **Lazy**: A resize observer is only created lazily when it's needed. It's not eagerly created and sitting around in a variable.
+- **Decoupled**: You can refactor the `CountMolecule` without affecting the thing that depend on it.
+- **Lazy**: An atom is only created lazily when it's needed. It's not eagerly created and sitting around in a variable.
 
 When your write code with molecules, you can pull state up or push state down, without having to refactor your components.
 
-We completed an example of scoping the `ResizeObserver` to be global, scoped to a component, or shared inside of a form.
+We completed an example of scoping the `atom` to be global, scoped to a component, or shared inside of a form.

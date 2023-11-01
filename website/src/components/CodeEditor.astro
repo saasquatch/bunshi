@@ -1,0 +1,36 @@
+---
+import { getSandpackCssText, type SandpackSetup } from "@codesandbox/sandpack-react";
+import { CodeEditor as ReactCodeEditor } from "./CodeEditor";
+
+import type { ComponentProps } from "react";
+
+type SandpackProps = ComponentProps<typeof ReactCodeEditor>;
+type Props = {
+  template?: SandpackProps["template"];
+  files?: SandpackProps["files"];
+  dependencies?: SandpackSetup["dependencies"];
+};
+
+const styles = getSandpackCssText();
+const { template, files, dependencies } = Astro.props;
+
+// See docs: https://sandpack.codesandbox.io/docs/getting-started/usage#templates
+---
+<style id="sandpack" is:global set:html={styles} />
+
+<!-- This wrapper ensures the default Atro Starlight theme doesn't add stupid margins
+to all the elements in Sandpack's UI -->
+<div class="not-content">
+  <ReactCodeEditor
+    template={template ?? "react-ts"}
+    client:load
+    customSetup={{
+      dependencies: {
+        ...dependencies,
+        // Must exist
+        bunshi: "2.0.1",
+      },
+    }}
+    files={files}
+  />
+</div>

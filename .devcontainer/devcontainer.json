@@ -1,12 +1,9 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
-	"name": "Alpine",
+	"name": "Node.js & TypeScript",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.18",
-	"features": {
-		"ghcr.io/devcontainers/features/node:1": {}
-	},
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -28,7 +25,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
+	// "postCreateCommand": "yarn install",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
