@@ -12,6 +12,44 @@ import { zustand } from "~/source-examples/sources";
 
 As a flux state store, it shares a lot in common with [Redux](https://redux.js.org/).
 
+## Component state
+
+Bunshi helps you create Zustand stores per component or other scopes, instead of only defined globally.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": zustand.ReactApp,
+        "molecules.ts": {
+          code: zustand.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        zustand: "^4.4",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": zustand.VueApp,
+        "src/Counter.vue": zustand.VueCounter,
+        "src/molecules.ts": {
+          code: zustand.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        zustand: "^4.4",
+        "vue-zustand": "^0.6",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
 ## Global state
 
 You can use Zustand to define a global stores shared across your application.
@@ -50,44 +88,12 @@ You can use Zustand to define a global stores shared across your application.
   </TabItem>
 </Tabs>
 
-> **Why bunshi?** Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
-> If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use a global
-> zustand store. If you want to use Zustand for more granular purposes, read on.
+## Why Bunshi with Zustand?
 
-## Component state
+Bunshi helps with scoping your stores. It allows you to pull state up and push state down the component tree. 
+If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use a global
+zustand store. If you want to use Zustand for more granular purposes, read on.
 
-Bunshi helps you create Zustand stores per component or other scopes.
-
-<Tabs>
-  <TabItem label="React">
-    <CodeEditor
-      files={{
-        "App.tsx": zustand.ReactApp,
-        "molecules.ts": {
-          code: zustand.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-      }}
-    />
-  </TabItem>
-  <TabItem label="Vue">
-    <CodeEditor
-      files={{
-        "src/App.vue": zustand.VueApp,
-        "src/Counter.vue": zustand.VueCounter,
-        "src/molecules.ts": {
-          code: zustand.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-        "vue-zustand": "^0.6",
-      }}
-      template="vite-vue"
-    />
-  </TabItem>
-</Tabs>
+ * Start using Zustand for component-level state
+ * Move your state to global without touching your code
+ * Stick to the vanilla JS API for Zustand

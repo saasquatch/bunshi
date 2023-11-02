@@ -1,0 +1,105 @@
+---
+title: "XState"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { xstate } from "~/source-examples/sources";
+
+## Background
+
+[XState](https://stately.ai/) is a state management and orchestration solution for JavaScript and TypeScript apps.
+
+It uses event-driven programming, state machines, statecharts, and the actor model to handle complex logic in predictable, robust, and visual ways. 
+XState provides a powerful and flexible way to manage application and workflow state by allowing developers to model logic as actors and state machines.
+It integrates well with React, Vue, Svelte, and other frameworks and can be used in the frontend, backend, or wherever JavaScript runs.
+
+## Component state
+
+Bunshi helps you create xstate machines per component or other scopes, instead of only globally.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": xstate.ReactApp,
+        "molecules.ts": {
+          code: xstate.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        xstate: "^4.4",
+        "@xstate/react": "^3.2",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": xstate.VueApp,
+        "src/Counter.vue": xstate.VueCounter,
+        "src/molecules.ts": {
+          code: xstate.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        xstate: "^4.4",
+        "@xstate/vue": "^2.0",
+      }}
+      template="vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Global state
+
+You can use Xstate to define a machine that is shared across your application, too.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": xstate.ReactApp,
+        "molecules.ts": {
+          code: xstate.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        xstate: "^4.38",
+        "@xstate/react": "^3.2",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": xstate.VueApp,
+        "src/Counter.vue": xstate.VueCounter,
+        "src/molecules.ts": {
+          code: xstate.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        xstate: "^4.38",
+        "@xstate/vue": "^2.0",
+      }}
+      template="vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Why Bunshi with xstate?
+
+Bunshi helps scope your XState services. Notice how in this example you didn't need to touch
+your Counter component to move the state to being global or component scoped. Bunshi helps remove
+boilerplate and centralize your state management tools.
+
+ * Use XState for global state stores
+ * Move state without touching components
+ * Use the vanilla javascript API of XState
+ * Share machines across different pages, components or sections
+ * Keep your state logic decoupled from your UI
