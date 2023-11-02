@@ -21,7 +21,10 @@ You can use Zustand to define a global stores shared across your application.
     <CodeEditor
       files={{
         "App.tsx": zustand.ReactApp,
-        "molecules.ts": zustand.molecules,
+        "molecules.ts": {
+          code: zustand.molecules,
+          active: true,
+        },
       }}
       dependencies={{
         zustand: "^4.4",
@@ -33,7 +36,10 @@ You can use Zustand to define a global stores shared across your application.
       files={{
         "src/App.vue": zustand.VueApp,
         "src/Counter.vue": zustand.VueCounter,
-        "src/molecules.ts": zustand.molecules,
+        "src/molecules.ts": {
+          code: zustand.molecules,
+          active: true,
+        },
       }}
       dependencies={{
         zustand: "^4.4",
@@ -48,7 +54,6 @@ You can use Zustand to define a global stores shared across your application.
 > If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use a global
 > zustand store. If you want to use Zustand for more granular purposes, read on.
 
-
 ## Component state
 
 Bunshi helps you create Zustand stores per component or other scopes.
@@ -58,7 +63,10 @@ Bunshi helps you create Zustand stores per component or other scopes.
     <CodeEditor
       files={{
         "App.tsx": zustand.ReactApp,
-        "molecules.ts": zustand.molecules2,
+        "molecules.ts": {
+          code: zustand.molecules2,
+          active: true,
+        },
       }}
       dependencies={{
         zustand: "^4.4",
@@ -70,7 +78,10 @@ Bunshi helps you create Zustand stores per component or other scopes.
       files={{
         "src/App.vue": zustand.VueApp,
         "src/Counter.vue": zustand.VueCounter,
-        "src/molecules.ts": zustand.molecules2,
+        "src/molecules.ts": {
+          code: zustand.molecules2,
+          active: true,
+        },
       }}
       dependencies={{
         zustand: "^4.4",

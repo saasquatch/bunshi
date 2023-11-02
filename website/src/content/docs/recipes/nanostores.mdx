@@ -21,7 +21,10 @@ You can use nanostores to define global atoms shared across your application.
     <CodeEditor
       files={{
         "App.tsx": nanostores.ReactApp,
-        "molecules.ts": nanostores.molecules,
+        "molecules.ts": {
+          code: nanostores.molecules,
+          active: true,
+        },
       }}
       dependencies={{
         nanostores: "^0.9",
@@ -35,7 +38,10 @@ You can use nanostores to define global atoms shared across your application.
         "src/App.vue": nanostores.VueApp,
         "src/Counter.vue": nanostores.VueCounter,
         "src/Multiplier.vue": nanostores.VueMultiplier,
-        "src/molecules.ts": nanostores.molecules,
+        "src/molecules.ts": {
+          code: nanostores.molecules,
+          active: true,
+        },
       }}
       dependencies={{
         nanostores: "^0.9",
@@ -59,7 +65,10 @@ Now you can re-use the power of atoms to build local state for your components, 
     <CodeEditor
       files={{
         "App.tsx": nanostores.ReactApp,
-        "molecules.ts": nanostores.molecules2,
+        "molecules.ts": {
+          code: nanostores.molecules2,
+          active: true,
+        },
       }}
       dependencies={{
         nanostores: "^0.9",
@@ -73,7 +82,10 @@ Now you can re-use the power of atoms to build local state for your components, 
         "src/App.vue": nanostores.VueApp,
         "src/Counter.vue": nanostores.VueCounter,
         "src/Multiplier.vue": nanostores.VueMultiplier,
-        "src/molecules.ts": nanostores.molecules2,
+        "src/molecules.ts": {
+          code: nanostores.molecules2,
+          active: true,
+        },
       }}
       dependencies={{
         nanostores: "^0.9",
