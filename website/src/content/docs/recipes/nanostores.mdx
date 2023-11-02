@@ -1,0 +1,85 @@
+---
+title: "Nanostores"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { nanostores } from "~/source-examples/sources";
+
+## Background
+
+[Nanostores](https://github.com/nanostores/nanostores) is a tiny state manager for React, React Native, Preact, Vue, Svelte, Solid, Lit, Angular, and vanilla JS. It uses many atomic stores and direct manipulation.
+
+As an atomic state store, it shares a lot in common with [jotai](https://jotai.org/) and [Recoil](https://recoiljs.org/).
+
+## Global molecules
+
+You can use nanostores to define global atoms shared across your application.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": nanostores.ReactApp,
+        "molecules.ts": nanostores.molecules,
+      }}
+      dependencies={{
+        nanostores: "^0.9",
+        "@nanostores/react": "^0.7",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": nanostores.VueApp,
+        "src/Counter.vue": nanostores.VueCounter,
+        "src/Multiplier.vue": nanostores.VueMultiplier,
+        "src/molecules.ts": nanostores.molecules,
+      }}
+      dependencies={{
+        nanostores: "^0.9",
+        "@nanostores/vue": "^0.10",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+> **Why bunshi?** Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
+> If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use nanostores with
+> global variables.
+
+## Component scoped
+
+Now you can re-use the power of atoms to build local state for your components, too.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": nanostores.ReactApp,
+        "molecules.ts": nanostores.molecules2,
+      }}
+      dependencies={{
+        nanostores: "^0.9",
+        "@nanostores/react": "^0.7",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": nanostores.VueApp,
+        "src/Counter.vue": nanostores.VueCounter,
+        "src/Multiplier.vue": nanostores.VueMultiplier,
+        "src/molecules.ts": nanostores.molecules2,
+      }}
+      dependencies={{
+        nanostores: "^0.9",
+        "@nanostores/vue": "^0.10",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>

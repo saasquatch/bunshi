@@ -1,0 +1,82 @@
+---
+title: "Zustand"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { zustand } from "~/source-examples/sources";
+
+## Background
+
+[Zustand](https://github.com/pmndrs/zustand) is a small, fast and scalable bearbones state-management solution using simplified flux principles.
+
+As a flux state store, it shares a lot in common with [Redux](https://redux.js.org/).
+
+## Global state
+
+You can use Zustand to define a global stores shared across your application.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": zustand.ReactApp,
+        "molecules.ts": zustand.molecules,
+      }}
+      dependencies={{
+        zustand: "^4.4",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": zustand.VueApp,
+        "src/Counter.vue": zustand.VueCounter,
+        "src/molecules.ts": zustand.molecules,
+      }}
+      dependencies={{
+        zustand: "^4.4",
+        "vue-zustand": "^0.6",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+> **Why bunshi?** Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
+> If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use a global
+> zustand store. If you want to use Zustand for more granular purposes, read on.
+
+
+## Component state
+
+Bunshi helps you create Zustand stores per component or other scopes.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": zustand.ReactApp,
+        "molecules.ts": zustand.molecules2,
+      }}
+      dependencies={{
+        zustand: "^4.4",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": zustand.VueApp,
+        "src/Counter.vue": zustand.VueCounter,
+        "src/molecules.ts": zustand.molecules2,
+      }}
+      dependencies={{
+        zustand: "^4.4",
+        "vue-zustand": "^0.6",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
