@@ -60,6 +60,10 @@ export default defineConfig({
           autogenerate: { directory: "integrations" },
         },
         {
+          label: "Recipes",
+          autogenerate: { directory: "recipes" },
+        },
+        {
           label: "Advanced",
           autogenerate: { directory: "advanced" },
         },
