@@ -1,0 +1,109 @@
+---
+title: "Valtio"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { valtio } from "~/source-examples/sources";
+
+## Background
+
+The Valtio API is minimal, flexible, unopinionated and a touch magical. Valtio's proxy turns the object you pass it into a self-aware proxy, allowing fine-grained subscription and reactivity when making state updates.
+
+As a proxy state store, it shares a lot in common with `ref` from Vue and [MobX](https://mobx.js.org/).
+
+## Component state
+
+Bunshi lest you re-use the power of valtio proxies to build local state for your components, instead of only globally.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": valtio.ReactApp,
+        "molecules.ts": {
+          code: valtio.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        valtio: "^1.12",
+        "derive-valtio": "0.1",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": valtio.VueApp,
+        "src/Counter.vue": valtio.VueCounter,
+        "src/Multiplier.vue": valtio.VueMultiplier,
+        "src/useProxy.ts": valtio.useProxy,
+        "src/molecules.ts": {
+          code: valtio.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        valtio: "^1.12",
+        "derive-valtio": "0.1",
+        "@nanostores/vue": "^0.10",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Global state
+
+You can use valtio to define global proxies shared across your application.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": valtio.ReactApp,
+        "molecules.ts": {
+          code: valtio.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        valtio: "^1.12",
+        "derive-valtio": "0.1"
+      }}
+    />
+
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": valtio.VueApp,
+        "src/Counter.vue": valtio.VueCounter,
+        "src/Multiplier.vue": valtio.VueMultiplier,
+        "src/useProxy.ts": valtio.useProxy,
+        "src/molecules.ts": {
+          code: valtio.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        valtio: "^1.12",
+        "derive-valtio": "0.1",
+        "@nanostores/vue": "^0.10",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Why Bunshi with Valtio?
+
+Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
+Valtio has a guide on how to use `usePref` and `useContext` to [create component state](https://valtio.pmnd.rs/docs/guides/component-state),
+but Bunshi makes the process more simple and your code more portable.
+
+- Start using Valtio for component-level state
+- Stick to the vanilla javascript API for Valtio
+- Decouple your Valtio logic from your UI framework code
+- Move your state from component level to global without refactoring components
