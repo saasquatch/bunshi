@@ -10,7 +10,7 @@ const increment = () => machine.send({type:"INCREMENT"});
 
 <template>
   <div>
-    <p>Times clicked: {{machine.state.value.context.count }}</p>
+    <p>Clicks: {{machine.state.value.context.count }}</p>
 
     <button @click="increment()">increment</button>
   </div>

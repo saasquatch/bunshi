@@ -8,7 +8,7 @@ function Counter() {
   const { count, increment } = useStore(countStore);
   return (
     <div>
-      <p>Times clicked: {count}</p>
+      <p>Clicks: {count}</p>
       <button onClick={increment}>Increment count</button>
     </div>
   );

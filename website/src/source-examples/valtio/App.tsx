@@ -10,7 +10,7 @@ function Counter() {
   return (
     <div>
       <p>
-        Times clicked: {count} for total value {value}
+        Clicks: {count} for total value {value}
       </p>
       <button onClick={increment}>Increment count</button>
     </div>

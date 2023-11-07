@@ -1,12 +1,13 @@
-import { useStore } from "@nanostores/react";
 import { useMolecule } from "bunshi/react";
+import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import { CountMolecule, MultiplierMolecule } from "./molecules";
 
 function Counter() {
-  const { countAtom, valueAtom, increment } = useMolecule(CountMolecule);
-  const count = useStore(countAtom);
-  const value = useStore(valueAtom);
+  const { countAtom, valueAtom } = useMolecule(CountMolecule);
+  const [count, setCount] = useAtom(countAtom);
+  const value = useAtomValue(valueAtom);
+  const increment = () => setCount((c) => c + 1);
   return (
     <div>
       <p>
@@ -19,8 +20,8 @@ function Counter() {
 
 function Multiplier() {
   const multiplierAtom = useMolecule(MultiplierMolecule);
-  const multiple = useStore(multiplierAtom);
-  const increment = () => multiplierAtom.set(multiplierAtom.get() + 1);
+  const [multiple, setMultiple] = useAtom(multiplierAtom);
+  const increment = () => setMultiple((c) => c + 1);
   return (
     <div>
       <p>Multiplier: {multiple}</p>
