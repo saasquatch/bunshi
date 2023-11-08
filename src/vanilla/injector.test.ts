@@ -797,7 +797,7 @@ describe("Scope caching", () => {
       });
 
       test("It does NOT cache when leases are not overlapping", () => {
-        // Note: Behaviour changed in Version 1.1
+        // Note: Behaviour changed in Version 2.1
 
         const testSet = new Set();
         const [mol1, unsub1] = injector.use(ObjectScopedMol, [
@@ -811,7 +811,7 @@ describe("Scope caching", () => {
         ]);
         unsub2();
 
-        expect(mol1).toBe(mol2);
+        expect(mol1).not.toBe(mol2);
       });
     });
   });

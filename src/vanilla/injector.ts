@@ -236,7 +236,6 @@ export function createInjector(
    */
   const moleculeCache = createDeepCache<AnyMolecule | AnyScopeTuple, Mounted>();
   const scopesCleanups = createDeepCache<AnyScopeTuple, ScopeCleanups>();
-  const objectScopeCache = createDeepCache<{}, AnyScopeTuple>();
 
   const primitiveScopeCache = new WeakMap();
   const bindings = bindingsToMap(props.bindings);
