@@ -1,11 +1,121 @@
-import { ErrorAsyncGetMol, ErrorAsyncGetScope, ErrorInvalidGlobalInjector, ErrorInvalidMolecule, ErrorInvalidScope, ErrorUnboundMolecule } from "./internal/errors";
-import type { AnyMolecule, AnyMoleculeScope, AnyScopeTuple, MoleculeInternal } from "./internal/internal-types";
-import { deregisterScopeTuple, registerMemoizedScopeTuple } from "./internal/memoized-scopes";
-import { DefaultInjector, GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
-import { isInjector, isMolecule, isMoleculeInterface, isMoleculeScope } from "./internal/utils";
+import {
+  ErrorAsyncGetMol,
+  ErrorAsyncGetScope,
+  ErrorInvalidGlobalInjector,
+  ErrorInvalidMolecule,
+  ErrorInvalidScope,
+  ErrorUnboundMolecule,
+} from "./internal/errors";
+import type {
+  AnyMolecule,
+  AnyMoleculeScope,
+  AnyScopeTuple,
+  MoleculeInternal,
+  ScopeTuple,
+} from "./internal/internal-types";
+import {
+  DefaultInjector,
+  GetterSymbol,
+  Injector,
+  TypeSymbol,
+} from "./internal/symbols";
+import {
+  isInjector,
+  isMolecule,
+  isMoleculeInterface,
+  isMoleculeScope,
+} from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import type { Molecule, MoleculeGetter, MoleculeOrInterface, ScopeGetter } from "./molecule";
+import { CleanupCallback, MountedCallback, __setImpl } from "./lifecycle";
+import type {
+  Molecule,
+  MoleculeGetter,
+  MoleculeOrInterface,
+  ScopeGetter,
+} from "./molecule";
 import type { BindingMap, Bindings } from "./types";
+
+export type TupleAndReferences = {
+  references: Set<Symbol>;
+  tuple: AnyScopeTuple;
+};
+
+export type PrimitiveScopeMap = WeakMap<
+  AnyMoleculeScope,
+  Map<unknown, TupleAndReferences>
+>;
+
+/**
+ * Creates a memoized tuple of `[scope,value]`
+ *
+ * Registers primitive `value`s in the primitive scope cache. This has side-effects
+ * and needs to be cleaned up with `deregisterScopeTuple`
+ *
+ */
+function registerMemoizedScopeTuple<T>(
+  tuple: ScopeTuple<T>,
+  id: Symbol,
+  primitiveMap: PrimitiveScopeMap
+): ScopeTuple<T> {
+  const [scope, value] = tuple;
+
+  // Not an object, so we can't safely cache it in a WeakMap
+  let valuesForScope = primitiveMap.get(scope);
+  if (!valuesForScope) {
+    valuesForScope = new Map();
+    primitiveMap.set(scope, valuesForScope);
+  }
+
+  let cached = valuesForScope.get(value);
+  if (cached) {
+    // Increment references
+    cached.references.add(id);
+    return cached.tuple as ScopeTuple<T>;
+  }
+
+  const references = new Set<Symbol>();
+  references.add(id);
+  valuesForScope.set(value, {
+    references,
+    tuple,
+  });
+
+  return tuple;
+}
+
+/**
+ * For values that are "primitive" (not an object),
+ * deregisters them from the primitive scope
+ * cache to ensure no memory leaks
+
+
+    // Clean up scope value, if cached
+    // Deleting the scope tuple should cascade a cleanup
+    // 1 - it is deleted from this map
+    // 2 - it should be garbage collected from the Molecule injector WeakMap
+    // 3 - any atoms created in the molecule should be garbage collected
+    // 4 - any atom values in the jotai store should be garbage collected from it's WeakMap
+
+*/
+function deregisterScopeTuple<T>(
+  tuple: ScopeTuple<T>,
+  id: Symbol,
+  primitiveScopeMap: PrimitiveScopeMap
+) {
+  const [scope, value] = tuple;
+
+  const scopeMap = primitiveScopeMap.get(scope);
+  const cached = scopeMap?.get(value);
+
+  const references = cached?.references;
+  references?.delete(id);
+
+  if (references && references.size <= 0) {
+    scopeMap?.delete(value);
+
+    // TODO: Run molecule onmounts
+  }
+}
 
 type Deps = {
   scopes: AnyMoleculeScope[];
@@ -16,26 +126,29 @@ type Deps = {
 type Mounted = {
   deps: Deps;
   value: unknown;
+  mountedCallbacks: Set<MountedCallback>;
 };
+
+type ScopeCleanups = Set<CleanupCallback>;
 type Unsub = () => unknown;
 
 /**
- * Builds the graphs of molecules that make up your application. 
- * 
- * The injector tracks the dependencies for each molecule and uses bindings to inject them. 
- * 
+ * Builds the graphs of molecules that make up your application.
+ *
+ * The injector tracks the dependencies for each molecule and uses bindings to inject them.
+ *
  * This "behind-the-scenes" operation is what distinguishes dependency injection from its cousin, the service locator pattern.
- * 
+ *
  * From Dependency Injection: https://en.wikipedia.org/wiki/Dependency_injection
- * 
+ *
  * > The injector, sometimes also called an assembler, container, provider or factory, introduces services to the client.
- * > The role of injectors is to construct and connect complex object graphs, where objects may be both clients and services. 
+ * > The role of injectors is to construct and connect complex object graphs, where objects may be both clients and services.
  * > The injector itself may be many objects working together, but must not be the client, as this would create a circular dependency.
- * > Because dependency injection separates how objects are constructed from how they are used, 
- * > it often diminishes the importance of the `new` keyword found in most object-oriented languages. 
- * > Because the framework handles creating services, the programmer tends to only directly construct value objects which represents entities 
+ * > Because dependency injection separates how objects are constructed from how they are used,
+ * > it often diminishes the importance of the `new` keyword found in most object-oriented languages.
+ * > Because the framework handles creating services, the programmer tends to only directly construct value objects which represents entities
  * > in the program's domain (such as an Employee object in a business app or an Order object in a shopping app).
- * 
+ *
  * This is the core of bunshi, although you may rarely interact with it directly.
  */
 export type MoleculeInjector = {
@@ -47,26 +160,27 @@ export type MoleculeInjector = {
    */
   get<T>(molecule: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T;
 
-
   /**
    * Use a molecule, and memoizes scope tuples.
-   * 
+   *
    * Returns a function to cleanup scope tuples.
    *
    * @param molecule
    * @param scopes
    */
-  use<T>(molecule: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): [T, Unsub];
+  use<T>(
+    molecule: MoleculeOrInterface<T>,
+    ...scopes: AnyScopeTuple[]
+  ): [T, Unsub];
 
   /**
    * Use and memoize scopes.
-   * 
+   *
    * Returns a function to cleanup scope tuples.
-   * 
-   * @param scopes 
+   *
+   * @param scopes
    */
   useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
-
 } & Record<symbol, unknown>;
 
 /**
@@ -74,15 +188,15 @@ export type MoleculeInjector = {
  */
 export type CreateInjectorProps = {
   /**
-   * A set of bindings to replace the implemenation of a {@link MoleculeInterface} or 
+   * A set of bindings to replace the implemenation of a {@link MoleculeInterface} or
    * a {@link Molecule} with another {@link Molecule}.
-   * 
+   *
    * Bindings are useful for swapping out implementations of molecules during testing,
    * and for library authors to create shareable molecules that may not have a default
    * implementation
    */
   bindings?: Bindings;
-}
+};
 
 function bindingsToMap(bindings?: Bindings): BindingMap {
   if (!bindings) return new Map();
@@ -93,43 +207,47 @@ function bindingsToMap(bindings?: Bindings): BindingMap {
   return new Map(bindings.entries());
 }
 
-
 /**
  * Creates a {@link MoleculeInjector}
  *
  * This is the core stateful component of `bunshi` and can have interfaces bound to implementations here.
- * 
+ *
  * @example
  * Create an injector with bindings
- * 
+ *
  * ```ts
  * const NumberMolecule = moleculeInterface<number>();
  * const RandomNumberMolecule = molecule<number>(()=>Math.random());
- * 
+ *
  * const injector = createInjector({
  *     bindings:[[NumberMolecule,RandomNumberMolecule]]
  * })
  * ```
  */
-export function createInjector(props: CreateInjectorProps = {}): MoleculeInjector {
-
+export function createInjector(
+  props: CreateInjectorProps = {}
+): MoleculeInjector {
   /*
-  *
-  *
-  *     State
-  * 
-  * 
-  */
-  const moleculeCache = createDeepCache();
-  const objectScopeCache = createDeepCache();
+   *
+   *
+   *     State
+   *
+   *
+   */
+  const moleculeCache = createDeepCache<AnyMolecule | AnyScopeTuple, Mounted>();
+  const scopesCleanups = createDeepCache<AnyScopeTuple, ScopeCleanups>();
+  const objectScopeCache = createDeepCache<{}, AnyScopeTuple>();
+
   const primitiveScopeCache = new WeakMap();
   const bindings = bindingsToMap(props.bindings);
 
-  /** 
-  * Lookup bindings to override a molecule, or throw an error for unbound interfaces
-  * 
-  */
-  function getTrueMolecule<T>(molOrIntf: MoleculeOrInterface<T>): MoleculeInternal<T> {
+  /**
+   * Lookup bindings to override a molecule, or throw an error for unbound interfaces
+   *
+   */
+  function getTrueMolecule<T>(
+    molOrIntf: MoleculeOrInterface<T>
+  ): MoleculeInternal<T> {
     const bound = bindings.get(molOrIntf);
     if (bound) return bound as MoleculeInternal<T>;
     if (isMolecule(molOrIntf)) return molOrIntf as MoleculeInternal<T>;
@@ -139,32 +257,32 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
 
   /**
    * Create a new instance of a molecule
-   * 
+   *
    */
-  function mountMolecule(
+  function runMolecule(
     maybeMolecule: AnyMolecule,
     getScopeValue: ScopeGetter,
-    scopes: AnyScopeTuple[]
+    getMoleculeValue: (mol: AnyMolecule) => Mounted
   ): Mounted {
     const m = getTrueMolecule(maybeMolecule);
 
     const dependentMolecules = new Set<AnyMolecule>();
     const dependentScopes = new Set<AnyMoleculeScope>();
     const transientScopes = new Set<AnyMoleculeScope>();
-    let running = true;
     const trackingScopeGetter: ScopeGetter = (s) => {
-      if (!running) throw new Error(ErrorAsyncGetScope)
-      if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope)
+      if (!running) throw new Error(ErrorAsyncGetScope);
+      if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope);
       dependentScopes.add(s);
       return getScopeValue(s);
     };
     const trackingGetter: MoleculeGetter = (molOrInterface) => {
       if (!running) throw new Error(ErrorAsyncGetMol);
-      if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface)) throw new Error(ErrorInvalidMolecule);
+      if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface))
+        throw new Error(ErrorInvalidMolecule);
 
       const dependentMolecule = getTrueMolecule(molOrInterface);
       dependentMolecules.add(dependentMolecule);
-      const mol = getInternal(dependentMolecule, ...scopes);
+      const mol = getMoleculeValue(dependentMolecule);
       Array.from(mol.deps.scopes.values()).forEach((s) =>
         transientScopes.add(s)
       );
@@ -174,8 +292,15 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
       return mol.value as any;
     };
 
+    const mountedCallbacks = new Set<MountedCallback>();
+    __setImpl((fn: MountedCallback) => {
+      mountedCallbacks.add(fn);
+    });
+    let running = true;
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
     running = false;
+    __setImpl(undefined);
+
     return {
       deps: {
         molecules: Array.from(dependentMolecules.values()),
@@ -183,19 +308,26 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
         transitiveScopes: Array.from(transientScopes.values()),
       },
       value,
+      mountedCallbacks,
     };
   }
 
   function getInternal<T>(m: Molecule<T>, ...scopes: AnyScopeTuple[]): Mounted {
     const getScopeValue: ScopeGetter = (scope) => {
-      const found = scopes.find(
-        (providedScope) => providedScope[0] === scope
-      );
+      const found = scopes.find((providedScope) => providedScope[0] === scope);
       if (found) return found[1] as any;
       return scope.defaultValue;
     };
 
-    const mounted = mountMolecule(m, getScopeValue, scopes);
+    const mounted = runMolecule(m, getScopeValue, (m) =>
+      getInternal(m, ...scopes)
+    );
+
+    // TODO: How do we cleanup `mounted` if it never makes it into the cache?
+    // That's a big question
+    // Since molecules can only register their scopes and dependencies when they are called
+    // And that's the same time that the component is called
+    // Then we need a different lifecycle for "starting" and "ending" vs creating
 
     const relatedScope = scopes.filter((s) => {
       const scopeKey = s[0];
@@ -207,21 +339,38 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
       return mounted.deps.transitiveScopes.includes(scopeKey);
     });
 
+    const scopeKeys = [...relatedScope, ...transitiveRelatedScope];
     const dependencies = [
-      m,
       ...relatedScope,
       ...transitiveRelatedScope,
       ...mounted.deps.molecules,
+      m,
     ];
 
-    return moleculeCache.deepCache(
-      () => mounted,
-      dependencies
-    );
+    return moleculeCache.deepCache(() => {
+      // // No molecule exists, so mount a new one
+      if (scopeKeys.length > 0) {
+        scopesCleanups.upsert((cleanupSet) => {
+          const combined = new Set(cleanupSet as ScopeCleanups);
+          mounted.mountedCallbacks.forEach((onMount) => {
+            // Call all the mount functions for the molecule
+            const cleanup = onMount();
+
+            // Queues up the cleanup functions for later
+            if (cleanup) combined.add(cleanup);
+          });
+
+          return combined;
+        }, scopeKeys);
+      }
+
+      return mounted;
+    }, dependencies) as Mounted;
   }
 
   function get<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T {
-    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error(ErrorInvalidMolecule);
+    if (!isMolecule(m) && !isMoleculeInterface(m))
+      throw new Error(ErrorInvalidMolecule);
     const bound = getTrueMolecule(m);
     return getInternal(bound, ...scopes).value as T;
   }
@@ -229,21 +378,30 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
     const unsubs = new Set<Unsub>();
     const tuples = scopes.map((tuple) => {
-
       const uniqueValue = Symbol(Math.random());
-      const memoizedTuple = registerMemoizedScopeTuple(tuple, uniqueValue, primitiveScopeCache, objectScopeCache);
+      const memoizedTuple = registerMemoizedScopeTuple(
+        tuple,
+        uniqueValue,
+        primitiveScopeCache
+      );
 
-      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue, primitiveScopeCache));
+      unsubs.add(() =>
+        deregisterScopeTuple(tuple, uniqueValue, primitiveScopeCache)
+      );
 
       return memoizedTuple;
-    })
-    const unsub = () => unsubs.forEach(fn => fn());
+    });
+    const unsub = () => unsubs.forEach((fn) => fn());
 
-    return [tuples, unsub]
+    return [tuples, unsub];
   }
 
-  function use<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): [T, Unsub] {
-    if (!isMolecule(m) && !isMoleculeInterface(m)) throw new Error(ErrorInvalidMolecule);
+  function use<T>(
+    m: MoleculeOrInterface<T>,
+    ...scopes: AnyScopeTuple[]
+  ): [T, Unsub] {
+    if (!isMolecule(m) && !isMoleculeInterface(m))
+      throw new Error(ErrorInvalidMolecule);
 
     const [tuples, unsub] = useScopes(...scopes);
     const value = get<T>(m, ...tuples);
@@ -260,11 +418,10 @@ export function createInjector(props: CreateInjectorProps = {}): MoleculeInjecto
 
 /**
  * Returns the globally defined {@link MoleculeInjector}
- * 
- * @returns 
+ *
+ * @returns
  */
 export const getDefaultInjector = () => {
-
   const defaultInjector = (globalThis as any)[DefaultInjector];
 
   if (defaultInjector === undefined) {
@@ -277,5 +434,5 @@ export const getDefaultInjector = () => {
     return defaultInjector;
   }
 
-  throw new Error(ErrorInvalidGlobalInjector)
-}
+  throw new Error(ErrorInvalidGlobalInjector);
+};

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+ - Change to scoping. Object scopes will now be cleaned up, even for non-overlapping leases.
+
 ## [2.0.2] - 2023-11-01
 
 ### Fixed
