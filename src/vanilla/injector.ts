@@ -38,6 +38,7 @@ import type { BindingMap, Bindings } from "./types";
 export type TupleAndReferences = {
   references: Set<Symbol>;
   tuple: AnyScopeTuple;
+  cleanups: ScopeCleanups;
 };
 
 export type PrimitiveScopeMap = WeakMap<
@@ -78,6 +79,7 @@ function registerMemoizedScopeTuple<T>(
   valuesForScope.set(value, {
     references,
     tuple,
+    cleanups: new Set(),
   });
 
   return tuple;
@@ -113,7 +115,8 @@ function deregisterScopeTuple<T>(
   if (references && references.size <= 0) {
     scopeMap?.delete(value);
 
-    // TODO: Run molecule onmounts
+    // Run all cleanups
+    cached?.cleanups.forEach((cb) => cb());
   }
 }
 
@@ -235,9 +238,8 @@ export function createInjector(
    *
    */
   const moleculeCache = createDeepCache<AnyMolecule | AnyScopeTuple, Mounted>();
-  const scopesCleanups = createDeepCache<AnyScopeTuple, ScopeCleanups>();
 
-  const primitiveScopeCache = new WeakMap();
+  const scopeCache: PrimitiveScopeMap = new WeakMap();
   const bindings = bindingsToMap(props.bindings);
 
   /**
@@ -347,20 +349,27 @@ export function createInjector(
     ];
 
     return moleculeCache.deepCache(() => {
-      // // No molecule exists, so mount a new one
-      if (scopeKeys.length > 0) {
-        scopesCleanups.upsert((cleanupSet) => {
-          const combined = new Set(cleanupSet as ScopeCleanups);
-          mounted.mountedCallbacks.forEach((onMount) => {
-            // Call all the mount functions for the molecule
-            const cleanup = onMount();
+      // No molecule exists, so mount a new one
 
-            // Queues up the cleanup functions for later
-            if (cleanup) combined.add(cleanup);
+      if (mounted.mountedCallbacks.size > 0) {
+        if (scopeKeys.length <= 0)
+          throw new Error(
+            "Can't use mount lifecycle in globally scoped molecules."
+          );
+        const combined: ScopeCleanups = new Set();
+        mounted.mountedCallbacks.forEach((onMount) => {
+          // Call all the mount functions for the molecule
+          const cleanup = onMount();
+
+          // Queues up the cleanup functions for later
+          if (cleanup) combined.add(cleanup);
+        });
+
+        scopeKeys.forEach(([scopeKey, scopeValue]) => {
+          combined.forEach((cleanup) => {
+            scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups.add(cleanup);
           });
-
-          return combined;
-        }, scopeKeys);
+        });
       }
 
       return mounted;
@@ -381,12 +390,10 @@ export function createInjector(
       const memoizedTuple = registerMemoizedScopeTuple(
         tuple,
         uniqueValue,
-        primitiveScopeCache
+        scopeCache
       );
 
-      unsubs.add(() =>
-        deregisterScopeTuple(tuple, uniqueValue, primitiveScopeCache)
-      );
+      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue, scopeCache));
 
       return memoizedTuple;
     });
