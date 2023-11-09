@@ -10,7 +10,7 @@ const value = useProxy(valueProxy);
 
 <template>
   <div>
-    <p>Times clicked: {{ count.count }} for total value {{ value.value }}</p>
+    <p>Clicks: {{ count.count }} for total value {{ value.value }}</p>
     <button @click="increment()">increment</button>
   </div>
 </template>

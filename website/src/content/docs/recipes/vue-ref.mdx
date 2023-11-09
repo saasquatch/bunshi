@@ -1,0 +1,67 @@
+---
+title: "Vue Reactivity APIs"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { vueRefs } from "~/source-examples/sources";
+
+## Background
+
+Vue 3 introduced the composition API that includes reactive building blocks like `ref`, `shallowRef` and `reactive`. These
+primitives can be used for local or [global state](https://vuejs.org/guide/scaling-up/state-management.html).
+
+Since these are based on Proxy objects, they have a lot in common with [Valtio](https://valtio.pmnd.rs/).
+
+## Component state
+
+You can use Vue's reactivity API for different types of state using Bunshi. This example is based on the 
+[Vue developer docs for state management](https://vuejs.org/guide/scaling-up/state-management.html).
+
+ * The multiplier uses **global state**
+ * The counter uses **component state**
+ * The value is derived from **both** local and global state
+
+<CodeEditor
+  files={{
+    "src/App.vue": vueRefs.VueApp,
+    "src/Counter.vue": vueRefs.VueCounter,
+    "src/Multiplier.vue": vueRefs.VueMultiplier,
+    "src/molecules.ts": {
+      code: vueRefs.molecules,
+      active: true,
+    },
+  }}
+  dependencies={{}}
+  template="vite-vue"
+/>
+
+
+## Global state
+
+In this example we made the counter state global. We removed the `scope` call, and now the state is global.
+
+<CodeEditor
+  files={{
+    "src/App.vue": vueRefs.VueApp,
+    "src/Counter.vue": vueRefs.VueCounter,
+    "src/Multiplier.vue": vueRefs.VueMultiplier,
+    "src/molecules.ts": {
+      code: vueRefs.molecules2,
+      active: true,
+    },
+  }}
+  dependencies={{}}
+  template="vite-vue"
+/>
+
+## Why Bunshi with the Vue reactivity API?
+
+Bunshi helps with scoping your state to the right level. It allows you to pull state up and push state down the component tree.
+If the only type of state you have is component state, then you can avoid bunshi and use the Vue reactivity API directly inside
+of your tree.
+
+- Use Vue's reactivity API for global-level state
+- Stick to the reactivity API for all your state needs
+- Decouple your state logic from your UI components
+- Move your state from component level to global without refactoring components
