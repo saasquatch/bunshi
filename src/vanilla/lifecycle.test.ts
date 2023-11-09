@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import { createInjector } from "./injector";
 import { AnyScopeTuple } from "./internal/internal-types";
 import { onMount, use } from "./lifecycle";
-import { Molecule, molecule } from "./molecule";
+import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
 describe("Single scope dependencies", () => {
@@ -45,7 +45,7 @@ describe("Single scope dependencies", () => {
   test("Derived molecules are cleaned up", () => {
     const { injector, ExampleScope } = createHarness();
 
-    const BaseMolecule: Molecule<Function> = molecule(() => {
+    const BaseMolecule = molecule(() => {
       const testFn = use(ExampleScope);
       onMount(() => {
         testFn("base", "mounted");
@@ -58,7 +58,7 @@ describe("Single scope dependencies", () => {
     const DerivedMolecule = molecule(() => {
       // FIXME: Type error here
       // Molecule return type is not inferred
-      const testFn = use(BaseMolecule);
+      const testFn = use<Function>(BaseMolecule);
 
       onMount(() => {
         testFn("derived", "mounted");
