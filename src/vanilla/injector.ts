@@ -28,9 +28,10 @@ import {
 import { createDeepCache } from "./internal/weakCache";
 import {
   CleanupCallback,
+  InternalUse,
   MountedCallback,
-  __popImpl,
-  __pushImpl,
+  onMountImpl,
+  useImpl,
 } from "./lifecycle";
 import type {
   Molecule,
@@ -298,35 +299,48 @@ export function createInjector(
     const dependentMolecules = new Set<AnyMolecule>();
     const dependentScopes = new Set<AnyMoleculeScope>();
     const transientScopes = new Set<AnyMoleculeScope>();
+
+    const use: InternalUse = (dep) => {
+      if (isMoleculeScope(dep)) {
+        dependentScopes.add(dep);
+        return getScopeValue(dep);
+      }
+      if (isMolecule(dep) || isMoleculeInterface(dep)) {
+        const dependentMolecule = getTrueMolecule(dep);
+        dependentMolecules.add(dependentMolecule);
+        const mol = getMoleculeValue(dependentMolecule);
+        Array.from(mol.deps.scopes.values()).forEach((s) =>
+          transientScopes.add(s)
+        );
+        Array.from(mol.deps.transitiveScopes).forEach((s) =>
+          transientScopes.add(s)
+        );
+        return mol.value as any;
+      }
+      throw new Error(
+        "Can only call `use` with a molecule, interface or scope"
+      );
+    };
     const trackingScopeGetter: ScopeGetter = (s) => {
       if (!running) throw new Error(ErrorAsyncGetScope);
       if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope);
-      dependentScopes.add(s);
-      return getScopeValue(s);
+      return use(s);
     };
     const trackingGetter: MoleculeGetter = (molOrInterface) => {
       if (!running) throw new Error(ErrorAsyncGetMol);
       if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface))
         throw new Error(ErrorInvalidMolecule);
-
-      const dependentMolecule = getTrueMolecule(molOrInterface);
-      dependentMolecules.add(dependentMolecule);
-      const mol = getMoleculeValue(dependentMolecule);
-      Array.from(mol.deps.scopes.values()).forEach((s) =>
-        transientScopes.add(s)
-      );
-      Array.from(mol.deps.transitiveScopes).forEach((s) =>
-        transientScopes.add(s)
-      );
-      return mol.value as any;
+      return use(molOrInterface);
     };
 
     const mountedCallbacks = new Set<MountedCallback>();
-    __pushImpl((fn) => mountedCallbacks.add(fn));
+    onMountImpl.push((fn) => mountedCallbacks.add(fn));
+    useImpl.push(use);
     let running = true;
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
     running = false;
-    __popImpl();
+    onMountImpl.pop();
+    useImpl.pop();
 
     return {
       deps: {

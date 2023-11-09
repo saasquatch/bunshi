@@ -1,8 +1,8 @@
 import { vi } from "vitest";
 import { createInjector } from "./injector";
 import { AnyScopeTuple } from "./internal/internal-types";
-import { onMount } from "./lifecycle";
-import { molecule } from "./molecule";
+import { onMount, use } from "./lifecycle";
+import { Molecule, molecule } from "./molecule";
 import { createScope } from "./scope";
 
 describe("Single scope dependencies", () => {
@@ -10,8 +10,8 @@ describe("Single scope dependencies", () => {
     const defaultFn = vi.fn();
     const ExampleScope = createScope<Function>(defaultFn);
 
-    const ExampleCleanupMolecule = molecule((mol, scope) => {
-      const testFn = scope(ExampleScope);
+    const ExampleCleanupMolecule = molecule(() => {
+      const testFn = use(ExampleScope);
 
       onMount(() => {
         testFn("mounted");
@@ -52,8 +52,8 @@ describe("Single scope dependencies", () => {
   test("Derived molecules are cleaned up", () => {
     const { injector, ExampleScope } = createHarness();
 
-    const BaseMolecule = molecule((mol, scope) => {
-      const testFn = scope(ExampleScope);
+    const BaseMolecule:Molecule<Function> = molecule(() => {
+      const testFn = use(ExampleScope);
       onMount(() => {
         testFn("base", "mounted");
         return () => testFn("base", "unmounted");
@@ -62,8 +62,10 @@ describe("Single scope dependencies", () => {
       return testFn;
     });
 
-    const DerivedMolecule = molecule((mol, scope) => {
-      const testFn = mol(BaseMolecule);
+    const DerivedMolecule = molecule(() => {
+      // FIXME: Type error here
+      // Molecule return type is not inferred
+      const testFn = use(BaseMolecule as Molecule<string>);
 
       onMount(() => {
         testFn("derived", "mounted");
@@ -126,9 +128,9 @@ describe("Two scope dependencies", () => {
     const ExampleScopeA = createScope<Function>(defaultFnA);
     const ExampleScopeB = createScope<Function>(defaultFnB);
     let instanceCount = 1;
-    const ExampleCleanupMolecule = molecule((mol, scope) => {
-      const testFnA = scope(ExampleScopeA);
-      const testFnB = scope(ExampleScopeB);
+    const ExampleCleanupMolecule = molecule(() => {
+      const testFnA = use(ExampleScopeA);
+      const testFnB = use(ExampleScopeB);
       const instanceId = instanceCount++;
 
       onMount(() => {
