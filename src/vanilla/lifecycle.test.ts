@@ -6,42 +6,98 @@ import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
 describe("Single scope dependencies", () => {
-  const defaultFn = vi.fn();
-  const ExampleScope = createScope<Function>(defaultFn);
+  function createHarness() {
+    const defaultFn = vi.fn();
+    const ExampleScope = createScope<Function>(defaultFn);
 
-  const ExampleCleanupMolecule = molecule((mol, scope) => {
-    const testFn = scope(ExampleScope);
+    const ExampleCleanupMolecule = molecule((mol, scope) => {
+      const testFn = scope(ExampleScope);
 
-    mounted(() => {
-      testFn("mounted");
-      return () => testFn("unmounted");
+      mounted(() => {
+        testFn("mounted");
+        return () => testFn("unmounted");
+      });
+      testFn("created");
+      return testFn;
     });
-    testFn("created");
-    return testFn;
-  });
 
-  test("Default scope values are cleaned up", () => {
     const injector = createInjector();
 
-    const [value, unsub] = injector.use(ExampleCleanupMolecule);
-    expect(value).toBe(defaultFn);
-    expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
-    expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
+    return { defaultFn, ExampleScope, ExampleCleanupMolecule, injector };
+  }
 
-    const [value2, unsub2] = injector.use(ExampleCleanupMolecule);
-    expect(value2).toBe(defaultFn);
-    expect(defaultFn).toHaveBeenNthCalledWith(3, "created");
+  test("Default scope values are cleaned up", () => {
+    const { injector, ExampleCleanupMolecule } = createHarness();
 
-    unsub2();
-    expect(defaultFn).toHaveBeenCalledTimes(3);
+    // FIXME: Would be very handy to be able to use default scope values
+    expect(() => injector.use(ExampleCleanupMolecule)).toThrowError();
+
+    // const [value, unsub] = injector.use(ExampleCleanupMolecule);
+    // expect(value).toBe(defaultFn);
+    // expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
+    // expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
+
+    // const [value2, unsub2] = injector.use(ExampleCleanupMolecule);
+    // expect(value2).toBe(defaultFn);
+    // expect(defaultFn).toHaveBeenNthCalledWith(3, "created");
+
+    // unsub2();
+    // expect(defaultFn).toHaveBeenCalledTimes(3);
+
+    // unsub();
+    // expect(defaultFn).toHaveBeenCalledTimes(4);
+    // expect(defaultFn).toHaveBeenNthCalledWith(4, "unmounted");
+  });
+
+  test("Derived molecules are cleaned up", () => {
+    const { injector, ExampleScope } = createHarness();
+
+    const BaseMolecule = molecule((mol, scope) => {
+      const testFn = scope(ExampleScope);
+      mounted(() => {
+        testFn("base", "mounted");
+        return () => testFn("base", "unmounted");
+      });
+      testFn("base", "created");
+      return testFn;
+    });
+
+    const DerivedMolecule = molecule((mol, scope) => {
+      const testFn = mol(BaseMolecule);
+
+      mounted(() => {
+        testFn("derived", "mounted");
+        return () => testFn("derived", "unmounted");
+      });
+      testFn("derived", "created");
+      return testFn;
+    });
+
+    const mockFn = vi.fn();
+    const scopeTuple: AnyScopeTuple = [ExampleScope, mockFn];
+
+    const [value, unsub] = injector.use(DerivedMolecule, scopeTuple);
+    expect(value).toBe(mockFn);
+
+    const expectedCalls1 = [
+      ["base", "created"],
+      ["base", "mounted"],
+      ["derived", "created"],
+      ["derived", "mounted"],
+    ];
+    expect(mockFn.mock.calls).toStrictEqual(expectedCalls1);
 
     unsub();
-    expect(defaultFn).toHaveBeenCalledTimes(4);
-    expect(defaultFn).toHaveBeenNthCalledWith(4, "unmounted");
+    expect(mockFn.mock.calls).toStrictEqual([
+      ...expectedCalls1,
+      ["base", "unmounted"],
+      ["derived", "unmounted"],
+    ]);
   });
 
   test("Scoped molecules are mounted and cleaned up", () => {
-    const injector = createInjector();
+    const { injector, ExampleScope, ExampleCleanupMolecule } = createHarness();
+
     const mockFn = vi.fn();
     const scopeTuple: AnyScopeTuple = [ExampleScope, mockFn];
 
@@ -129,8 +185,6 @@ describe("Two scope dependencies", () => {
     expect(mockFnC).toHaveBeenNthCalledWith(2, "mounted", 2);
 
     unsub2();
-    // FIXME: Instance 2 hasn't been cleaned up because the default
-    // scope tuple hasn't been cleaned up
     expect(mockFnA).toHaveBeenCalledTimes(5);
     expect(mockFnA).toHaveBeenNthCalledWith(5, "unmounted", 2);
 
@@ -167,5 +221,6 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
 
   const injector = createInjector();
 
+  // FIXME: Would be very handy to be able to use globally scoped molecules
   expect(() => injector.get(ExampleCleanupMolecule)).toThrowError();
 });

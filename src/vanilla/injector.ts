@@ -26,7 +26,12 @@ import {
   isMoleculeScope,
 } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
-import { CleanupCallback, MountedCallback, __setImpl } from "./lifecycle";
+import {
+  CleanupCallback,
+  MountedCallback,
+  __popImpl,
+  __pushImpl,
+} from "./lifecycle";
 import type {
   Molecule,
   MoleculeGetter,
@@ -41,7 +46,7 @@ export type TupleAndReferences = {
   cleanups: ScopeCleanups;
 };
 
-export type PrimitiveScopeMap = WeakMap<
+export type ScopeCache = WeakMap<
   AnyMoleculeScope,
   Map<unknown, TupleAndReferences>
 >;
@@ -56,15 +61,15 @@ export type PrimitiveScopeMap = WeakMap<
 function registerMemoizedScopeTuple<T>(
   tuple: ScopeTuple<T>,
   subscriptionId: Symbol,
-  primitiveMap: PrimitiveScopeMap
+  scopeCache: ScopeCache
 ): ScopeTuple<T> {
   const [scope, value] = tuple;
 
   // Not an object, so we can't safely cache it in a WeakMap
-  let valuesForScope = primitiveMap.get(scope);
+  let valuesForScope = scopeCache.get(scope);
   if (!valuesForScope) {
     valuesForScope = new Map();
-    primitiveMap.set(scope, valuesForScope);
+    scopeCache.set(scope, valuesForScope);
   }
 
   let cached = valuesForScope.get(value);
@@ -92,12 +97,12 @@ function registerMemoizedScopeTuple<T>(
  */
 function deregisterScopeTuples<T>(
   subscriptionId: Symbol,
-  primitiveScopeMap: PrimitiveScopeMap,
+  scopeCache: ScopeCache,
   cleanupsRun: WeakSet<CleanupCallback>,
   tuples: ScopeTuple<T>[]
 ) {
   tuples.forEach(([scope, value]) => {
-    const scopeMap = primitiveScopeMap.get(scope);
+    const scopeMap = scopeCache.get(scope);
     const cached = scopeMap?.get(value);
 
     const references = cached?.references;
@@ -107,9 +112,9 @@ function deregisterScopeTuples<T>(
       scopeMap?.delete(value);
 
       // Run all cleanups
-
       cached?.cleanups.forEach((cb) => {
         if (!cleanupsRun.has(cb)) {
+          // Only runs cleanups that haven't already been run
           cb();
           cleanupsRun.add(cb);
         }
@@ -237,8 +242,32 @@ export function createInjector(
    */
   const moleculeCache = createDeepCache<AnyMolecule | AnyScopeTuple, Mounted>();
 
-  const scopeCache: PrimitiveScopeMap = new WeakMap();
+  const scopeCache: ScopeCache = new WeakMap();
+
+  /**
+   * A weakset that makes sure that we never call a cleanup
+   * function for a molecule more than once.
+   *
+   * You can think of this as a Map<CleanupCallback, boolean>
+   * where we set the value to "true" once the callback has
+   * been run:
+   *
+   * `hasRun.set(callback, true)`
+   *
+   * Another way is to think of every callback having an
+   * `hasBeenRun` property:
+   *
+   * `callback.hasBeenRun = true`.
+   *
+   * The weakset provides a simpler, mutation free and memory
+   * efficient way to signal that the callback has been run
+   * and need not be run again.
+   *
+   * Without this weakset, we would need more coordination to ensure
+   * a callback is only run once.
+   */
   const cleanupsRun = new WeakSet<CleanupCallback>();
+
   const bindings = bindingsToMap(props.bindings);
 
   /**
@@ -293,13 +322,11 @@ export function createInjector(
     };
 
     const mountedCallbacks = new Set<MountedCallback>();
-    __setImpl((fn: MountedCallback) => {
-      mountedCallbacks.add(fn);
-    });
+    __pushImpl((fn) => mountedCallbacks.add(fn));
     let running = true;
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
     running = false;
-    __setImpl(undefined);
+    __popImpl();
 
     return {
       deps: {

@@ -3,13 +3,26 @@ export type MountedCallback = () => CleanupCallback | void;
 
 export type InternalOnMounted = (fn: MountedCallback) => void;
 
-let __implementation: InternalOnMounted | undefined = undefined;
+/**
+ * This is structured as a stack to support nested
+ * molecule dependencies
+ */
+let __implementationStack: InternalOnMounted[] = [];
 
-export function mounted(fn: MountedCallback): void {
-  if (!__implementation) throw new Error("No cleanup function in scope");
-  __implementation(fn);
+function __getActive() {
+  return __implementationStack[__implementationStack.length - 1];
 }
 
-export function __setImpl(implementation: InternalOnMounted | undefined) {
-  __implementation = implementation;
+export function mounted(fn: MountedCallback): void {
+  const active = __getActive();
+  if (!active) throw new Error("No cleanup function in scope");
+  active(fn);
+}
+
+export function __pushImpl(implementation: InternalOnMounted) {
+  __implementationStack.push(implementation);
+}
+
+export function __popImpl() {
+  __implementationStack.pop();
 }
