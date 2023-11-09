@@ -1,0 +1,112 @@
+---
+title: "Jotai"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { jotai } from "~/source-examples/sources";
+
+## Background
+
+Jotai takes an atomic approach to global React state management. Build state by combining atoms and renders are automatically optimized based on atom dependencies.
+This solves the extra re-render issue of React context, eliminates the need for memoization,
+and provides a similar developer experience to signals while maintaining a declarative programming model.
+
+As an atomic state store, Jotai shares a lot in common with [nanostores](https://github.com/nanostores/nanostores) and [Recoil](https://recoiljs.org/).
+
+## Component state
+
+Bunshi lest you re-use the power of jotai atoms to build local state for your components, instead of only globally.
+
+ * The multiplier uses **global state**
+ * The counter uses **component state**
+ * The value is derived from **both** local and global state
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": jotai.ReactApp,
+        "molecules.ts": {
+          code: jotai.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": jotai.VueApp,
+        "src/Counter.vue": jotai.VueCounter,
+        "src/Multiplier.vue": jotai.VueMultiplier,
+        "src/molecules.ts": {
+          code: jotai.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+> Notice the scopes? This multiplier combines globally scoped atoms with component scoped atoms.
+> This isn't possible using simple scope implementations such as `jotai-scope`, `Provider` or
+> `useStore` in jotai.
+
+## Global state
+
+You can use jotai to define global atoms shared across your application, too.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": jotai.ReactApp,
+        "molecules.ts": {
+          code: jotai.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": jotai.VueApp,
+        "src/Counter.vue": jotai.VueCounter,
+        "src/Multiplier.vue": jotai.VueMultiplier,
+        "src/molecules.ts": {
+          code: jotai.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Why Bunshi with jotai?
+
+Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
+If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use jotai with
+global variables.
+
+- Start using jotai for component-level state
+- Stick to the vanilla javascript API for jotai
+- Decouple your jotai logic from your UI framework code
+- Move your state from component level to global without refactoring components

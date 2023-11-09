@@ -1,15 +1,14 @@
 <script setup>
-import { useStore } from "vue-zustand";
 import { useMolecule } from "bunshi/vue";
 import { CountMolecule } from "./molecules";
 
-const countStore = useMolecule(CountMolecule);
-const {count, increment} = useStore(countStore);
+const { countRef, valueRef } = useMolecule(CountMolecule);
+const increment = () => countRef.value++;
 </script>
 
 <template>
   <div>
-    <p>Clicks: {{ count }}</p>
+    <p>Clicks: {{ countRef }} for total value {{ valueRef }}</p>
     <button @click="increment()">increment</button>
   </div>
 </template>

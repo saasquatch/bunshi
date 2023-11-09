@@ -9,7 +9,7 @@ function Counter() {
 
   return (
     <div>
-      <p>Times clicked: {count}</p>
+      <p>Clicks: {count}</p>
       <button onClick={() => setCount((c) => c + 1)}>Increment</button>
     </div>
   );

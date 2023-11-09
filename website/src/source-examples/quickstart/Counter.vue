@@ -9,7 +9,7 @@ const [count, setCount] = useAtom(countAtom);
 
 <template>
   <div>
-    <p>Times clicked: {{ count }}</p>
+    <p>Clicks: {{ count }}</p>
     <button @click="setCount((prev) => prev + 1)">increment</button>
   </div>
 </template>

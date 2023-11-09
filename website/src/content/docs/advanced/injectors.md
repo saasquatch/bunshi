@@ -21,5 +21,4 @@ const RandomNumberMolecule = molecule<number>(() => Math.random());
 const injector = createInjector({
   bindings: [[NumberMolecule, RandomNumberMolecule]],
 });
-```o
-````
+```

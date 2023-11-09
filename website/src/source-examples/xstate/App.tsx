@@ -9,7 +9,7 @@ function Counter() {
   const increment = () => send({ type: 'INCREMENT' });
   return (
     <div>
-      <p>Times clicked: {state.context.count}</p>
+      <p>Clicks: {state.context.count}</p>
       <button onClick={increment}>Increment count</button>
     </div>
   );
