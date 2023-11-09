@@ -55,7 +55,7 @@ export type PrimitiveScopeMap = WeakMap<
  */
 function registerMemoizedScopeTuple<T>(
   tuple: ScopeTuple<T>,
-  id: Symbol,
+  subscriptionId: Symbol,
   primitiveMap: PrimitiveScopeMap
 ): ScopeTuple<T> {
   const [scope, value] = tuple;
@@ -70,12 +70,12 @@ function registerMemoizedScopeTuple<T>(
   let cached = valuesForScope.get(value);
   if (cached) {
     // Increment references
-    cached.references.add(id);
+    cached.references.add(subscriptionId);
     return cached.tuple as ScopeTuple<T>;
   }
 
   const references = new Set<Symbol>();
-  references.add(id);
+  references.add(subscriptionId);
   valuesForScope.set(value, {
     references,
     tuple,
@@ -89,35 +89,33 @@ function registerMemoizedScopeTuple<T>(
  * For values that are "primitive" (not an object),
  * deregisters them from the primitive scope
  * cache to ensure no memory leaks
-
-
-    // Clean up scope value, if cached
-    // Deleting the scope tuple should cascade a cleanup
-    // 1 - it is deleted from this map
-    // 2 - it should be garbage collected from the Molecule injector WeakMap
-    // 3 - any atoms created in the molecule should be garbage collected
-    // 4 - any atom values in the jotai store should be garbage collected from it's WeakMap
-
-*/
-function deregisterScopeTuple<T>(
-  tuple: ScopeTuple<T>,
-  id: Symbol,
-  primitiveScopeMap: PrimitiveScopeMap
+ */
+function deregisterScopeTuples<T>(
+  subscriptionId: Symbol,
+  primitiveScopeMap: PrimitiveScopeMap,
+  cleanupsRun: WeakSet<CleanupCallback>,
+  tuples: ScopeTuple<T>[]
 ) {
-  const [scope, value] = tuple;
+  tuples.forEach(([scope, value]) => {
+    const scopeMap = primitiveScopeMap.get(scope);
+    const cached = scopeMap?.get(value);
 
-  const scopeMap = primitiveScopeMap.get(scope);
-  const cached = scopeMap?.get(value);
+    const references = cached?.references;
+    references?.delete(subscriptionId);
 
-  const references = cached?.references;
-  references?.delete(id);
+    if (references && references.size <= 0) {
+      scopeMap?.delete(value);
 
-  if (references && references.size <= 0) {
-    scopeMap?.delete(value);
+      // Run all cleanups
 
-    // Run all cleanups
-    cached?.cleanups.forEach((cb) => cb());
-  }
+      cached?.cleanups.forEach((cb) => {
+        if (!cleanupsRun.has(cb)) {
+          cb();
+          cleanupsRun.add(cb);
+        }
+      });
+    }
+  });
 }
 
 type Deps = {
@@ -240,6 +238,7 @@ export function createInjector(
   const moleculeCache = createDeepCache<AnyMolecule | AnyScopeTuple, Mounted>();
 
   const scopeCache: PrimitiveScopeMap = new WeakMap();
+  const cleanupsRun = new WeakSet<CleanupCallback>();
   const bindings = bindingsToMap(props.bindings);
 
   /**
@@ -384,20 +383,13 @@ export function createInjector(
   }
 
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
-    const unsubs = new Set<Unsub>();
-    const tuples = scopes.map((tuple) => {
-      const uniqueValue = Symbol(Math.random());
-      const memoizedTuple = registerMemoizedScopeTuple(
-        tuple,
-        uniqueValue,
-        scopeCache
-      );
+    const subscriptionId = Symbol(Math.random());
 
-      unsubs.add(() => deregisterScopeTuple(tuple, uniqueValue, scopeCache));
-
-      return memoizedTuple;
-    });
-    const unsub = () => unsubs.forEach((fn) => fn());
+    const tuples = scopes.map((tuple) =>
+      registerMemoizedScopeTuple(tuple, subscriptionId, scopeCache)
+    );
+    const unsub = () =>
+      deregisterScopeTuples(subscriptionId, scopeCache, cleanupsRun, tuples);
 
     return [tuples, unsub];
   }
