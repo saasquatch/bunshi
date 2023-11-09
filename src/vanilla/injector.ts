@@ -350,12 +350,6 @@ export function createInjector(
       getInternal(m, ...scopes)
     );
 
-    // TODO: How do we cleanup `mounted` if it never makes it into the cache?
-    // That's a big question
-    // Since molecules can only register their scopes and dependencies when they are called
-    // And that's the same time that the component is called
-    // Then we need a different lifecycle for "starting" and "ending" vs creating
-
     const relatedScope = scopes.filter((s) => {
       const scopeKey = s[0];
       return mounted.deps.scopes.includes(scopeKey);

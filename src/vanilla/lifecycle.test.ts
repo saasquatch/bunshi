@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 import { createInjector } from "./injector";
 import { AnyScopeTuple } from "./internal/internal-types";
-import { mounted } from "./lifecycle";
+import { onMount } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
@@ -13,7 +13,7 @@ describe("Single scope dependencies", () => {
     const ExampleCleanupMolecule = molecule((mol, scope) => {
       const testFn = scope(ExampleScope);
 
-      mounted(() => {
+      onMount(() => {
         testFn("mounted");
         return () => testFn("unmounted");
       });
@@ -54,7 +54,7 @@ describe("Single scope dependencies", () => {
 
     const BaseMolecule = molecule((mol, scope) => {
       const testFn = scope(ExampleScope);
-      mounted(() => {
+      onMount(() => {
         testFn("base", "mounted");
         return () => testFn("base", "unmounted");
       });
@@ -65,7 +65,7 @@ describe("Single scope dependencies", () => {
     const DerivedMolecule = molecule((mol, scope) => {
       const testFn = mol(BaseMolecule);
 
-      mounted(() => {
+      onMount(() => {
         testFn("derived", "mounted");
         return () => testFn("derived", "unmounted");
       });
@@ -131,7 +131,7 @@ describe("Two scope dependencies", () => {
       const testFnB = scope(ExampleScopeB);
       const instanceId = instanceCount++;
 
-      mounted(() => {
+      onMount(() => {
         testFnA("mounted", instanceId);
         testFnB("mounted", instanceId);
         return () => {
@@ -211,7 +211,7 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
   const testFn = vi.fn();
 
   const ExampleCleanupMolecule = molecule(() => {
-    mounted(() => {
+    onMount(() => {
       testFn("mounted");
       return () => testFn("unmounted");
     });

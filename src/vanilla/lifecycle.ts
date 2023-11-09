@@ -13,7 +13,7 @@ function __getActive() {
   return __implementationStack[__implementationStack.length - 1];
 }
 
-export function mounted(fn: MountedCallback): void {
+export function onMount(fn: MountedCallback): void {
   const active = __getActive();
   if (!active) throw new Error("No cleanup function in scope");
   active(fn);
