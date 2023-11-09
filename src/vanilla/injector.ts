@@ -135,86 +135,6 @@ export type CreateInjectorProps = {
   bindings?: Bindings;
 };
 
-function leaseScopes<T>(
-  tuples: ScopeTuple<T>[],
-  subscriptionId: Symbol,
-  scopeCache: ScopeCache
-): ScopeTuple<T>[] {
-  return tuples.map((t) => leaseScope(t, subscriptionId, scopeCache));
-}
-
-/**
- * Creates a memoized tuple of `[scope,value]`
- *
- * Registers primitive `value`s in the primitive scope cache. This has side-effects
- * and needs to be cleaned up with `deregisterScopeTuple`
- *
- */
-function leaseScope<T>(
-  tuple: ScopeTuple<T>,
-  subscriptionId: Symbol,
-  scopeCache: ScopeCache
-): ScopeTuple<T> {
-  const [scope, value] = tuple;
-
-  // Not an object, so we can't safely cache it in a WeakMap
-  let valuesForScope = scopeCache.get(scope);
-  if (!valuesForScope) {
-    valuesForScope = new Map();
-    scopeCache.set(scope, valuesForScope);
-  }
-
-  let cached = valuesForScope.get(value);
-  if (cached) {
-    // Increment references
-    cached.references.add(subscriptionId);
-    return cached.tuple as ScopeTuple<T>;
-  }
-
-  const references = new Set<Symbol>();
-  references.add(subscriptionId);
-  valuesForScope.set(value, {
-    references,
-    tuple,
-    cleanups: new Set(),
-  });
-
-  return tuple;
-}
-
-/**
- * For values that are "primitive" (not an object),
- * deregisters them from the primitive scope
- * cache to ensure no memory leaks
- */
-function unleaseScope<T>(
-  tuples: ScopeTuple<T>[],
-  subscriptionId: Symbol,
-  scopeCache: ScopeCache,
-  cleanupsRun: WeakSet<CleanupCallback>
-) {
-  tuples.forEach(([scope, value]) => {
-    const scopeMap = scopeCache.get(scope);
-    const cached = scopeMap?.get(value);
-
-    const references = cached?.references;
-    references?.delete(subscriptionId);
-
-    if (references && references.size <= 0) {
-      scopeMap?.delete(value);
-
-      // Run all cleanups
-      cached?.cleanups.forEach((cb) => {
-        if (!cleanupsRun.has(cb)) {
-          // Only runs cleanups that haven't already been run
-          cb();
-          cleanupsRun.add(cb);
-        }
-      });
-    }
-  });
-}
-
 function bindingsToMap(bindings?: Bindings): BindingMap {
   if (!bindings) return new Map();
   if (Array.isArray(bindings)) {
@@ -257,6 +177,7 @@ export function createInjector(
   >();
 
   const scopeCache: ScopeCache = new WeakMap();
+  const subscriptionIdToTuples = new WeakMap<Symbol, Set<AnyScopeTuple>>();
 
   /**
    * A weakset that makes sure that we never call a cleanup
@@ -284,6 +205,93 @@ export function createInjector(
 
   const bindings = bindingsToMap(props.bindings);
 
+  function leaseScopes<T>(
+    tuples: ScopeTuple<T>[],
+    subscriptionId: Symbol,
+    scopeCache: ScopeCache
+  ): ScopeTuple<T>[] {
+    return tuples.map((t) => leaseScope(t, subscriptionId));
+  }
+
+  /**
+   * Creates a memoized tuple of `[scope,value]`
+   *
+   * Registers primitive `value`s in the primitive scope cache. This has side-effects
+   * and needs to be cleaned up with `deregisterScopeTuple`
+   *
+   */
+  function leaseScope<T>(
+    tuple: ScopeTuple<T>,
+    subscriptionId: Symbol
+  ): ScopeTuple<T> {
+    const [scope, value] = tuple;
+
+    // Not an object, so we can't safely cache it in a WeakMap
+    let valuesForScope = scopeCache.get(scope);
+    if (!valuesForScope) {
+      valuesForScope = new Map();
+      scopeCache.set(scope, valuesForScope);
+    }
+
+    let cached = valuesForScope.get(value);
+    if (cached) {
+      // Increment references
+      cached.references.add(subscriptionId);
+      trackSubcription(subscriptionId, cached.tuple as ScopeTuple<T>);
+      return cached.tuple as ScopeTuple<T>;
+    }
+
+    const references = new Set<Symbol>();
+    references.add(subscriptionId);
+    valuesForScope.set(value, {
+      references,
+      tuple,
+      cleanups: new Set(),
+    });
+
+    trackSubcription(subscriptionId, tuple);
+
+    return tuple;
+  }
+
+  function trackSubcription(subscriptionId: Symbol, tuple: AnyScopeTuple) {
+    let subscriptionSet = subscriptionIdToTuples.get(subscriptionId);
+    if (!subscriptionSet) {
+      subscriptionSet = new Set();
+      subscriptionIdToTuples.set(subscriptionId, subscriptionSet);
+    }
+    subscriptionSet.add(tuple);
+  }
+
+  /**
+   * For values that are "primitive" (not an object),
+   * deregisters them from the primitive scope
+   * cache to ensure no memory leaks
+   */
+  function unleaseScope<T>(subscriptionId: Symbol) {
+    const tuples = subscriptionIdToTuples.get(subscriptionId);
+    if (!tuples) return;
+    tuples.forEach(([scope, value]) => {
+      const scopeMap = scopeCache.get(scope);
+      const cached = scopeMap?.get(value);
+
+      const references = cached?.references;
+      references?.delete(subscriptionId);
+
+      if (references && references.size <= 0) {
+        scopeMap?.delete(value);
+
+        // Run all cleanups
+        cached?.cleanups.forEach((cb) => {
+          if (!cleanupsRun.has(cb)) {
+            // Only runs cleanups that haven't already been run
+            cb();
+            cleanupsRun.add(cb);
+          }
+        });
+      }
+    });
+  }
   /**
    * Lookup bindings to override a molecule, or throw an error for unbound interfaces
    *
@@ -368,8 +376,10 @@ export function createInjector(
 
   function getInternal<T>(
     m: Molecule<T>,
+    context: { subscriptionId?: Symbol },
     ...scopes: AnyScopeTuple[]
   ): MoleculeCacheValue {
+    const defaultScopes = new Set<AnyScopeTuple>();
     const getScopeValue: ScopeGetter = (scope) => {
       const found = scopes.find(([key]) => key === scope);
       if (found) return found[1] as any;
@@ -377,11 +387,19 @@ export function createInjector(
       // FIXME: Need to generate a lease for this scope
       // for the subscription here to make sure that
       // `onUnmounted` can be used for default scopes
+
+      let defaultTuple: AnyScopeTuple = [scope, scope.defaultValue];
+
+      if (context.subscriptionId) {
+        defaultTuple = leaseScope(defaultTuple, context.subscriptionId);
+      }
+
+      defaultScopes.add(defaultTuple);
       return scope.defaultValue;
     };
 
     const mounted = runMolecule(m, getScopeValue, (m) =>
-      getInternal(m, ...scopes)
+      getInternal(m, context, ...scopes)
     );
 
     const relatedScope = scopes.filter(([key]) => mounted.deps.scopes.has(key));
@@ -390,7 +408,11 @@ export function createInjector(
       mounted.deps.transitiveScopes.has(key)
     );
 
-    const scopeKeys = [...relatedScope, ...transitiveRelatedScope];
+    const scopeKeys: AnyScopeTuple[] = [
+      ...relatedScope,
+      ...transitiveRelatedScope,
+      ...Array.from(defaultScopes.values()),
+    ];
     const dependencies = [
       ...relatedScope,
       ...transitiveRelatedScope,
@@ -433,16 +455,16 @@ export function createInjector(
     if (!isMolecule(m) && !isMoleculeInterface(m))
       throw new Error(ErrorInvalidMolecule);
     const bound = getTrueMolecule(m);
-    return getInternal(bound, ...scopes).value as T;
+    return getInternal(bound, {}, ...scopes).value as T;
   }
 
   function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
     const subscriptionId = Symbol(Math.random());
 
     const tuples = leaseScopes(scopes, subscriptionId, scopeCache);
-    const unsub = () =>
-      unleaseScope(tuples, subscriptionId, scopeCache, cleanupsRun);
+    const unsub = () => unleaseScope(subscriptionId);
 
+    unsubToSubscriptionID.set(unsub, subscriptionId);
     return [tuples, unsub];
   }
 
@@ -454,7 +476,11 @@ export function createInjector(
       throw new Error(ErrorInvalidMolecule);
 
     const [tuples, unsub] = useScopes(...scopes);
-    const value = get<T>(m, ...tuples);
+    const bound = getTrueMolecule(m);
+    const subscriptionId = unsubToSubscriptionID.get(unsub);
+
+    const value = getInternal<T>(bound, { subscriptionId }, ...tuples)
+      .value as T;
     return [value, unsub];
   }
 
@@ -465,6 +491,8 @@ export function createInjector(
     useScopes,
   };
 }
+
+const unsubToSubscriptionID = new WeakMap<Function, Symbol>();
 
 /**
  * Returns the globally defined {@link MoleculeInjector}

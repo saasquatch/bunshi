@@ -27,32 +27,25 @@ describe("Single scope dependencies", () => {
   }
 
   test("Default scope values are cleaned up", () => {
-    const { injector, ExampleCleanupMolecule } = createHarness();
+    const { injector, ExampleCleanupMolecule, defaultFn } = createHarness();
 
     // FIXME: Would be very handy to be able to use default scope values
-    expect(() => injector.use(ExampleCleanupMolecule)).toThrowError();
+    // expect(() => injector.use(ExampleCleanupMolecule)).toThrowError();
 
-    // const [value, unsub] = injector.use(ExampleCleanupMolecule);
-    // expect(value).toBe(defaultFn);
-    // expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
-    // expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
+    const [value, unsub] = injector.use(ExampleCleanupMolecule);
+    expect(value).toBe(defaultFn);
+    expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
+    expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
 
-    // const [value2, unsub2] = injector.use(ExampleCleanupMolecule);
-    // expect(value2).toBe(defaultFn);
-    // expect(defaultFn).toHaveBeenNthCalledWith(3, "created");
-
-    // unsub2();
-    // expect(defaultFn).toHaveBeenCalledTimes(3);
-
-    // unsub();
-    // expect(defaultFn).toHaveBeenCalledTimes(4);
-    // expect(defaultFn).toHaveBeenNthCalledWith(4, "unmounted");
+    unsub();
+    expect(defaultFn).toHaveBeenCalledTimes(3);
+    expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
   });
 
   test("Derived molecules are cleaned up", () => {
     const { injector, ExampleScope } = createHarness();
 
-    const BaseMolecule:Molecule<Function> = molecule(() => {
+    const BaseMolecule: Molecule<Function> = molecule(() => {
       const testFn = use(ExampleScope);
       onMount(() => {
         testFn("base", "mounted");
@@ -65,7 +58,7 @@ describe("Single scope dependencies", () => {
     const DerivedMolecule = molecule(() => {
       // FIXME: Type error here
       // Molecule return type is not inferred
-      const testFn = use(BaseMolecule as Molecule<string>);
+      const testFn = use(BaseMolecule);
 
       onMount(() => {
         testFn("derived", "mounted");
