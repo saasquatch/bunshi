@@ -283,6 +283,54 @@ describe("Conditional dependencies", () => {
 
   });
 
+  test("From 1 to 2 dependencies", () => {
+    const injector = createInjector();
+
+    // 1st iteration should only have 1 scope dependency
+    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
+      false,
+      undefined,
+    ]);
+
+    // New scope, so we expect a new value
+    expect(executions).toBeCalledTimes(1);
+
+    // First iteration should have 2 scope dependencies
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([true, componentA]);
+
+    // New scope, so we expect a new value
+    expect(executions).toBeCalledTimes(2);
+
+
+    // 3rd iteration should have 2 scope dependencies
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([true, componentA]);
+
+    // this should be cached, so no more molecule creations
+    expect(executions).toBeCalledTimes(2);
+
+    // 4th iteration should use only 1 scope dependency
+    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
+      false,
+      undefined,
+    ]);
+    
+    // this should be cached, so no more molecule creations
+    expect(executions).toBeCalledTimes(2);
+
+  });
+
   test("Kitchen sink", () => {
     const injector = createInjector();
 
@@ -362,6 +410,64 @@ describe("Conditional dependencies", () => {
     expect(executions).toHaveBeenCalledTimes(7);
   });
 
+
+  /**
+   * These set of tests help check the order of operations.
+   * 
+   * Since the internal dependencies for a molecule are cached
+   * by an ever-growing set of possible dependencies, the
+   * order of operations could matter.
+   * 
+   * These test should prove that the order of operations
+   * does NOT matter.
+   */
+  describe("Two forks: A or B",()=>{
+
+    const ScopeA = createScope("a1");
+    const ScopeB = createScope("b1");
+    const TwoForks = molecule(() => {
+      let comp;
+      if (use(IsEnabled)) {
+        comp = use(ScopeA);
+      }else{
+        comp = use(ScopeB);
+      }
+  
+      executions(use(IsEnabled), comp);
+      return [use(IsEnabled), comp];
+    });
+
+    test("From B to A",()=>{
+      const injector = createInjector();
+
+      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+
+      expect(executions).toHaveBeenCalledTimes(2);
+
+      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+
+      expect(executions).toHaveBeenCalledTimes(2);
+
+    })
+
+    test("From A to B",()=>{
+      const injector = createInjector();
+
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
+
+      expect(executions).toHaveBeenCalledTimes(2);
+
+      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+
+      expect(executions).toHaveBeenCalledTimes(2);
+
+    })
+  })
+  
   /**
    *
    * TODO: Test cases
