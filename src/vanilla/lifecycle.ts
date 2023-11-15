@@ -1,7 +1,7 @@
 import { MoleculeOrInterface } from "./molecule";
 import { MoleculeScope } from "./scope";
 
-class Impl<T> {
+class GlobalFunctionImplementation<T> {
   /**
    * This is structured as a stack to support nested
    * molecule call structures
@@ -26,8 +26,8 @@ class Impl<T> {
 export type InternalOnMounted = typeof onMount;
 export type InternalUse = typeof use;
 
-export const onMountImpl = new Impl<InternalOnMounted>();
-export const useImpl = new Impl<InternalUse>();
+export const onMountImpl = new GlobalFunctionImplementation<InternalOnMounted>();
+export const useImpl = new GlobalFunctionImplementation<InternalUse>();
 
 export type CleanupCallback = () => unknown;
 export type MountedCallback = () => CleanupCallback | void;

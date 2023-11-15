@@ -4,6 +4,7 @@ import { AnyScopeTuple } from "./internal/internal-types";
 import { onMount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
+import { ComponentScope } from ".";
 
 describe("Single scope dependencies", () => {
   function createHarness() {
@@ -28,9 +29,6 @@ describe("Single scope dependencies", () => {
 
   test("Default scope values are cleaned up", () => {
     const { injector, ExampleCleanupMolecule, defaultFn } = createHarness();
-
-    // FIXME: Would be very handy to be able to use default scope values
-    // expect(() => injector.use(ExampleCleanupMolecule)).toThrowError();
 
     const [value, unsub] = injector.use(ExampleCleanupMolecule);
     expect(value).toBe(defaultFn);
@@ -103,14 +101,14 @@ describe("Single scope dependencies", () => {
 
     const [value2, unsub2] = injector.use(ExampleCleanupMolecule, scopeTuple);
     expect(value2).toBe(mockFn);
-    expect(mockFn).toHaveBeenNthCalledWith(3, "created");
+    expect(mockFn).toHaveBeenCalledTimes(2);
 
     unsub2();
-    expect(mockFn).toHaveBeenCalledTimes(3);
+    expect(mockFn).toHaveBeenCalledTimes(2);
 
     unsub();
-    expect(mockFn).toHaveBeenCalledTimes(4);
-    expect(mockFn).toHaveBeenNthCalledWith(4, "unmounted");
+    expect(mockFn).toHaveBeenCalledTimes(3);
+    expect(mockFn).toHaveBeenNthCalledWith(3, "unmounted");
   });
 });
 
@@ -218,4 +216,165 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
 
   // FIXME: Would be very handy to be able to use globally scoped molecules
   expect(() => injector.get(ExampleCleanupMolecule)).toThrowError();
+});
+
+describe("Conditional dependencies", () => {
+  const IsEnabled = createScope(false);
+
+  const executions = vi.fn();
+  const localOrGlobal = molecule(() => {
+    let comp;
+    if (use(IsEnabled)) {
+      comp = use(ComponentScope);
+    }
+
+    executions(use(IsEnabled), comp);
+
+    return [use(IsEnabled), comp];
+  });
+  const componentA = Symbol();
+  const componentB = Symbol();
+
+  afterEach(() => {
+    executions.mockReset();
+  });
+
+  test("From 2 to 1 dependency", () => {
+    const injector = createInjector();
+
+    // First iteration should have 2 scope dependencies
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([true, componentA]);
+    expect(executions).toBeCalledTimes(1);
+
+    // 2nd iteration should only have 1 scope dependency
+    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
+      false,
+      undefined,
+    ]);
+    expect(executions).toBeCalledTimes(2);
+
+
+    // 3rd iteration should have 2 scope dependencies
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([true, componentA]);
+
+    // this should be cached, so no more molecule creations
+    expect(executions).toBeCalledTimes(2);
+
+    // 4th iteration should use only 1 scope dependency
+    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
+      false,
+      undefined,
+    ]);
+    
+    // this should be cached, so no more molecule creations
+    expect(executions).toBeCalledTimes(2);
+
+  });
+
+  test("Kitchen sink", () => {
+    const injector = createInjector();
+
+    const case0 = injector.use(localOrGlobal);
+    const case1 = injector.use(localOrGlobal, [IsEnabled, false]);
+    const case2 = injector.use(localOrGlobal, [IsEnabled, true]);
+    const case3 = injector.use(
+      localOrGlobal,
+      [IsEnabled, false],
+      [ComponentScope, componentA]
+    );
+    const case4 = injector.use(
+      localOrGlobal,
+      [IsEnabled, false],
+      [ComponentScope, componentB]
+    );
+    const case5 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentA]
+    );
+    const case6 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentB]
+    );
+
+    expect(case0[0]).toStrictEqual([false, undefined]);
+    expect(case1[0]).toStrictEqual([false, undefined]);
+    expect(case2[0]).toStrictEqual([true, undefined]);
+    expect(case3[0]).toStrictEqual([false, undefined]);
+    expect(case4[0]).toStrictEqual([false, undefined]);
+    expect(case5[0]).toStrictEqual([true, componentA]);
+    expect(case6[0]).toStrictEqual([true, componentB]);
+
+    expect(executions).toHaveBeenCalledTimes(7);
+
+    expect(injector.use(localOrGlobal)[0]).toStrictEqual([false, undefined]);
+    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
+      false,
+      undefined,
+    ]);
+    expect(injector.use(localOrGlobal, [IsEnabled, true])[0]).toStrictEqual([
+      true,
+      undefined,
+    ]);
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, false],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([false, undefined]);
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, false],
+        [ComponentScope, componentB]
+      )[0]
+    ).toStrictEqual([false, undefined]);
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentA]
+      )[0]
+    ).toStrictEqual([true, componentA]);
+    expect(
+      injector.use(
+        localOrGlobal,
+        [IsEnabled, true],
+        [ComponentScope, componentB]
+      )[0]
+    ).toStrictEqual([true, componentB]);
+
+    // FIXME: We expect no more executions to be needed at this point
+    expect(executions).toHaveBeenCalledTimes(7);
+  });
+
+  /**
+   *
+   * TODO: Test cases
+   *
+   * - Direction of conditions changing
+   * -- Expanding conditional scope (starts with 1 then grows)
+   * -- Shrinking conditional scopes (started with many, then reduces)
+   * -- Swapped scopes (i.e. from Scope A to Scope B)
+   * - Default scopes
+   * -- Default scope value as the ternary / switch in the if statement
+   * -- Default scope used in a branch
+   * -- Default scopes used in all the permutations above
+   * - Lifecyle hooks
+   * -- Make sure all the above cases support onMount and onUnmount lifecycles
+   */
 });

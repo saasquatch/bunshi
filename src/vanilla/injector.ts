@@ -176,6 +176,11 @@ export function createInjector(
     MoleculeCacheValue
   >();
 
+  const dependencyCache: WeakMap<
+    AnyMolecule,
+    Set<AnyMoleculeScope>
+  > = new WeakMap();
+
   const scopeCache: ScopeCache = new WeakMap();
   const subscriptionIdToTuples = new WeakMap<Symbol, Set<AnyScopeTuple>>();
 
@@ -379,7 +384,27 @@ export function createInjector(
     context: { subscriptionId?: Symbol },
     ...scopes: AnyScopeTuple[]
   ): MoleculeCacheValue {
+    const cachedDeps = dependencyCache.get(m);
+
+    if (cachedDeps) {
+      const scopeKeys = scopes.filter(([key]) => cachedDeps.has(key));
+      const dependencies = [...scopeKeys, m];
+
+      return moleculeCache.deepCache(
+        () => runAndCache(m, context, scopes),
+        dependencies
+      ) as MoleculeCacheValue;
+    }
+    return runAndCache<T>(m, context, scopes);
+  }
+
+  function runAndCache<T>(
+    m: Molecule<T>,
+    context: { subscriptionId?: Symbol | undefined },
+    scopes: AnyScopeTuple[]
+  ) {
     const defaultScopes = new Set<AnyScopeTuple>();
+
     const getScopeValue: ScopeGetter = (scope) => {
       const found = scopes.find(([key]) => key === scope);
       if (found) return found[1] as any;
@@ -408,21 +433,20 @@ export function createInjector(
       mounted.deps.transitiveScopes.has(key)
     );
 
+    const scopeKeySet = dependencyCache.get(m) ?? new Set<AnyMoleculeScope>();
+    mounted.deps.scopes.forEach((s) => scopeKeySet.add(s));
+    mounted.deps.transitiveScopes.forEach((s) => scopeKeySet.add(s));
+    dependencyCache.set(m, scopeKeySet);
+
     const scopeKeys: AnyScopeTuple[] = [
       ...relatedScope,
       ...transitiveRelatedScope,
       ...Array.from(defaultScopes.values()),
     ];
-    const dependencies = [
-      ...relatedScope,
-      ...transitiveRelatedScope,
-      ...Array.from(mounted.deps.molecules.values()),
-      m,
-    ];
+    const dependencies = [...relatedScope, ...transitiveRelatedScope, m];
 
     return moleculeCache.deepCache(() => {
       // No molecule exists, so mount a new one
-
       if (mounted.mountedCallbacks.size > 0) {
         if (scopeKeys.length <= 0)
           throw new Error(
