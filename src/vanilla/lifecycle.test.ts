@@ -1,10 +1,10 @@
 import { vi } from "vitest";
+import { ComponentScope } from ".";
 import { createInjector } from "./injector";
 import { AnyScopeTuple } from "./internal/internal-types";
 import { onMount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
-import { ComponentScope } from ".";
 
 describe("Single scope dependencies", () => {
   function createHarness() {
@@ -219,116 +219,159 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
 });
 
 describe("Conditional dependencies", () => {
+   /**
+   * Types of conditional dependency checks
+   * 
+   * - Direction of conditions changing
+   * -- Expanding conditional scope (starts with 1 then grows)
+   * -- Shrinking conditional scopes (started with many, then reduces)
+   * -- Swapped scopes (i.e. from Scope A to Scope B)
+   * - Default scopes
+   * -- Default scope value as the ternary / switch in the if statement
+   * -- Default scope used in a branch
+   * -- Default scopes used in all the permutations above
+   * - Lifecyle hooks
+   * -- Make sure all the above cases support onMount and onUnmount lifecycles
+   */
+
   const IsEnabled = createScope(false);
 
   const executions = vi.fn();
+  const mounts = vi.fn();
+  const unmounts = vi.fn();
   const localOrGlobal = molecule(() => {
-    let comp;
-    if (use(IsEnabled)) {
+    const enabled = use(IsEnabled);
+
+    let comp: any = undefined;
+    if (enabled) {
       comp = use(ComponentScope);
     }
 
-    executions(use(IsEnabled), comp);
+    executions(enabled, comp);
 
-    return [use(IsEnabled), comp];
+    onMount(() => {
+      mounts(enabled, comp);
+      return () => unmounts(enabled, comp);
+    });
+
+    return [enabled, comp];
   });
   const componentA = Symbol();
   const componentB = Symbol();
 
   afterEach(() => {
     executions.mockReset();
+    mounts.mockReset();
+    unmounts.mockReset();
   });
 
   test("From 2 to 1 dependency", () => {
     const injector = createInjector();
 
     // First iteration should have 2 scope dependencies
-    expect(
-      injector.use(
-        localOrGlobal,
-        [IsEnabled, true],
-        [ComponentScope, componentA]
-      )[0]
-    ).toStrictEqual([true, componentA]);
+
+    const case1 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentA]
+    );
+
+    expect(case1[0]).toStrictEqual([true, componentA]);
+    expect(mounts).toHaveBeenLastCalledWith(true, componentA);
     expect(executions).toBeCalledTimes(1);
 
     // 2nd iteration should only have 1 scope dependency
-    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
-      false,
-      undefined,
-    ]);
+    const case2 = injector.use(localOrGlobal, [IsEnabled, false]);
+    expect(case2[0]).toStrictEqual([false, undefined]);
+    expect(mounts).toHaveBeenLastCalledWith(false, undefined);
     expect(executions).toBeCalledTimes(2);
 
-
     // 3rd iteration should have 2 scope dependencies
-    expect(
-      injector.use(
-        localOrGlobal,
-        [IsEnabled, true],
-        [ComponentScope, componentA]
-      )[0]
-    ).toStrictEqual([true, componentA]);
+    const case3 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentA]
+    );
+    expect(case3[0]).toStrictEqual([true, componentA]);
 
     // this should be cached, so no more molecule creations
     expect(executions).toBeCalledTimes(2);
 
     // 4th iteration should use only 1 scope dependency
-    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
-      false,
-      undefined,
-    ]);
-    
+    const case4 = injector.use(localOrGlobal, [IsEnabled, false]);
+    expect(case4[0]).toStrictEqual([false, undefined]);
+
     // this should be cached, so no more molecule creations
     expect(executions).toBeCalledTimes(2);
 
+    case1[1]();
+    case3[1]();
+
+    case2[1]();
+    case4[1]();
+
+    expect(unmounts.mock.calls).toStrictEqual([
+      [true, componentA],
+      [false, undefined],
+    ]);
   });
 
   test("From 1 to 2 dependencies", () => {
     const injector = createInjector();
 
     // 1st iteration should only have 1 scope dependency
-    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
-      false,
-      undefined,
-    ]);
-
-    // New scope, so we expect a new value
+    const case2 = injector.use(localOrGlobal, [IsEnabled, false]);
+    expect(case2[0]).toStrictEqual([false, undefined]);
+    expect(mounts).toHaveBeenLastCalledWith(false, undefined);
     expect(executions).toBeCalledTimes(1);
 
-    // First iteration should have 2 scope dependencies
-    expect(
-      injector.use(
-        localOrGlobal,
-        [IsEnabled, true],
-        [ComponentScope, componentA]
-      )[0]
-    ).toStrictEqual([true, componentA]);
-
-    // New scope, so we expect a new value
+    // end iteration should have 2 scope dependencies
+    const case1 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentA]
+    );
+    expect(case1[0]).toStrictEqual([true, componentA]);
+    expect(mounts).toHaveBeenLastCalledWith(true, componentA);
     expect(executions).toBeCalledTimes(2);
 
-
     // 3rd iteration should have 2 scope dependencies
-    expect(
-      injector.use(
-        localOrGlobal,
-        [IsEnabled, true],
-        [ComponentScope, componentA]
-      )[0]
-    ).toStrictEqual([true, componentA]);
+    const case3 = injector.use(
+      localOrGlobal,
+      [IsEnabled, true],
+      [ComponentScope, componentA]
+    );
+    expect(case3[0]).toStrictEqual([true, componentA]);
 
     // this should be cached, so no more molecule creations
     expect(executions).toBeCalledTimes(2);
 
     // 4th iteration should use only 1 scope dependency
-    expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
-      false,
-      undefined,
-    ]);
-    
+    const case4 = injector.use(localOrGlobal, [IsEnabled, false]);
+    expect(case4[0]).toStrictEqual([false, undefined]);
+
     // this should be cached, so no more molecule creations
     expect(executions).toBeCalledTimes(2);
 
+    // No unmounts yet
+    expect(unmounts).toHaveBeenCalledTimes(0);
+
+    // Unsub from both subscribers
+    case2[1]();
+    case4[1]();
+
+    // Expect the scope to be cleaned up
+    expect(unmounts).toHaveBeenLastCalledWith(false, undefined);
+
+    // Unsub from both subscribers
+    case1[1]();
+    case3[1]();
+
+    // Expect the scope to be cleaned up
+    expect(unmounts).toHaveBeenLastCalledWith(true, componentA);
+
+    // Only two umounts called, so we aren't doing unrelated unmounts
+    expect(unmounts).toHaveBeenCalledTimes(2);
   });
 
   test("Kitchen sink", () => {
@@ -406,81 +449,75 @@ describe("Conditional dependencies", () => {
       )[0]
     ).toStrictEqual([true, componentB]);
 
-    // FIXME: We expect no more executions to be needed at this point
+    // We expect no more executions to be needed at this point
     expect(executions).toHaveBeenCalledTimes(7);
   });
 
-
   /**
    * These set of tests help check the order of operations.
-   * 
+   *
    * Since the internal dependencies for a molecule are cached
    * by an ever-growing set of possible dependencies, the
    * order of operations could matter.
-   * 
+   *
    * These test should prove that the order of operations
    * does NOT matter.
    */
-  describe("Two forks: A or B",()=>{
-
+  describe("Two forks: A or B", () => {
     const ScopeA = createScope("a1");
     const ScopeB = createScope("b1");
     const TwoForks = molecule(() => {
       let comp;
       if (use(IsEnabled)) {
         comp = use(ScopeA);
-      }else{
+      } else {
         comp = use(ScopeB);
       }
-  
+
       executions(use(IsEnabled), comp);
       return [use(IsEnabled), comp];
     });
 
-    test("From B to A",()=>{
+    test("From B to A", () => {
       const injector = createInjector();
 
       expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
+        true,
+        "a1",
+      ]);
 
       expect(executions).toHaveBeenCalledTimes(2);
 
       expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
+        true,
+        "a1",
+      ]);
 
       expect(executions).toHaveBeenCalledTimes(2);
+    });
 
-    })
-
-    test("From A to B",()=>{
+    test("From A to B", () => {
       const injector = createInjector();
 
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
+        true,
+        "a1",
+      ]);
       expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
 
       expect(executions).toHaveBeenCalledTimes(2);
 
       expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([true, "a1"]);
+      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
+        true,
+        "a1",
+      ]);
 
       expect(executions).toHaveBeenCalledTimes(2);
+    });
+  });
 
-    })
-  })
-  
-  /**
-   *
-   * TODO: Test cases
-   *
-   * - Direction of conditions changing
-   * -- Expanding conditional scope (starts with 1 then grows)
-   * -- Shrinking conditional scopes (started with many, then reduces)
-   * -- Swapped scopes (i.e. from Scope A to Scope B)
-   * - Default scopes
-   * -- Default scope value as the ternary / switch in the if statement
-   * -- Default scope used in a branch
-   * -- Default scopes used in all the permutations above
-   * - Lifecyle hooks
-   * -- Make sure all the above cases support onMount and onUnmount lifecycles
-   */
+
 });

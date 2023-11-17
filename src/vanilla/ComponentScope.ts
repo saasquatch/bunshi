@@ -1,4 +1,4 @@
-import { createScope } from "../vanilla";
+import { createScope } from "./scope";
 
 /**
  * Component scope is handled in a special way.

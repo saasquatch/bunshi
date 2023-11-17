@@ -98,6 +98,18 @@ export type MoleculeInjector = {
   get<T>(molecule: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T;
 
   /**
+   * Get the molecule value for an optional scope. Expects scope tuples to be memoized ahead of time.
+   *
+   * @param molecule
+   * @param scopes
+   */
+  get<T>(
+    molecule: MoleculeOrInterface<T>,
+    context: { subscriptionId?: Symbol },
+    ...scopes: AnyScopeTuple[]
+  ): T;
+
+  /**
    * Use a molecule, and memoizes scope tuples.
    *
    * Returns a function to cleanup scope tuples.
@@ -108,7 +120,7 @@ export type MoleculeInjector = {
   use<T>(
     molecule: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
-  ): [T, Unsub];
+  ): [T, Unsub, { subscriptionId: Symbol }];
 
   /**
    * Use and memoize scopes.
@@ -117,7 +129,9 @@ export type MoleculeInjector = {
    *
    * @param scopes
    */
-  useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub];
+  useScopes(
+    ...scopes: AnyScopeTuple[]
+  ): [AnyScopeTuple[], Unsub, { subscriptionId: Symbol }];
 } & Record<symbol, unknown>;
 
 /**
@@ -475,37 +489,60 @@ export function createInjector(
     }, dependencies) as MoleculeCacheValue;
   }
 
-  function get<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T {
+  function get<T>(
+    m: MoleculeOrInterface<T>,
+    contextOrScope: unknown,
+    ...scopes: AnyScopeTuple[]
+  ): T {
     if (!isMolecule(m) && !isMoleculeInterface(m))
       throw new Error(ErrorInvalidMolecule);
+
     const bound = getTrueMolecule(m);
-    return getInternal(bound, {}, ...scopes).value as T;
+
+    if (!contextOrScope) {
+      // 2nd param is undefined
+      // Molecules used without scopes or subscription
+      return getInternal(bound, {}, ...scopes).value as T;
+    } else if (Array.isArray(contextOrScope)) {
+      const [key, value] = contextOrScope;
+      if (!isMoleculeScope(key))
+        throw new Error("Invalid molecule scope used.");
+      // 2nd param is a scope
+      // Molecule used without a context
+      return getInternal(bound, {}, contextOrScope as AnyScopeTuple, ...scopes)
+        .value as T;
+    }
+    // 3nd param is context
+    // Extract subscription ID
+    return getInternal(bound, { ...contextOrScope }, ...scopes).value as T;
   }
 
-  function useScopes(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], Unsub] {
+  function useScopes(
+    ...scopes: AnyScopeTuple[]
+  ): ReturnType<MoleculeInjector["useScopes"]> {
     const subscriptionId = Symbol(Math.random());
 
     const tuples = leaseScopes(scopes, subscriptionId, scopeCache);
-    const unsub = () => unleaseScope(subscriptionId);
+    const unsub = () => {
+      unleaseScope(subscriptionId);
+    }
 
-    unsubToSubscriptionID.set(unsub, subscriptionId);
-    return [tuples, unsub];
+    return [tuples, unsub, { subscriptionId }];
   }
 
   function use<T>(
     m: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
-  ): [T, Unsub] {
+  ): [T, Unsub, { subscriptionId: Symbol }] {
     if (!isMolecule(m) && !isMoleculeInterface(m))
       throw new Error(ErrorInvalidMolecule);
 
-    const [tuples, unsub] = useScopes(...scopes);
+    const [tuples, unsub, { subscriptionId }] = useScopes(...scopes);
     const bound = getTrueMolecule(m);
-    const subscriptionId = unsubToSubscriptionID.get(unsub);
 
     const value = getInternal<T>(bound, { subscriptionId }, ...tuples)
       .value as T;
-    return [value, unsub];
+    return [value, unsub, { subscriptionId }];
   }
 
   return {
@@ -515,8 +552,6 @@ export function createInjector(
     useScopes,
   };
 }
-
-const unsubToSubscriptionID = new WeakMap<Function, Symbol>();
 
 /**
  * Returns the globally defined {@link MoleculeInjector}
