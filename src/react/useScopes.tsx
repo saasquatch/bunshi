@@ -1,22 +1,29 @@
 import { useContext, useEffect, useMemo, useRef } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { getDownstreamScopes } from "../shared/getDownstreamScopes";
-import { ScopeTuple, ComponentScope } from "../vanilla";
+import { ComponentScope, ScopeTuple } from "../vanilla";
 import { AnyScopeTuple } from "../vanilla/internal/internal-types";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useInjector } from "./useInjector";
 
 /**
  * Gets the scopes that are implicitly in context for the current component.
- * 
+ *
  * Scopes can also be set and overridden explicitly by passing in options to this hook.
- * 
- * @param options 
- * @returns 
+ *
+ * @param options
+ * @returns
  */
 export function useScopes(
   options?: MoleculeScopeOptions
 ): ScopeTuple<unknown>[] {
+  return useScopeSubscription(options).tuples;
+}
+
+export function useScopeSubscription(options?: MoleculeScopeOptions): {
+  tuples: AnyScopeTuple[];
+  subscriptionId?: Symbol;
+} {
   const parentScopes = useContext(ScopeContext);
 
   const generatedValue = useMemo(
@@ -24,48 +31,44 @@ export function useScopes(
     []
   );
 
-  const componentScopeTuple = useRef([ComponentScope, generatedValue] as const).current as ScopeTuple<unknown>;
+  const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
+    .current as ScopeTuple<unknown>;
 
-  const tuple: ScopeTuple<unknown> | undefined = (() => {
-    if (!options) return undefined;
+  const tuples: AnyScopeTuple[] = (() => {
+    if (!options) return [...parentScopes, componentScopeTuple];
     if (options.withUniqueScope) {
-      return [options.withUniqueScope, generatedValue] as ScopeTuple<unknown>;
+      return getDownstreamScopes(
+        getDownstreamScopes(parentScopes, [
+          options.withUniqueScope,
+          generatedValue,
+        ] as ScopeTuple<unknown>),
+        componentScopeTuple
+      );
     }
     if (options.withScope) {
-      return options.withScope;
+      return getDownstreamScopes(
+        getDownstreamScopes(parentScopes, options.withScope),
+        componentScopeTuple
+      );
     }
     if (options.exclusiveScope) {
-      return options.exclusiveScope;
+      return [options.exclusiveScope, componentScopeTuple];
     }
-    return undefined;
+    return [...parentScopes, componentScopeTuple];
   })();
 
   const injector = useInjector();
 
-  const [[memoizedTupleOrUndefind], unsub]: [(AnyScopeTuple | undefined)[], Function] = useMemo(() => {
-    const handle: ReturnType<typeof injector.useScopes> = tuple ? injector.useScopes(tuple) : [[], () => { }]
-    return handle;
-  }, tuple);
+  const handle = injector.useScopes(...tuples);
+
+  const unsub = handle[1];
 
   useEffect(() => {
     // Cleanup effect
-    return () => { unsub() };
+    return () => {
+      unsub && unsub();
+    };
   }, [unsub]);
 
-
-  if (options?.exclusiveScope) {
-    /**
-     *  Exclusive scopes means ignore scopes from context
-     */
-    return [memoizedTupleOrUndefind];
-  }
-
-  if (!memoizedTupleOrUndefind) {
-    /**
-     * This is the default case, when we don't have any tuples
-     */
-    return getDownstreamScopes(parentScopes, componentScopeTuple);
-  }
-
-  return getDownstreamScopes(getDownstreamScopes(parentScopes, memoizedTupleOrUndefind as ScopeTuple<unknown>), componentScopeTuple);
+  return { tuples: handle[0], subscriptionId: handle?.[2]?.subscriptionId };
 }
