@@ -74,7 +74,7 @@ export type DeepCache<TKey extends {}, TValue> = {
    * @param createFn
    * @param deps
    */
-  deepCache(createFn: () => TValue, deps: Deps<TKey>): TValue;
+  deepCache(createFn: () => TValue, foundFn:()=>void, deps: Deps<TKey>): TValue;
 
   /**
    * Create or update an item in the cache
@@ -97,10 +97,11 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   TValue
 > => {
   let cache: WeakCache<TKey, TValue> = new WeakMap();
-  const deepCache = (createFn: () => TValue, deps: Deps<TKey>) => {
+  const deepCache = (createFn: () => TValue, foundFn: ()=>void, deps: Deps<TKey>) => {
     if(!deps.length) throw new Error("Dependencies need to exist.");
     const cachedAtom = getWeakCacheItem(cache, deps);
     if (cachedAtom) {
+      foundFn();
       return cachedAtom!;
     }
     const newObject = createFn();

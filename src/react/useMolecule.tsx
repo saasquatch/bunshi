@@ -22,7 +22,7 @@ export function useMolecule<T>(
   mol: MoleculeOrInterface<T>,
   options?: MoleculeScopeOptions
 ): T {
-  const { tuples, subscriptionId } = useScopeSubscription(options);
+  const { memoizedTuples, context } = useScopeSubscription(options);
   const injector = useInjector();
-  return injector.get(mol, { subscriptionId }, ...tuples);
+  return injector.get(mol, context, ...memoizedTuples);
 }

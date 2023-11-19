@@ -17,13 +17,10 @@ import { useInjector } from "./useInjector";
 export function useScopes(
   options?: MoleculeScopeOptions
 ): ScopeTuple<unknown>[] {
-  return useScopeSubscription(options).tuples;
+  return useScopeSubscription(options).memoizedTuples;
 }
 
-export function useScopeSubscription(options?: MoleculeScopeOptions): {
-  tuples: AnyScopeTuple[];
-  subscriptionId?: Symbol;
-} {
+export function useScopeSubscription(options?: MoleculeScopeOptions) {
   const parentScopes = useContext(ScopeContext);
 
   const generatedValue = useMemo(
@@ -34,7 +31,7 @@ export function useScopeSubscription(options?: MoleculeScopeOptions): {
   const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
     .current as ScopeTuple<unknown>;
 
-  const tuples: AnyScopeTuple[] = (() => {
+  const inputTuples: AnyScopeTuple[] = (() => {
     if (!options) return [...parentScopes, componentScopeTuple];
     if (options.withUniqueScope) {
       return getDownstreamScopes(
@@ -59,9 +56,10 @@ export function useScopeSubscription(options?: MoleculeScopeOptions): {
 
   const injector = useInjector();
 
-  const handle = useMemo(()=>injector.useScopes(...tuples), flattenTuples(tuples));
-
-  const unsub = handle[1];
+  const [memoizedTuples, unsub, context] = useMemo(
+    () => injector.useScopes(...inputTuples),
+    flattenTuples(inputTuples)
+  );
 
   useEffect(() => {
     // Cleanup effect
@@ -70,10 +68,9 @@ export function useScopeSubscription(options?: MoleculeScopeOptions): {
     };
   }, [unsub]);
 
-  return { tuples: handle[0], subscriptionId: handle?.[2]?.subscriptionId };
+  return { memoizedTuples, unsub, context };
 }
 
-
-function flattenTuples(tuples:AnyScopeTuple[]):unknown[]{
-  return tuples.flatMap(t=>t);
+function flattenTuples(tuples: AnyScopeTuple[]): unknown[] {
+  return tuples.flatMap((t) => t);
 }

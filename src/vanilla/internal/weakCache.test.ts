@@ -12,12 +12,12 @@ describe("Weak cache", () => {
     });
 
     // Same order, so same value
-    const firstValue = memoize.deepCache(fn, [first, second]);
-    const secondValue = memoize.deepCache(fn, [first, second]);
+    const firstValue = memoize.deepCache(fn, () => {}, [first, second]);
+    const secondValue = memoize.deepCache(fn, () => {}, [first, second]);
     expect(secondValue).toBe(firstValue);
 
     // Different order, so different values
-    const thirdValue = memoize.deepCache(fn, [second, first]);
+    const thirdValue = memoize.deepCache(fn, () => {}, [second, first]);
     expect(thirdValue).not.toBe(firstValue);
     expect(thirdValue).not.toBe(secondValue);
   });
@@ -31,11 +31,19 @@ describe("Weak cache", () => {
     // Same order, so same value
     memoize.upsert(fn, [first]);
 
-    const one = memoize.deepCache(() => 0, [first]);
+    const one = memoize.deepCache(
+      () => 0,
+      () => {},
+      [first]
+    );
 
     memoize.upsert(fn, [first]);
 
-    const two = memoize.deepCache(() => 0, [first]);
+    const two = memoize.deepCache(
+      () => 0,
+      () => {},
+      [first]
+    );
 
     expect(one).toBe(1);
     expect(two).toBe(2);

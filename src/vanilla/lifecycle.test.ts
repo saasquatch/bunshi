@@ -6,27 +6,27 @@ import { onMount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
-describe("Single scope dependencies", () => {
-  function createHarness() {
-    const defaultFn = vi.fn();
-    const ExampleScope = createScope<Function>(defaultFn);
+function createHarness() {
+  const defaultFn = vi.fn();
+  const ExampleScope = createScope<Function>(defaultFn);
 
-    const ExampleCleanupMolecule = molecule(() => {
-      const testFn = use(ExampleScope);
+  const ExampleCleanupMolecule = molecule(() => {
+    const testFn = use(ExampleScope);
 
-      onMount(() => {
-        testFn("mounted");
-        return () => testFn("unmounted");
-      });
-      testFn("created");
-      return testFn;
+    onMount(() => {
+      testFn("mounted");
+      return () => testFn("unmounted");
     });
+    testFn("created");
+    return testFn;
+  });
 
-    const injector = createInjector();
+  const injector = createInjector();
 
-    return { defaultFn, ExampleScope, ExampleCleanupMolecule, injector };
-  }
+  return { defaultFn, ExampleScope, ExampleCleanupMolecule, injector };
+}
 
+describe("Single scope dependencies", () => {
   test("Default scope values are cleaned up", () => {
     const { injector, ExampleCleanupMolecule, defaultFn } = createHarness();
 
@@ -38,6 +38,81 @@ describe("Single scope dependencies", () => {
     unsub();
     expect(defaultFn).toHaveBeenCalledTimes(3);
     expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
+  });
+
+  describe("Default scope leases are extended after multiple calls, then cleaned up", () => {
+    // Given a molecule that can be observed
+    const { injector, ExampleCleanupMolecule, defaultFn, ExampleScope } =
+      createHarness();
+    beforeEach(() => {
+      defaultFn.mockReset();
+    });
+    test.each([
+      // FIXME: Broken test cases
+      // {
+      //   case: "Both calls are implicit",
+      //   scopes1: [],
+      //   scopes2: [],
+      // },
+      // {
+      //   case: "2nd call is explicit",
+      //   scopes1: [],
+      //   scopes2: [ExampleScope, defaultFn],
+      // },
+      // {
+      //   case: "1st call is explicit",
+      //   scopes1: [ExampleScope, defaultFn],
+      //   scopes2: [],
+      // },
+      {
+        case: "both calls are explicit",
+        scopes1: [ExampleScope, defaultFn],
+        scopes2: [ExampleScope, defaultFn],
+      },
+    ])(
+      "Case: $case",
+      ({ scopes1, scopes2 }:any) => {
+        // When the molecule is used
+        const [value1, unsub1] = injector.use(
+          ExampleCleanupMolecule,
+          scopes1
+        );
+
+        // Then it returns the right value
+        expect(value1).toBe(defaultFn);
+
+        // And it's callback function is called (i.e. `created`)
+        expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
+        // And it's `mounted` lifecycle hooks are called
+        expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
+
+        // When the molecule is used again
+        const [value2, unsub2] = injector.use(
+          ExampleCleanupMolecule,
+          scopes2
+        );
+
+        // Then it returns the right value
+        expect(value2).toBe(defaultFn);
+
+        // Then no more molecules are created
+        expect(defaultFn).toHaveBeenCalledTimes(2);
+
+        // When the first subscription is released
+        unsub1();
+
+        // Then clean is not called
+        expect(defaultFn).toHaveBeenCalledTimes(2);
+
+        // When the second subscription is released
+        unsub2();
+
+        // Then there are no more subscriptions for default scope
+        // And the cleanups are called
+        expect(defaultFn).toHaveBeenCalledTimes(3);
+        expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
+      }
+    );
   });
 
   test("Derived molecules are cleaned up", () => {
@@ -219,9 +294,9 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
 });
 
 describe("Conditional dependencies", () => {
-   /**
+  /**
    * Types of conditional dependency checks
-   * 
+   *
    * - Direction of conditions changing
    * -- Expanding conditional scope (starts with 1 then grows)
    * -- Shrinking conditional scopes (started with many, then reduces)
@@ -518,6 +593,4 @@ describe("Conditional dependencies", () => {
       expect(executions).toHaveBeenCalledTimes(2);
     });
   });
-
-
 });

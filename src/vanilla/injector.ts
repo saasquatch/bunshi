@@ -226,8 +226,7 @@ export function createInjector(
 
   function leaseScopes<T>(
     tuples: ScopeTuple<T>[],
-    subscriptionId: Symbol,
-    scopeCache: ScopeCache
+    subscriptionId: Symbol
   ): ScopeTuple<T>[] {
     return tuples.map((t) => leaseScope(t, subscriptionId));
   }
@@ -406,6 +405,9 @@ export function createInjector(
 
       return moleculeCache.deepCache(
         () => runAndCache(m, context, scopes),
+        () => {
+          // FIXME: Need to expand a subscription here when a value is found
+        },
         dependencies
       ) as MoleculeCacheValue;
     }
@@ -423,14 +425,15 @@ export function createInjector(
       const found = scopes.find(([key]) => key === scope);
       if (found) return found[1] as any;
 
-      // FIXME: Need to generate a lease for this scope
-      // for the subscription here to make sure that
-      // `onUnmounted` can be used for default scopes
-
       let defaultTuple: AnyScopeTuple = [scope, scope.defaultValue];
 
       if (context.subscriptionId) {
+        // We generate a lease for this scope
+        // for the subscription here to make sure that
+        // `onUnmounted` can be used for default scopes
         defaultTuple = leaseScope(defaultTuple, context.subscriptionId);
+      } else {
+        console.warn("Default subscription not leased!");
       }
 
       defaultScopes.add(defaultTuple);
@@ -459,34 +462,40 @@ export function createInjector(
     ];
     const dependencies = [...relatedScope, ...transitiveRelatedScope, m];
 
-    return moleculeCache.deepCache(() => {
-      // No molecule exists, so mount a new one
-      if (mounted.mountedCallbacks.size > 0) {
-        if (scopeKeys.length <= 0)
-          throw new Error(
-            "Can't use mount lifecycle in globally scoped molecules."
-          );
-        const combined: ScopeCleanups = new Set();
-        mounted.mountedCallbacks.forEach((onMount) => {
-          // Call all the mount functions for the molecule
-          const cleanup = onMount();
+    return moleculeCache.deepCache(
+      () => {
+        // No molecule exists, so mount a new one
+        if (mounted.mountedCallbacks.size > 0) {
+          if (scopeKeys.length <= 0)
+            throw new Error(
+              "Can't use mount lifecycle in globally scoped molecules."
+            );
+          const combined: ScopeCleanups = new Set();
+          mounted.mountedCallbacks.forEach((onMount) => {
+            // Call all the mount functions for the molecule
+            const cleanup = onMount();
 
-          // Queues up the cleanup functions for later
-          if (cleanup) combined.add(cleanup);
-        });
-
-        scopeKeys.forEach(([scopeKey, scopeValue]) => {
-          combined.forEach((cleanup) => {
-            scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups.add(cleanup);
+            // Queues up the cleanup functions for later
+            if (cleanup) combined.add(cleanup);
           });
-        });
-      }
 
-      return {
-        deps: mounted.deps,
-        value: mounted.value,
-      };
-    }, dependencies) as MoleculeCacheValue;
+          scopeKeys.forEach(([scopeKey, scopeValue]) => {
+            combined.forEach((cleanup) => {
+              scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups.add(cleanup);
+            });
+          });
+        }
+
+        return {
+          deps: mounted.deps,
+          value: mounted.value,
+        };
+      },
+      () => {
+        // FIXME: Should we do anything differently if a value is already found?
+      },
+      dependencies
+    ) as MoleculeCacheValue;
   }
 
   function get<T>(
@@ -522,10 +531,10 @@ export function createInjector(
   ): ReturnType<MoleculeInjector["useScopes"]> {
     const subscriptionId = Symbol(Math.random());
 
-    const tuples = leaseScopes(scopes, subscriptionId, scopeCache);
+    const tuples = leaseScopes(scopes, subscriptionId);
     const unsub = () => {
       unleaseScope(subscriptionId);
-    }
+    };
 
     return [tuples, unsub, { subscriptionId }];
   }
