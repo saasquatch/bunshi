@@ -59,7 +59,7 @@ export function useScopeSubscription(options?: MoleculeScopeOptions): {
 
   const injector = useInjector();
 
-  const handle = injector.useScopes(...tuples);
+  const handle = useMemo(()=>injector.useScopes(...tuples), flattenTuples(tuples));
 
   const unsub = handle[1];
 
@@ -71,4 +71,9 @@ export function useScopeSubscription(options?: MoleculeScopeOptions): {
   }, [unsub]);
 
   return { tuples: handle[0], subscriptionId: handle?.[2]?.subscriptionId };
+}
+
+
+function flattenTuples(tuples:AnyScopeTuple[]):unknown[]{
+  return tuples.flatMap(t=>t);
 }
