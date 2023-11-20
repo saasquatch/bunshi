@@ -6,30 +6,33 @@ import { onMount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
-function createHarness() {
-  const defaultFn = vi.fn();
-  const ExampleScope = createScope<Function>(defaultFn);
+const defaultFn = vi.fn();
+const ExampleScope = createScope<Function>(defaultFn);
 
-  const ExampleCleanupMolecule = molecule(() => {
-    const testFn = use(ExampleScope);
+const ExampleCleanupMolecule = molecule(() => {
+  const testFn = use(ExampleScope);
 
-    onMount(() => {
-      testFn("mounted");
-      return () => testFn("unmounted");
-    });
-    testFn("created");
-    return testFn;
+  onMount(() => {
+    testFn("mounted");
+    return () => testFn("unmounted");
   });
+  testFn("created");
+  return testFn;
+});
 
-  const injector = createInjector();
+const TransientScopeMolecule = molecule(() => use(ExampleCleanupMolecule));
+const SecondOrderTransientMolecule = molecule(() =>
+  use(TransientScopeMolecule)
+);
 
-  return { defaultFn, ExampleScope, ExampleCleanupMolecule, injector };
-}
+const injector = createInjector();
+
+beforeEach(() => {
+  defaultFn.mockReset();
+});
 
 describe("Single scope dependencies", () => {
   test("Default scope values are cleaned up", () => {
-    const { injector, ExampleCleanupMolecule, defaultFn } = createHarness();
-
     const [value, unsub] = injector.use(ExampleCleanupMolecule);
     expect(value).toBe(defaultFn);
     expect(defaultFn).toHaveBeenNthCalledWith(1, "created");
@@ -40,43 +43,44 @@ describe("Single scope dependencies", () => {
     expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
   });
 
-  describe("Default scope leases are extended after multiple calls, then cleaned up", () => {
+  describe.each([
+    { case: "Direct scope", MoleculeToTest: ExampleCleanupMolecule },
+    { case: "Transient scope", MoleculeToTest: TransientScopeMolecule },
+    {
+      case: "2nd Order Transient scope",
+      MoleculeToTest: SecondOrderTransientMolecule,
+    },
+  ])(
+    "Default scope leases in a $case molecule are extended after multiple calls, then cleaned up",
     // Given a molecule that can be observed
-    const { injector, ExampleCleanupMolecule, defaultFn, ExampleScope } =
-      createHarness();
-    beforeEach(() => {
-      defaultFn.mockReset();
-    });
-    test.each([
-      // FIXME: Broken test cases
-      // {
-      //   case: "Both calls are implicit",
-      //   scopes1: [],
-      //   scopes2: [],
-      // },
-      // {
-      //   case: "2nd call is explicit",
-      //   scopes1: [],
-      //   scopes2: [ExampleScope, defaultFn],
-      // },
-      // {
-      //   case: "1st call is explicit",
-      //   scopes1: [ExampleScope, defaultFn],
-      //   scopes2: [],
-      // },
-      {
-        case: "both calls are explicit",
-        scopes1: [ExampleScope, defaultFn],
-        scopes2: [ExampleScope, defaultFn],
-      },
-    ])(
-      "Case: $case",
-      ({ scopes1, scopes2 }:any) => {
+    ({ MoleculeToTest }) => {
+      test.each([
+        // FIXME: Broken test cases
+        {
+          case: "Both calls are implicit",
+          scopes1: undefined,
+          scopes2: undefined,
+        },
+        {
+          case: "2nd call is explicit",
+          scopes1: undefined,
+          scopes2: [ExampleScope, defaultFn],
+        },
+        {
+          case: "1st call is explicit",
+          scopes1: [ExampleScope, defaultFn],
+          scopes2: undefined,
+        },
+        {
+          case: "both calls are explicit",
+          scopes1: [ExampleScope, defaultFn],
+          scopes2: [ExampleScope, defaultFn],
+        },
+      ])("Case: $case", ({ scopes1, scopes2 }: any) => {
         // When the molecule is used
-        const [value1, unsub1] = injector.use(
-          ExampleCleanupMolecule,
-          scopes1
-        );
+        const [value1, unsub1] = scopes1
+          ? injector.use(MoleculeToTest, scopes1)
+          : injector.use(MoleculeToTest);
 
         // Then it returns the right value
         expect(value1).toBe(defaultFn);
@@ -87,10 +91,9 @@ describe("Single scope dependencies", () => {
         expect(defaultFn).toHaveBeenNthCalledWith(2, "mounted");
 
         // When the molecule is used again
-        const [value2, unsub2] = injector.use(
-          ExampleCleanupMolecule,
-          scopes2
-        );
+        const [value2, unsub2] = scopes2
+          ? injector.use(MoleculeToTest, scopes2)
+          : injector.use(MoleculeToTest);
 
         // Then it returns the right value
         expect(value2).toBe(defaultFn);
@@ -111,13 +114,11 @@ describe("Single scope dependencies", () => {
         // And the cleanups are called
         expect(defaultFn).toHaveBeenCalledTimes(3);
         expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
-      }
-    );
-  });
+      });
+    }
+  );
 
   test("Derived molecules are cleaned up", () => {
-    const { injector, ExampleScope } = createHarness();
-
     const BaseMolecule = molecule(() => {
       const testFn = use(ExampleScope);
       onMount(() => {
@@ -164,8 +165,6 @@ describe("Single scope dependencies", () => {
   });
 
   test("Scoped molecules are mounted and cleaned up", () => {
-    const { injector, ExampleScope, ExampleCleanupMolecule } = createHarness();
-
     const mockFn = vi.fn();
     const scopeTuple: AnyScopeTuple = [ExampleScope, mockFn];
 
