@@ -28,8 +28,8 @@ const user1Scope: ScopeTuple<string> = [UserScope, "one@example.com"];
 const user2Scope: ScopeTuple<string> = [UserScope, "two@example.com"];
 
 const CompanyScope = createScope<string>("example.com");
-const company1Scope: ScopeTuple<string> = [CompanyScope, "example.com"];
-const company2Scope: ScopeTuple<string> = [CompanyScope, "foo.example.com"];
+const company1Scope: ScopeTuple<string> = [CompanyScope, "one.example.com"];
+const company2Scope: ScopeTuple<string> = [CompanyScope, "two.example.com"];
 
 const userMolecule = molecule((mol, scope) => {
   const userId = scope(UserScope);

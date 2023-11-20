@@ -8,10 +8,10 @@ import {
 } from "./internal/errors";
 import type {
   AnyMolecule,
+  AnyMoleculeInterface,
   AnyMoleculeScope,
   AnyScopeTuple,
   MoleculeInternal,
-  ScopeTuple,
 } from "./internal/internal-types";
 import {
   DefaultInjector,
@@ -39,23 +39,13 @@ import type {
   MoleculeOrInterface,
   ScopeGetter,
 } from "./molecule";
+import { createScoper } from "./scoper";
 import type { BindingMap, Bindings, Injectable } from "./types";
-
-/**
- * What is stored in the {@link ScopeCache}
- */
-type ScopeCacheValue = {
-  references: Set<Symbol>;
-  tuple: AnyScopeTuple;
-  cleanups: ScopeCleanups;
-};
-
-type ScopeCache = WeakMap<AnyMoleculeScope, Map<unknown, ScopeCacheValue>>;
 
 type Deps = {
   scopes: Set<AnyMoleculeScope>;
   transitiveScopes: Set<AnyMoleculeScope>;
-  // molecules: Set<AnyMolecule>;
+  defaultScopes: Set<AnyMoleculeScope>;
 };
 
 /**
@@ -66,7 +56,11 @@ type MoleculeCacheValue = {
   value: unknown;
 };
 
-type ScopeCleanups = Set<CleanupCallback>;
+type UseScopeDetails = {
+  value: unknown;
+  defaultScopes: Set<AnyMoleculeScope>;
+};
+
 type Unsub = () => unknown;
 
 /**
@@ -195,121 +189,10 @@ export function createInjector(
     Set<AnyMoleculeScope>
   > = new WeakMap();
 
-  const scopeCache: ScopeCache = new WeakMap();
-  const subscriptionIdToTuples = new WeakMap<Symbol, Set<AnyScopeTuple>>();
-
-  /**
-   * A weakset that makes sure that we never call a cleanup
-   * function for a molecule more than once.
-   *
-   * You can think of this as a Map<CleanupCallback, boolean>
-   * where we set the value to "true" once the callback has
-   * been run:
-   *
-   * `hasBeenRun.set(callback, true)`
-   *
-   * Another way is to think of every callback having an
-   * `hasBeenRun` property:
-   *
-   * `callback.hasBeenRun = true`.
-   *
-   * The weakset provides a simpler, mutation free and memory
-   * efficient way to signal that the callback has been run
-   * and need not be run again.
-   *
-   * Without this weakset, we would need more coordination to ensure
-   * a callback is only run once.
-   */
-  const cleanupsRun = new WeakSet<CleanupCallback>();
-
   const bindings = bindingsToMap(props.bindings);
 
-  function leaseScopes<T>(
-    tuples: ScopeTuple<T>[],
-    subscriptionId: Symbol
-  ): ScopeTuple<T>[] {
-    return tuples.map((t) => leaseScope(t, subscriptionId));
-  }
+  const scoper = createScoper();
 
-  /**
-   * Creates a memoized tuple of `[scope,value]`
-   *
-   * Registers primitive `value`s in the primitive scope cache. This has side-effects
-   * and needs to be cleaned up with `deregisterScopeTuple`
-   *
-   */
-  function leaseScope<T>(
-    tuple: ScopeTuple<T>,
-    subscriptionId: Symbol
-  ): ScopeTuple<T> {
-    const [scope, value] = tuple;
-
-    // Not an object, so we can't safely cache it in a WeakMap
-    let valuesForScope = scopeCache.get(scope);
-    if (!valuesForScope) {
-      valuesForScope = new Map();
-      scopeCache.set(scope, valuesForScope);
-    }
-
-    let cached = valuesForScope.get(value);
-    if (cached) {
-      // Increment references
-      cached.references.add(subscriptionId);
-      trackSubcription(subscriptionId, cached.tuple as ScopeTuple<T>);
-      return cached.tuple as ScopeTuple<T>;
-    }
-
-    const references = new Set<Symbol>();
-    references.add(subscriptionId);
-    valuesForScope.set(value, {
-      references,
-      tuple,
-      cleanups: new Set(),
-    });
-
-    trackSubcription(subscriptionId, tuple);
-
-    return tuple;
-  }
-
-  function trackSubcription(subscriptionId: Symbol, tuple: AnyScopeTuple) {
-    let subscriptionSet = subscriptionIdToTuples.get(subscriptionId);
-    if (!subscriptionSet) {
-      subscriptionSet = new Set();
-      subscriptionIdToTuples.set(subscriptionId, subscriptionSet);
-    }
-    subscriptionSet.add(tuple);
-  }
-
-  /**
-   * For values that are "primitive" (not an object),
-   * deregisters them from the primitive scope
-   * cache to ensure no memory leaks
-   */
-  function unleaseScope<T>(subscriptionId: Symbol) {
-    const tuples = subscriptionIdToTuples.get(subscriptionId);
-    if (!tuples) return;
-    tuples.forEach(([scope, value]) => {
-      const scopeMap = scopeCache.get(scope);
-      const cached = scopeMap?.get(value);
-
-      const references = cached?.references;
-      references?.delete(subscriptionId);
-
-      if (references && references.size <= 0) {
-        scopeMap?.delete(value);
-
-        // Run all cleanups
-        cached?.cleanups.forEach((cb) => {
-          if (!cleanupsRun.has(cb)) {
-            // Only runs cleanups that haven't already been run
-            cb();
-            cleanupsRun.add(cb);
-          }
-        });
-      }
-    });
-  }
   /**
    * Lookup bindings to override a molecule, or throw an error for unbound interfaces
    *
@@ -324,74 +207,6 @@ export function createInjector(
     throw new Error(ErrorUnboundMolecule);
   }
 
-  /**
-   * Create a new instance of a molecule
-   *
-   */
-  function runMolecule(
-    maybeMolecule: AnyMolecule,
-    getScopeValue: ScopeGetter,
-    getMoleculeValue: (mol: AnyMolecule) => MoleculeCacheValue
-  ) {
-    const m = getTrueMolecule(maybeMolecule);
-
-    const dependentMolecules = new Set<AnyMolecule>();
-    const dependentScopes = new Set<AnyMoleculeScope>();
-    const transientScopes = new Set<AnyMoleculeScope>();
-
-    const use: InternalUse = (dep: Injectable<unknown>) => {
-      if (isMoleculeScope(dep)) {
-        dependentScopes.add(dep);
-        return getScopeValue(dep);
-      }
-      if (isMolecule(dep) || isMoleculeInterface(dep)) {
-        const dependentMolecule = getTrueMolecule(dep);
-        dependentMolecules.add(dependentMolecule);
-        const mol = getMoleculeValue(dependentMolecule);
-        Array.from(mol.deps.scopes.values()).forEach((s) =>
-          transientScopes.add(s)
-        );
-        Array.from(mol.deps.transitiveScopes.values()).forEach((s) =>
-          transientScopes.add(s)
-        );
-        return mol.value as any;
-      }
-      throw new Error(
-        "Can only call `use` with a molecule, interface or scope"
-      );
-    };
-    const trackingScopeGetter: ScopeGetter = (s) => {
-      if (!running) throw new Error(ErrorAsyncGetScope);
-      if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope);
-      return use(s);
-    };
-    const trackingGetter: MoleculeGetter = (molOrInterface) => {
-      if (!running) throw new Error(ErrorAsyncGetMol);
-      if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface))
-        throw new Error(ErrorInvalidMolecule);
-      return use(molOrInterface);
-    };
-
-    const mountedCallbacks = new Set<MountedCallback>();
-    onMountImpl.push((fn: MountedCallback) => mountedCallbacks.add(fn));
-    useImpl.push(use);
-    let running = true;
-    const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
-    running = false;
-    onMountImpl.pop();
-    useImpl.pop();
-
-    return {
-      deps: {
-        molecules: dependentMolecules,
-        scopes: dependentScopes,
-        transitiveScopes: transientScopes,
-      },
-      value,
-      mountedCallbacks,
-    };
-  }
-
   function getInternal<T>(
     m: Molecule<T>,
     context: { subscriptionId?: Symbol },
@@ -400,13 +215,24 @@ export function createInjector(
     const cachedDeps = dependencyCache.get(m);
 
     if (cachedDeps) {
-      const scopeKeys = scopes.filter(([key]) => cachedDeps.has(key));
+      const scopeKeys = scopes
+        .filter(([key]) => cachedDeps.has(key))
+        .filter(([key, value]) => key.defaultValue !== value);
       const dependencies = [...scopeKeys, m];
 
       return moleculeCache.deepCache(
+        // Not found
         () => runAndCache(m, context, scopes),
-        () => {
-          // FIXME: Need to expand a subscription here when a value is found
+        // Found
+        (found) => {
+          const { subscriptionId } = context;
+          if (subscriptionId) {
+            // Extend the lease to include the any default scopes
+            // that are implicitly leased
+            found.deps.defaultScopes.forEach((s) => {
+              scoper.leaseScope([s, s.defaultValue], subscriptionId);
+            });
+          }
         },
         dependencies
       ) as MoleculeCacheValue;
@@ -419,11 +245,23 @@ export function createInjector(
     context: { subscriptionId?: Symbol | undefined },
     scopes: AnyScopeTuple[]
   ) {
-    const defaultScopes = new Set<AnyScopeTuple>();
+    const defaultScopeTuples = new Set<AnyScopeTuple>();
 
-    const getScopeValue: ScopeGetter = (scope) => {
+    const getScopeValue = (scope: AnyMoleculeScope): UseScopeDetails => {
+      const defaultScopes = new Set<AnyMoleculeScope>();
+
       const found = scopes.find(([key]) => key === scope);
-      if (found) return found[1] as any;
+      if (found) {
+        const isDefaultValue = found[1] === found[0].defaultValue;
+        if (!isDefaultValue) {
+          return {
+            value: found[1],
+            defaultScopes,
+          };
+        } else {
+          // Fallthrough the default value handling below
+        }
+      }
 
       let defaultTuple: AnyScopeTuple = [scope, scope.defaultValue];
 
@@ -431,17 +269,24 @@ export function createInjector(
         // We generate a lease for this scope
         // for the subscription here to make sure that
         // `onUnmounted` can be used for default scopes
-        defaultTuple = leaseScope(defaultTuple, context.subscriptionId);
+        defaultTuple = scoper.leaseScope(defaultTuple, context.subscriptionId);
       } else {
         console.warn("Default subscription not leased!");
       }
 
-      defaultScopes.add(defaultTuple);
-      return scope.defaultValue;
+      defaultScopeTuples.add(defaultTuple);
+      defaultScopes.add(scope);
+      return {
+        value: scope.defaultValue,
+        defaultScopes,
+      };
     };
 
-    const mounted = runMolecule(m, getScopeValue, (m) =>
-      getInternal(m, context, ...scopes)
+    const mounted = runMolecule(
+      m,
+      getScopeValue,
+      (m) => getInternal(m, context, ...scopes),
+      getTrueMolecule
     );
 
     const relatedScope = scopes.filter(([key]) => mounted.deps.scopes.has(key));
@@ -458,9 +303,13 @@ export function createInjector(
     const scopeKeys: AnyScopeTuple[] = [
       ...relatedScope,
       ...transitiveRelatedScope,
-      ...Array.from(defaultScopes.values()),
+      ...Array.from(defaultScopeTuples.values()),
     ];
-    const dependencies = [...relatedScope, ...transitiveRelatedScope, m];
+    const scopeCacheKeys: AnyScopeTuple[] = [
+      ...relatedScope,
+      ...transitiveRelatedScope,
+    ].filter(([key, value]) => key.defaultValue !== value);
+    const dependencies = [...scopeCacheKeys, m];
 
     return moleculeCache.deepCache(
       () => {
@@ -470,20 +319,19 @@ export function createInjector(
             throw new Error(
               "Can't use mount lifecycle in globally scoped molecules."
             );
-          const combined: ScopeCleanups = new Set();
+
+          const cleanupSet = new Set<CleanupCallback>();
           mounted.mountedCallbacks.forEach((onMount) => {
             // Call all the mount functions for the molecule
             const cleanup = onMount();
 
             // Queues up the cleanup functions for later
-            if (cleanup) combined.add(cleanup);
+            if (cleanup) cleanupSet.add(cleanup);
           });
 
-          scopeKeys.forEach(([scopeKey, scopeValue]) => {
-            combined.forEach((cleanup) => {
-              scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups.add(cleanup);
-            });
-          });
+          scoper.registerCleanups(scopeKeys, cleanupSet);
+        } else {
+          // No lifecycle callbacks to run
         }
 
         return {
@@ -491,8 +339,15 @@ export function createInjector(
           value: mounted.value,
         };
       },
-      () => {
-        // FIXME: Should we do anything differently if a value is already found?
+      (found) => {
+        const { subscriptionId } = context;
+        if (subscriptionId) {
+          // Extend the lease to include the any default scopes
+          // that are implicitly leased
+          found.deps.defaultScopes.forEach((s) => {
+            scoper.leaseScope([s, s.defaultValue], subscriptionId);
+          });
+        }
       },
       dependencies
     ) as MoleculeCacheValue;
@@ -513,7 +368,7 @@ export function createInjector(
       // Molecules used without scopes or subscription
       return getInternal(bound, {}, ...scopes).value as T;
     } else if (Array.isArray(contextOrScope)) {
-      const [key, value] = contextOrScope;
+      const [key] = contextOrScope;
       if (!isMoleculeScope(key))
         throw new Error("Invalid molecule scope used.");
       // 2nd param is a scope
@@ -531,9 +386,9 @@ export function createInjector(
   ): ReturnType<MoleculeInjector["useScopes"]> {
     const subscriptionId = Symbol(Math.random());
 
-    const tuples = leaseScopes(scopes, subscriptionId);
+    const tuples = scoper.leaseScopes(scopes, subscriptionId);
     const unsub = () => {
-      unleaseScope(subscriptionId);
+      scoper.unleaseScope(subscriptionId);
     };
 
     return [tuples, unsub, { subscriptionId }];
@@ -582,3 +437,75 @@ export const getDefaultInjector = () => {
 
   throw new Error(ErrorInvalidGlobalInjector);
 };
+
+/**
+ * Create a new instance of a molecule
+ *
+ */
+function runMolecule(
+  maybeMolecule: AnyMolecule,
+  getScopeValue: (scope: AnyMoleculeScope) => UseScopeDetails,
+  getMoleculeValue: (mol: AnyMolecule) => MoleculeCacheValue,
+  getTrueMolecule: (
+    molOrIntf: AnyMolecule | AnyMoleculeInterface
+  ) => MoleculeInternal<unknown>
+) {
+  const m = getTrueMolecule(maybeMolecule);
+
+  const dependentMolecules = new Set<AnyMolecule>();
+  const dependentScopes = new Set<AnyMoleculeScope>();
+  const transitiveScopes = new Set<AnyMoleculeScope>();
+  const transitiveDefaultScopes = new Set<AnyMoleculeScope>();
+
+  const use: InternalUse = (dep: Injectable<unknown>) => {
+    if (isMoleculeScope(dep)) {
+      dependentScopes.add(dep);
+      const scopeDetails = getScopeValue(dep);
+      scopeDetails.defaultScopes.forEach((s) => transitiveDefaultScopes.add(s));
+      return scopeDetails.value;
+    }
+    if (isMolecule(dep) || isMoleculeInterface(dep)) {
+      const dependentMolecule = getTrueMolecule(dep);
+      dependentMolecules.add(dependentMolecule);
+      const mol = getMoleculeValue(dependentMolecule);
+      mol.deps.scopes.forEach((s) => transitiveScopes.add(s));
+      mol.deps.transitiveScopes.forEach((s) => transitiveScopes.add(s));
+      mol.deps.defaultScopes.forEach((s) => {
+        transitiveDefaultScopes.add(s);
+      });
+      return mol.value as any;
+    }
+    throw new Error("Can only call `use` with a molecule, interface or scope");
+  };
+  const trackingScopeGetter: ScopeGetter = (s) => {
+    if (!running) throw new Error(ErrorAsyncGetScope);
+    if (!isMoleculeScope(s)) throw new Error(ErrorInvalidScope);
+    return use(s);
+  };
+  const trackingGetter: MoleculeGetter = (molOrInterface) => {
+    if (!running) throw new Error(ErrorAsyncGetMol);
+    if (!isMolecule(molOrInterface) && !isMoleculeInterface(molOrInterface))
+      throw new Error(ErrorInvalidMolecule);
+    return use(molOrInterface);
+  };
+
+  const mountedCallbacks = new Set<MountedCallback>();
+  onMountImpl.push((fn: MountedCallback) => mountedCallbacks.add(fn));
+  useImpl.push(use);
+  let running = true;
+  const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
+  running = false;
+  onMountImpl.pop();
+  useImpl.pop();
+
+  return {
+    deps: {
+      molecules: dependentMolecules,
+      scopes: dependentScopes,
+      transitiveScopes,
+      defaultScopes: transitiveDefaultScopes,
+    },
+    value,
+    mountedCallbacks,
+  };
+}

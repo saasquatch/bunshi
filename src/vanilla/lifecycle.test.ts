@@ -25,9 +25,11 @@ const SecondOrderTransientMolecule = molecule(() =>
   use(TransientScopeMolecule)
 );
 
-const injector = createInjector();
+let injector = createInjector();
 
 beforeEach(() => {
+  // Reset injector state
+  injector = createInjector();
   defaultFn.mockReset();
 });
 
@@ -55,7 +57,6 @@ describe("Single scope dependencies", () => {
     // Given a molecule that can be observed
     ({ MoleculeToTest }) => {
       test.each([
-        // FIXME: Broken test cases
         {
           case: "Both calls are implicit",
           scopes1: undefined,
@@ -77,6 +78,9 @@ describe("Single scope dependencies", () => {
           scopes2: [ExampleScope, defaultFn],
         },
       ])("Case: $case", ({ scopes1, scopes2 }: any) => {
+        // Given an empty case
+        expect(defaultFn).toHaveBeenCalledTimes(0);
+
         // When the molecule is used
         const [value1, unsub1] = scopes1
           ? injector.use(MoleculeToTest, scopes1)
@@ -451,9 +455,20 @@ describe("Conditional dependencies", () => {
   test("Kitchen sink", () => {
     const injector = createInjector();
 
+    // When the molecule is used without scopes
     const case0 = injector.use(localOrGlobal);
+    // Then it is executed
+    expect(executions).toHaveBeenCalledTimes(1);
+    // When the molecule is used with the default scope value (passed explicitly)
     const case1 = injector.use(localOrGlobal, [IsEnabled, false]);
+    // Then it is NOT executed again
+    expect(executions).toHaveBeenCalledTimes(1);
+
+    // When the molecule is used with a different scope value
     const case2 = injector.use(localOrGlobal, [IsEnabled, true]);
+    // Then it is executed
+    expect(executions).toHaveBeenCalledTimes(2);
+
     const case3 = injector.use(
       localOrGlobal,
       [IsEnabled, false],
@@ -483,8 +498,9 @@ describe("Conditional dependencies", () => {
     expect(case5[0]).toStrictEqual([true, componentA]);
     expect(case6[0]).toStrictEqual([true, componentB]);
 
-    expect(executions).toHaveBeenCalledTimes(7);
+    expect(executions).toHaveBeenCalledTimes(6);
 
+    // When the molecules are re-used
     expect(injector.use(localOrGlobal)[0]).toStrictEqual([false, undefined]);
     expect(injector.use(localOrGlobal, [IsEnabled, false])[0]).toStrictEqual([
       false,
@@ -523,8 +539,9 @@ describe("Conditional dependencies", () => {
       )[0]
     ).toStrictEqual([true, componentB]);
 
-    // We expect no more executions to be needed at this point
-    expect(executions).toHaveBeenCalledTimes(7);
+    // Then no more executions are used
+    // Because they should all be cached
+    expect(executions).toHaveBeenCalledTimes(6);
   });
 
   /**
