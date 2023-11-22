@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { getDownstreamScopes } from "../shared/getDownstreamScopes";
+import { dstream } from "../shared/getDownstreamScopes";
 import { ComponentScope, ScopeTuple } from "../vanilla";
 import { AnyScopeTuple } from "../vanilla/internal/internal-types";
 import { ScopeContext } from "./contexts/ScopeContext";
@@ -34,8 +34,8 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
   const inputTuples: AnyScopeTuple[] = (() => {
     if (!options) return [...parentScopes, componentScopeTuple];
     if (options.withUniqueScope) {
-      return getDownstreamScopes(
-        getDownstreamScopes(parentScopes, [
+      return dstream(
+        dstream(parentScopes, [
           options.withUniqueScope,
           generatedValue,
         ] as ScopeTuple<unknown>),
@@ -43,8 +43,8 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
       );
     }
     if (options.withScope) {
-      return getDownstreamScopes(
-        getDownstreamScopes(parentScopes, options.withScope),
+      return dstream(
+        dstream(parentScopes, options.withScope),
         componentScopeTuple,
       );
     }

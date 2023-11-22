@@ -1,24 +1,25 @@
 import type { ScopeTuple } from "../vanilla/types";
 
-export function getDownstreamScopes(
-  parentScopes: ScopeTuple<unknown>[],
-  nextTuple: ScopeTuple<unknown>,
+/**
+ * Get a set of downstream scopes
+ * 
+ * 
+ * @param p - Parent scopes
+ * @param n - New scope tuple
+ * @returns 
+ */
+export function dstream(
+  p: ScopeTuple<unknown>[],
+  n: ScopeTuple<unknown>,
 ) {
-  const [scope] = nextTuple;
-  const found = parentScopes.findIndex((scopeTuple) => {
-    const foundScope = scopeTuple[0];
-    return foundScope === scope;
-  });
+  const [k] = n;
+  const f = p.findIndex((s) => s[0] === k);
 
-  const downstreamScopes =
-    found >= 0
+  const ds =
+    f >= 0
       ? // Replace inline (when found)
-        [
-          ...parentScopes.slice(0, found),
-          nextTuple,
-          ...parentScopes.slice(found + 1),
-        ]
+        [...p.slice(0, f), n, ...p.slice(f + 1)]
       : // Append to the end (when not found)
-        [...parentScopes, nextTuple];
-  return downstreamScopes;
+        [...p, n];
+  return ds;
 }

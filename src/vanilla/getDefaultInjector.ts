@@ -1,7 +1,7 @@
+import { createInjector } from "./injector";
 import { ErrorInvalidGlobalInjector } from "./internal/errors";
 import { DefaultInjector } from "./internal/symbols";
 import { isInjector } from "./internal/utils";
-import { createInjector } from "./injector";
 
 /**
  * Returns the globally defined {@link MoleculeInjector}
@@ -10,16 +10,16 @@ import { createInjector } from "./injector";
  */
 
 export const getDefaultInjector = () => {
-  const defaultInjector = (globalThis as any)[DefaultInjector];
+  const i = (globalThis as any)[DefaultInjector];
 
-  if (defaultInjector === undefined) {
-    const newInjector = createInjector();
-    (globalThis as any)[DefaultInjector] = newInjector;
-    return newInjector;
+  if (i === undefined) {
+    const n = createInjector();
+    (globalThis as any)[DefaultInjector] = n;
+    return n;
   }
 
-  if (isInjector(defaultInjector)) {
-    return defaultInjector;
+  if (isInjector(i)) {
+    return i;
   }
 
   throw new Error(ErrorInvalidGlobalInjector);

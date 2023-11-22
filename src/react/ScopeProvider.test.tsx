@@ -1,7 +1,8 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
 import React, { ReactNode, useContext, useRef, useState } from "react";
-import { ComponentScope, createScope, molecule } from "../vanilla";
+import { createLifecycleUtils } from "../shared/testing/lifecycle";
+import { ComponentScope, createScope, molecule, use } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
@@ -18,19 +19,23 @@ export const UserScope = createScope("user@example.com");
 
 const AtomScope = createScope(atom("user@example.com"));
 
-export const UserMolecule = molecule((_, getScope) => {
-  const userId = getScope(UserScope);
+const userLifecycle = createLifecycleUtils();
+export const UserMolecule = molecule(() => {
+  const userId = use(UserScope);
 
+  userLifecycle.connect(userId);
   return {
     example: Math.random(),
     userId,
   };
 });
 
-const AtomMolecule = molecule((_, getScope) => {
-  const userAtom = getScope(AtomScope);
+const atomLifecycle = createLifecycleUtils();
+const AtomMolecule = molecule(() => {
+  const userAtom = use(AtomScope);
 
   const userNameAtom = atom((get) => get(userAtom) + " name");
+  atomLifecycle.connect(userAtom);
   return {
     example: Math.random(),
     userIdAtom: userAtom,
@@ -109,28 +114,41 @@ strictModeSuite(({ wrapper: Outer }) => {
         context: useContext(ScopeContext),
       };
     };
-    const { result: result1 } = renderHook(useUserMolecule, {
+    const { result: result1, ...rest1 } = renderHook(useUserMolecule, {
       wrapper: Wrapper1,
     });
-    const { result: result2 } = renderHook(useUserMolecule, {
+
+    expect(userLifecycle.mounts).toHaveBeenLastCalledWith("sam@example.com");
+
+    const { result: result2, ...rest2 } = renderHook(useUserMolecule, {
       wrapper: Wrapper2,
     });
+    expect(userLifecycle.mounts).toHaveBeenLastCalledWith(
+      "jeffrey@example.com",
+    );
 
     expect(result1.current.context).toStrictEqual([
       [UserScope, "sam@example.com"],
     ]);
     expect(result1.current.molecule.userId).toBe("sam@example.com");
     expect(result2.current.molecule.userId).toBe("jeffrey@example.com");
+
+    rest1.unmount();
+    expect(userLifecycle.unmounts).toHaveBeenLastCalledWith("sam@example.com");
+
+    rest2.unmount();
+    expect(userLifecycle.unmounts).toHaveBeenLastCalledWith(
+      "jeffrey@example.com",
+    );
+
+    userLifecycle.expectToHaveBeenCalledTimes(2);
+    userLifecycle.expectToMatchCalls(
+      ["sam@example.com"],
+      ["jeffrey@example.com"],
+    );
   });
 
   describe("String scopes", () => {
-    const useUserMolecule = () => {
-      return {
-        molecule: useMolecule(UserMolecule),
-        context: useContext(ScopeContext),
-      };
-    };
-
     test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
       const StringScopeTestContext = React.createContext<
         ReturnType<typeof useTextHook>
@@ -142,7 +160,7 @@ strictModeSuite(({ wrapper: Outer }) => {
         const props = { mountA, mountB, setMountA, setMountB, insideValue };
         return props;
       };
-      const sharedKey = "shared@example.com";
+      const sharedAtExample = "shared@example.com";
       const TestStuffProvider: React.FC<{ children: ReactNode }> = ({
         children,
       }) => {
@@ -161,6 +179,7 @@ strictModeSuite(({ wrapper: Outer }) => {
           ([scope]) => scope !== ComponentScope,
         );
         const context = useContext(StringScopeTestContext);
+        useMolecule(UserMolecule);
         context.insideValue.current = scopes;
         return <div>Bad</div>;
       };
@@ -168,12 +187,12 @@ strictModeSuite(({ wrapper: Outer }) => {
         return (
           <>
             {props.mountA && (
-              <ScopeProvider scope={UserScope} value={sharedKey}>
+              <ScopeProvider scope={UserScope} value={sharedAtExample}>
                 <Child />
               </ScopeProvider>
             )}
             {props.mountB && (
-              <ScopeProvider scope={UserScope} value={sharedKey}>
+              <ScopeProvider scope={UserScope} value={sharedAtExample}>
                 <Child />
               </ScopeProvider>
             )}
@@ -181,49 +200,75 @@ strictModeSuite(({ wrapper: Outer }) => {
         );
       };
 
-      const { result } = renderHook(() => useContext(StringScopeTestContext), {
-        wrapper: TestStuffProvider,
-      });
+      userLifecycle.expectUncalled();
+
+      // When the component is initially mounted
+      const { result, ...rest } = renderHook(
+        () => useContext(StringScopeTestContext),
+        {
+          wrapper: TestStuffProvider,
+        },
+      );
 
       const { insideValue } = result.current;
-      const initialScopes = insideValue.current;
-      expect(initialScopes).not.toBeUndefined();
-      expect(initialScopes.length).toBe(1);
 
-      const userScopeTuple = initialScopes[0];
-      if (true) {
-        const [scopeKey, scopeValue] = userScopeTuple;
-        expect(scopeKey).toBe(UserScope);
-        expect(scopeValue).toBe(sharedKey);
-      }
+      // Then the lifecycle events are called
+      expect(userLifecycle.mounts).toHaveBeenCalledWith(sharedAtExample);
+      // Then the scopes matches the initial value
+      expect(insideValue.current).toStrictEqual([[UserScope, sharedAtExample]]);
 
-      await act(() => {
+      const userScopeTuple = insideValue.current[0];
+
+      // When A is unmounted
+      act(() => {
         result.current.setMountA(false);
       });
 
+      // Then the molecule is still mounted
+      userLifecycle.expectActivelyMounted();
+
       const afterUnmountCache = insideValue.current;
 
+      // Then the scope tuple is unchanged
       expect(afterUnmountCache[0]).toBe(userScopeTuple);
 
+      // When B is unmounted
       act(() => {
         result.current.setMountB(false);
       });
 
+      // Then the molecule is unmounted
+      userLifecycle.expectToMatchCalls([sharedAtExample]);
+
+      // Then the scope tuple is unchanged
       const finalTuples = insideValue.current;
       expect(finalTuples[0]).toBe(userScopeTuple);
 
+      // When B is re-mounted
       act(() => {
         result.current.setMountB(true);
       });
 
+      // Then a fresh tuple is created
       const freshTuples = insideValue.current;
       const [freshTuple] = freshTuples;
+
+      // And it does not match the original
       expect(freshTuple).not.toBe(userScopeTuple);
       if (true) {
         const [scopeKey, scopeValue] = freshTuple;
         expect(scopeKey).toBe(UserScope);
-        expect(scopeValue).toBe(sharedKey);
+        expect(scopeValue).toBe(sharedAtExample);
       }
+
+      // When the component is unmounted
+      rest.unmount();
+
+      // Then the user molecule lifecycle has been completed 2
+      userLifecycle.expectToHaveBeenCalledTimes(2);
+
+      // And it has been called with the same value twice, across 2 leases
+      userLifecycle.expectToMatchCalls([sharedAtExample], [sharedAtExample]);
     });
   });
 
@@ -241,8 +286,10 @@ strictModeSuite(({ wrapper: Outer }) => {
       </Outer>
     );
 
-    const voidMolecule = molecule((_, getScope) => {
-      getScope(VoidScope);
+    const voidLifecycle = createLifecycleUtils();
+    const voidMolecule = molecule(() => {
+      use(VoidScope);
+      voidLifecycle.connect();
       return {
         example: Math.random(),
       };
@@ -253,14 +300,21 @@ strictModeSuite(({ wrapper: Outer }) => {
         context: useContext(ScopeContext),
       };
     };
-    const { result: result1 } = renderHook(useVoidMolecule, {
+
+    voidLifecycle.expectUncalled();
+    const { result: result1, ...rest1 } = renderHook(useVoidMolecule, {
       wrapper: Wrapper1,
     });
-    const { result: result2 } = renderHook(useVoidMolecule, {
+    const { result: result2, ...rest2 } = renderHook(useVoidMolecule, {
       wrapper: Wrapper2,
     });
 
     expect(result1.current.molecule).not.toBe(result2.current.molecule);
+
+    rest1.unmount();
+    rest2.unmount();
+
+    voidLifecycle.expectToHaveBeenCalledTimes(2);
   });
 
   test("Object scope values are shared across providers", () => {
@@ -284,16 +338,24 @@ strictModeSuite(({ wrapper: Outer }) => {
         userId,
       };
     };
-    const { result: result1 } = renderHook(useUserMolecule, {
+    atomLifecycle.expectUncalled();
+    const { result: result1, ...rest1 } = renderHook(useUserMolecule, {
       wrapper: Wrapper1,
     });
-    const { result: result2 } = renderHook(useUserMolecule, {
+    atomLifecycle.expectActivelyMounted();
+    const { result: result2, ...rest2 } = renderHook(useUserMolecule, {
       wrapper: Wrapper2,
     });
-
+    atomLifecycle.expectActivelyMounted();
     expect(result1.current.molecule).toBe(result2.current.molecule);
     expect(result1.current.userId).toBe("sam@example.com");
     expect(result2.current.userId).toBe("sam@example.com");
+
+    rest1.unmount();
+    atomLifecycle.expectActivelyMounted();
+    rest2.unmount();
+
+    atomLifecycle.expectToMatchCalls([childAtom]);
   });
 
   test("Use molecule should will use the nested scope", () => {
@@ -307,19 +369,25 @@ strictModeSuite(({ wrapper: Outer }) => {
       </Outer>
     );
 
+    userLifecycle.expectUncalled();
     const useUserMolecule = () => {
       return {
         molecule: useMolecule(UserMolecule),
         context: useContext(ScopeContext),
       };
     };
-    const { result } = renderHook(useUserMolecule, {
+    const { result, ...rest } = renderHook(useUserMolecule, {
       wrapper: Wrapper,
     });
+    userLifecycle.expectActivelyMounted();
 
     expect(result.current.context).toStrictEqual([
       [UserScope, "jeffrey@example.com"],
     ]);
     expect(result.current.molecule.userId).toBe("jeffrey@example.com");
+
+    rest.unmount();
+
+    userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
   });
 });

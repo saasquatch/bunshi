@@ -1,6 +1,6 @@
 import { inject, onUnmounted } from "vue";
 import type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { getDownstreamScopes } from "../shared/getDownstreamScopes";
+import { dstream } from "../shared/getDownstreamScopes";
 import { ComponentScope, type ScopeTuple } from "../vanilla";
 import { ScopeSymbol } from "./internal/symbols";
 import { useInjector } from "./useInjector";
@@ -53,10 +53,10 @@ const getTuples = (
   })();
 
   if (tuple) {
-    return getDownstreamScopes(
-      getDownstreamScopes(parentScopes, tuple),
+    return dstream(
+      dstream(parentScopes, tuple),
       componentScopeTuple,
     );
   }
-  return getDownstreamScopes(parentScopes, componentScopeTuple);
+  return dstream(parentScopes, componentScopeTuple);
 };

@@ -1,12 +1,16 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { atom, useAtom } from "jotai";
+import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { ComponentScope, molecule } from "./";
-import { strictModeSuite } from "./testing/strictModeSuite";
 import { createTestInjectorProvider } from "./testing/TestInjectorProvider";
+import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
+
+const compLifecycle = createLifecycleUtils();
 
 const ComponentScopedCountMolecule = molecule((_, scope) => {
   scope(ComponentScope);
+  compLifecycle.connect();
   return atom(0);
 });
 
@@ -43,15 +47,24 @@ strictModeSuite(({ wrapper: Outer }) => {
 
   describe("Component scoped molecules", () => {
     test("should increment counter", () => {
+      compLifecycle.expectUncalled();
       testOneCounter(ComponentScopedCountMolecule, 1);
+
+      expect(compLifecycle.executions).toHaveBeenCalledOnce();
+      expect(compLifecycle.mounts).toHaveBeenCalledOnce();
+      expect(compLifecycle.unmounts).toHaveBeenCalledOnce();
     });
     test("two counters should be not be connected when component scoped", () => {
+      compLifecycle.expectUncalled();
       testTwoCounters(ComponentScopedCountMolecule, {
         actual1: true,
         actual2: true,
         expected1: 1,
         expected2: 1,
       });
+      expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
+      expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
+      expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
     });
     test("two counters should be not be connected when component scoped, only one", () => {
       testTwoCounters(ComponentScopedCountMolecule, {
@@ -77,7 +90,7 @@ strictModeSuite(({ wrapper: Outer }) => {
   ) {
     const TestInjectorProvider = createTestInjectorProvider(Outer);
 
-    const { result } = renderHook(() => useCounter(mol), {
+    const { result, ...rest } = renderHook(() => useCounter(mol), {
       wrapper: TestInjectorProvider,
     });
 
@@ -86,6 +99,8 @@ strictModeSuite(({ wrapper: Outer }) => {
     });
 
     expect(result.current.count).toBe(expectedResult);
+
+    rest.unmount();
   }
 
   function testTwoCounters(
@@ -99,10 +114,10 @@ strictModeSuite(({ wrapper: Outer }) => {
   ) {
     const TestInjectorProvider = createTestInjectorProvider(Outer);
 
-    const { result: result1 } = renderHook(() => useCounter(mol), {
+    const { result: result1, ...rest1 } = renderHook(() => useCounter(mol), {
       wrapper: TestInjectorProvider,
     });
-    const { result: result2 } = renderHook(() => useCounter(mol), {
+    const { result: result2, ...rest2 } = renderHook(() => useCounter(mol), {
       wrapper: TestInjectorProvider,
     });
 
@@ -115,5 +130,8 @@ strictModeSuite(({ wrapper: Outer }) => {
 
     expect(result1.current.count).toBe(opts.expected1);
     expect(result2.current.count).toBe(opts.expected2);
+
+    rest1.unmount();
+    rest2.unmount();
   }
 });

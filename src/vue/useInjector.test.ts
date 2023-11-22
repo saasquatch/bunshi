@@ -4,7 +4,7 @@ import { InjectorSymbol } from "./internal/symbols";
 import Component from "./testing/Component.vue";
 import DualComponent from "./testing/DualComponent.vue";
 import UserComponent from "./testing/UserComponent.vue";
-import { withSetup } from "./testing/test-utils";
+import { wrap } from "./testing/test-utils";
 
 test("increments value on click", async () => {
   render(Component);
@@ -99,26 +99,24 @@ export async function testWithinProvider(
 
 describe("Providing values ", () => {
   test("Returns default injector by default", () => {
-    const [result, mount, app] = withSetup(() => useInjector());
-
-    mount();
+    const [result, rendered] = wrap(() => useInjector()).render();
 
     expect(result.value).toBe(getDefaultInjector());
 
-    app.unmount();
+    rendered.unmount();
   });
 
   test("useInjector can use global value", () => {
     const injector1 = createInjector();
-    const [result, mount, app] = withSetup(() => useInjector());
-
-    // mock provide for testing injections
-    app.provide(InjectorSymbol, injector1);
-
-    mount();
+    const [result, rendered] = wrap(() => useInjector()).render({
+      global: {
+        provide: {
+          [InjectorSymbol]: injector1,
+        },
+      },
+    });
 
     expect(result.value).toBe(injector1);
-
-    app.unmount();
+    rendered.unmount();
   });
 });
