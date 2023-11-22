@@ -2,16 +2,13 @@ import type { ScopeTuple } from "../vanilla/types";
 
 /**
  * Get a set of downstream scopes
- * 
- * 
+ *
+ *
  * @param p - Parent scopes
  * @param n - New scope tuple
- * @returns 
+ * @returns
  */
-export function dstream(
-  p: ScopeTuple<unknown>[],
-  n: ScopeTuple<unknown>,
-) {
+export function dstream(p: ScopeTuple<unknown>[], n: ScopeTuple<unknown>) {
   const [k] = n;
   const f = p.findIndex((s) => s[0] === k);
 

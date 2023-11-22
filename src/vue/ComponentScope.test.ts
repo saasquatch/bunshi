@@ -4,7 +4,6 @@ import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { InjectorSymbol } from "./internal/symbols";
 import { wrap } from "./testing/test-utils";
 
-
 const ComponentScopedCountMolecule = molecule(() => {
   use(ComponentScope);
   compScopedLifecycle.connect();

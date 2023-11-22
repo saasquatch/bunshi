@@ -22,29 +22,29 @@ export function createLifecycleUtils() {
   beforeEach(() => reset());
   afterEach(() => reset());
 
-  const expectUncalled = ()=>{
+  const expectUncalled = () => {
     expect(executions).not.toHaveBeenCalled();
     expect(mounts).not.toHaveBeenCalled();
     expect(unmounts).not.toHaveBeenCalled();
-  }
+  };
 
-  const expectToMatchCalls = (...args:unknown[])=>{
+  const expectToMatchCalls = (...args: unknown[]) => {
     expect(executions.mock.calls).toStrictEqual(args);
     expect(mounts.mock.calls).toStrictEqual(args);
     expect(unmounts.mock.calls).toStrictEqual(args);
-  }
+  };
 
-  const expectToHaveBeenCalledTimes = (num:number)=>{
+  const expectToHaveBeenCalledTimes = (num: number) => {
     expect(executions).toHaveBeenCalledTimes(num);
     expect(mounts).toHaveBeenCalledTimes(num);
     expect(unmounts).toHaveBeenCalledTimes(num);
-  }
+  };
 
-  const expectActivelyMounted = ()=>{
+  const expectActivelyMounted = () => {
     expect(executions).toHaveBeenCalledTimes(1);
     expect(mounts).toHaveBeenCalledTimes(1);
     expect(unmounts).toHaveBeenCalledTimes(0);
-  }
+  };
 
   return {
     expectActivelyMounted,

@@ -53,10 +53,7 @@ const getTuples = (
   })();
 
   if (tuple) {
-    return dstream(
-      dstream(parentScopes, tuple),
-      componentScopeTuple,
-    );
+    return dstream(dstream(parentScopes, tuple), componentScopeTuple);
   }
   return dstream(parentScopes, componentScopeTuple);
 };
