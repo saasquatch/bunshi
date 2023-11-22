@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import { ComponentScope } from ".";
 import { createInjector } from "./injector";
 import { AnyScopeTuple } from "./internal/internal-types";
-import { onMount, use } from "./lifecycle";
+import { onMount, onUnmount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
@@ -22,7 +22,7 @@ const ExampleCleanupMolecule = molecule(() => {
 
 const TransientScopeMolecule = molecule(() => use(ExampleCleanupMolecule));
 const SecondOrderTransientMolecule = molecule(() =>
-  use(TransientScopeMolecule)
+  use(TransientScopeMolecule),
 );
 
 let injector = createInjector();
@@ -119,7 +119,7 @@ describe("Single scope dependencies", () => {
         expect(defaultFn).toHaveBeenCalledTimes(3);
         expect(defaultFn).toHaveBeenNthCalledWith(3, "unmounted");
       });
-    }
+    },
   );
 
   test("Derived molecules are cleaned up", () => {
@@ -226,7 +226,7 @@ describe("Two scope dependencies", () => {
     const [value1, unsub] = injector.use(
       ExampleCleanupMolecule,
       scopeTupleA,
-      scopeTupleB
+      scopeTupleB,
     );
     expect(value1.testFnA).toBe(mockFnA);
     expect(value1.testFnB).toBe(mockFnB);
@@ -242,7 +242,7 @@ describe("Two scope dependencies", () => {
     const [value2, unsub2] = injector.use(
       ExampleCleanupMolecule,
       scopeTupleA,
-      scopeTupleC
+      scopeTupleC,
     );
     expect(value2.testFnA).toBe(mockFnA);
     expect(value2.testFnB).toBe(mockFnC);
@@ -351,7 +351,7 @@ describe("Conditional dependencies", () => {
     const case1 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
 
     expect(case1[0]).toStrictEqual([true, componentA]);
@@ -368,7 +368,7 @@ describe("Conditional dependencies", () => {
     const case3 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
     expect(case3[0]).toStrictEqual([true, componentA]);
 
@@ -407,7 +407,7 @@ describe("Conditional dependencies", () => {
     const case1 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
     expect(case1[0]).toStrictEqual([true, componentA]);
     expect(mounts).toHaveBeenLastCalledWith(true, componentA);
@@ -417,7 +417,7 @@ describe("Conditional dependencies", () => {
     const case3 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
     expect(case3[0]).toStrictEqual([true, componentA]);
 
@@ -472,22 +472,22 @@ describe("Conditional dependencies", () => {
     const case3 = injector.use(
       localOrGlobal,
       [IsEnabled, false],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
     const case4 = injector.use(
       localOrGlobal,
       [IsEnabled, false],
-      [ComponentScope, componentB]
+      [ComponentScope, componentB],
     );
     const case5 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentA]
+      [ComponentScope, componentA],
     );
     const case6 = injector.use(
       localOrGlobal,
       [IsEnabled, true],
-      [ComponentScope, componentB]
+      [ComponentScope, componentB],
     );
 
     expect(case0[0]).toStrictEqual([false, undefined]);
@@ -514,29 +514,29 @@ describe("Conditional dependencies", () => {
       injector.use(
         localOrGlobal,
         [IsEnabled, false],
-        [ComponentScope, componentA]
-      )[0]
+        [ComponentScope, componentA],
+      )[0],
     ).toStrictEqual([false, undefined]);
     expect(
       injector.use(
         localOrGlobal,
         [IsEnabled, false],
-        [ComponentScope, componentB]
-      )[0]
+        [ComponentScope, componentB],
+      )[0],
     ).toStrictEqual([false, undefined]);
     expect(
       injector.use(
         localOrGlobal,
         [IsEnabled, true],
-        [ComponentScope, componentA]
-      )[0]
+        [ComponentScope, componentA],
+      )[0],
     ).toStrictEqual([true, componentA]);
     expect(
       injector.use(
         localOrGlobal,
         [IsEnabled, true],
-        [ComponentScope, componentB]
-      )[0]
+        [ComponentScope, componentB],
+      )[0],
     ).toStrictEqual([true, componentB]);
 
     // Then no more executions are used
@@ -607,6 +607,99 @@ describe("Conditional dependencies", () => {
       ]);
 
       expect(executions).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+describe("unmount lifecycle", () => {
+  const unmountInternal = vi.fn();
+
+  beforeEach(() => {
+    unmountInternal.mockReset();
+  });
+
+  const OnlyUnmount = molecule(() => {
+    use(ExampleScope);
+    onUnmount(() => unmountInternal());
+  });
+
+  const TwoUnmounts = molecule(() => {
+    use(ExampleScope);
+    onUnmount(() => {
+      /* no-op */
+    });
+    onUnmount(() => unmountInternal());
+  });
+
+  const ThreeUnmounts = molecule(() => {
+    use(ExampleScope);
+    onUnmount(() => {
+      /* no-op */
+    });
+    onUnmount(() => unmountInternal());
+    onUnmount(() => {
+      /* no-op */
+    });
+  });
+
+  const ReturnedFromMount = molecule(() => {
+    use(ExampleScope);
+    onMount(() => {
+      return () => unmountInternal();
+    });
+  });
+
+  const ReturnedFrom2ndMount = molecule(() => {
+    use(ExampleScope);
+    onMount(() => {});
+    onMount(() => {
+      return () => unmountInternal();
+    });
+  });
+
+  test.each([
+    { moleculeToTest: OnlyUnmount, case: "only one unmount" },
+    { moleculeToTest: TwoUnmounts, case: "two unmounts" },
+    { moleculeToTest: ThreeUnmounts, case: "three unmount" },
+    {
+      moleculeToTest: ReturnedFromMount,
+      case: "unmount from the mount function",
+    },
+    {
+      moleculeToTest: ReturnedFrom2ndMount,
+      case: "unmount from a 2nd mount function",
+    },
+  ])("$case", ({ moleculeToTest }) => {
+    const [_, unsub] = injector.use(moleculeToTest);
+    expect(unmountInternal).not.toHaveBeenCalled();
+    unsub();
+    expect(unmountInternal).toHaveBeenCalledOnce();
+  });
+
+  describe("Errors in unmount calls are handled silently", () => {
+    beforeEach(() => {
+      unmountInternal.mockImplementationOnce(() => {
+        throw new Error("thrown error");
+      });
+    });
+
+    test.each([
+      { moleculeToTest: OnlyUnmount, case: "only one unmount" },
+      { moleculeToTest: TwoUnmounts, case: "two unmounts" },
+      { moleculeToTest: ThreeUnmounts, case: "three unmount" },
+      {
+        moleculeToTest: ReturnedFromMount,
+        case: "unmount from the mount function",
+      },
+      {
+        moleculeToTest: ReturnedFrom2ndMount,
+        case: "unmount from a 2nd mount function",
+      },
+    ])("$case", ({ moleculeToTest }) => {
+      const [_, unsub] = injector.use(moleculeToTest);
+      expect(unmountInternal).not.toHaveBeenCalled();
+      expect(() => unsub()).toThrow();
+      expect(unmountInternal).toHaveBeenCalledOnce();
     });
   });
 });

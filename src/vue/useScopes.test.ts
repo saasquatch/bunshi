@@ -1,161 +1,190 @@
 import type { ArgumentsType } from "vitest";
 import { ComponentScope, createScope, useScopes, type ScopeTuple } from ".";
 import { ScopeSymbol } from "./internal/symbols";
-import { withSetup } from "./tests/test-utils";
-
+import { withSetup } from "./testing/test-utils";
 
 const PrimitiveScope = createScope<string>("primitive");
 const ObjectScope = createScope<Set<unknown>>(new Set());
 const UniqueScope = createScope<unknown>(new Error("Do not use"));
 
-
-const useTestScopes = (...args: ArgumentsType<typeof useScopes>) => useScopes(...args).filter(([scope]) => scope !== ComponentScope);
+const useTestScopes = (...args: ArgumentsType<typeof useScopes>) =>
+  useScopes(...args).filter(([scope]) => scope !== ComponentScope);
 
 describe("Providing values ", () => {
+  test("Returns empty array by default", () => {
+    const [result, mount, app] = withSetup(() => useTestScopes());
 
-    test("Returns empty array by default", () => {
-        const [result, mount, app] = withSetup(() => useTestScopes())
+    mount();
 
-        mount();
+    expect(result.value).toStrictEqual([]);
 
-        expect(result.value).toStrictEqual([]);
+    app.unmount();
+  });
+  test("useScopes will pass along the provided value", () => {
+    const [result, mount, app] = withSetup(() => useTestScopes());
 
-        app.unmount();
-    })
-    test("useScopes will pass along the provided value", () => {
-        const [result, mount, app] = withSetup(() => useTestScopes())
+    const scopes = [[PrimitiveScope, "foo"]];
+    // mock provide for testing injections
+    app.provide(ScopeSymbol, scopes);
 
+    mount();
 
-        const scopes = [[PrimitiveScope, "foo"]];
-        // mock provide for testing injections
-        app.provide(ScopeSymbol, scopes);
+    // Object equality -- should be the exact scope tuples
+    expect(result.value).toStrictEqual(scopes);
 
-        mount();
+    app.unmount();
+  });
 
-        // Object equality -- should be the exact scope tuples
-        expect(result.value).toStrictEqual(scopes);
+  describe("Exclusive scopes", () => {
+    const tuple: ScopeTuple<string> = [PrimitiveScope, "foo"];
 
-        app.unmount();
-    })
+    test("Exclusive scopes provides that value", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ exclusiveScope: tuple }),
+      );
 
-    describe("Exclusive scopes", () => {
-        const tuple: ScopeTuple<string> = [PrimitiveScope, "foo"];
+      mount();
 
-        test("Exclusive scopes provides that value", () => {
+      expect(result.value).toStrictEqual([tuple]);
+      const [tuple1] = result.value!;
+      expect(tuple1).toStrictEqual(tuple);
 
-            const [result, mount, app] = withSetup(() => useTestScopes({ exclusiveScope: tuple }))
+      app.unmount();
+    });
 
-            mount();
+    test("Exclusive scopes overrides context", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ exclusiveScope: tuple }),
+      );
 
-            expect(result.value).toStrictEqual([tuple]);
-            const [tuple1] = result.value!;
-            expect(tuple1).toStrictEqual(tuple);
+      app.provide(ScopeSymbol, [[PrimitiveScope, "implicit"]]);
+      mount();
 
-            app.unmount();
-        })
+      expect(result.value).toStrictEqual([tuple]);
+      const [tuple1] = result.value!;
+      expect(tuple1).toStrictEqual(tuple);
 
-        test("Exclusive scopes overrides context", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ exclusiveScope: tuple }))
+      app.unmount();
+    });
 
-            app.provide(ScopeSymbol, [[PrimitiveScope, "implicit"]]);
-            mount();
+    test("Exclusive scopes overrides all scopes, even when they are not related", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ exclusiveScope: tuple }),
+      );
 
-            expect(result.value).toStrictEqual([tuple]);
-            const [tuple1] = result.value!;
-            expect(tuple1).toStrictEqual(tuple);
+      app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
+      mount();
 
-            app.unmount();
-        })
+      expect(result.value).toStrictEqual([tuple]);
+      const [tuple1] = result.value!;
+      expect(tuple1).toStrictEqual(tuple);
 
-        test("Exclusive scopes overrides all scopes, even when they are not related", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ exclusiveScope: tuple }))
+      app.unmount();
+    });
+  });
 
-            app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
-            mount();
+  describe("With scopes", () => {
+    const tuple: ScopeTuple<string> = [PrimitiveScope, "explicit"];
 
-            expect(result.value).toStrictEqual([tuple]);
-            const [tuple1] = result.value!;
-            expect(tuple1).toStrictEqual(tuple);
+    test("With scopes provides that value", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withScope: tuple }),
+      );
 
-            app.unmount();
-        })
-    })
+      mount();
 
+      expect(result.value).toStrictEqual([tuple]);
+      const [tuple1] = result.value!;
+      expect(tuple1).toStrictEqual(tuple);
 
-    describe("With scopes", () => {
+      app.unmount();
+    });
 
-        const tuple: ScopeTuple<string> = [PrimitiveScope, "explicit"];
+    test("With scopes overrides context for matching scope", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withScope: tuple }),
+      );
 
-        test("With scopes provides that value", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withScope: tuple }))
+      app.provide(ScopeSymbol, [[PrimitiveScope, "implicit"]]);
+      mount();
 
-            mount();
+      expect(result.value).toStrictEqual([tuple]);
+      const [tuple1] = result.value!;
+      expect(tuple1).toStrictEqual(tuple);
 
-            expect(result.value).toStrictEqual([tuple]);
-            const [tuple1] = result.value!;
-            expect(tuple1).toStrictEqual(tuple);
+      app.unmount();
+    });
 
-            app.unmount();
-        })
+    test("With scopes overrides context for only the matching matching scope", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withScope: [PrimitiveScope, "explicit"] }),
+      );
 
-        test("With scopes overrides context for matching scope", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withScope: tuple }))
+      app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
+      mount();
 
-            app.provide(ScopeSymbol, [[PrimitiveScope, "implicit"]]);
-            mount();
+      expect(result.value).toStrictEqual([
+        [ObjectScope, new Set()],
+        [PrimitiveScope, "explicit"],
+      ]);
 
-            expect(result.value).toStrictEqual([tuple]);
-            const [tuple1] = result.value!;
-            expect(tuple1).toStrictEqual(tuple);
+      app.unmount();
+    });
+  });
 
-            app.unmount();
-        })
+  describe("Unique scopes", () => {
+    test("Unique scopes provides that value", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withUniqueScope: UniqueScope }),
+      );
 
-        test("With scopes overrides context for only the matching matching scope", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withScope: [PrimitiveScope, "explicit"] }))
+      mount();
 
-            app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
-            mount();
+      expect(result.value).toStrictEqual([
+        [
+          UniqueScope,
+          new Error("Don't use this value, it is a placeholder only"),
+        ],
+      ]);
 
-            expect(result.value).toStrictEqual([[ObjectScope, new Set()], [PrimitiveScope, "explicit"]]);
+      app.unmount();
+    });
 
-            app.unmount();
-        })
-    })
+    test("With scopes overrides context for matching scope", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withUniqueScope: UniqueScope }),
+      );
 
+      app.provide(ScopeSymbol, [[UniqueScope, "implicit"]]);
+      mount();
 
-    describe("Unique scopes", () => {
-        test("Unique scopes provides that value", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withUniqueScope: UniqueScope }))
+      expect(result.value).toStrictEqual([
+        [
+          UniqueScope,
+          new Error("Don't use this value, it is a placeholder only"),
+        ],
+      ]);
 
-            mount();
+      app.unmount();
+    });
 
-            expect(result.value).toStrictEqual([[UniqueScope, new Error("Don't use this value, it is a placeholder only")]]);
+    test("With scopes overrides context for only the matching matching scope", () => {
+      const [result, mount, app] = withSetup(() =>
+        useTestScopes({ withUniqueScope: UniqueScope }),
+      );
 
-            app.unmount();
-        })
+      app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
+      mount();
 
-        test("With scopes overrides context for matching scope", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withUniqueScope: UniqueScope }))
+      expect(result.value).toStrictEqual([
+        [ObjectScope, new Set()],
+        [
+          UniqueScope,
+          new Error("Don't use this value, it is a placeholder only"),
+        ],
+      ]);
 
-            app.provide(ScopeSymbol, [[UniqueScope, "implicit"]]);
-            mount();
-
-            expect(result.value).toStrictEqual([[UniqueScope, new Error("Don't use this value, it is a placeholder only")]]);
-
-            app.unmount();
-        })
-
-        test("With scopes overrides context for only the matching matching scope", () => {
-            const [result, mount, app] = withSetup(() => useTestScopes({ withUniqueScope: UniqueScope }))
-
-            app.provide(ScopeSymbol, [[ObjectScope, new Set()]]);
-            mount();
-
-            expect(result.value).toStrictEqual([[ObjectScope, new Set()], [UniqueScope, new Error("Don't use this value, it is a placeholder only")]]);
-
-            app.unmount();
-        })
-    })
-
-})
+      app.unmount();
+    });
+  });
+});

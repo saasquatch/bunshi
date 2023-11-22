@@ -20,7 +20,7 @@ import { useScopeSubscription } from "./useScopes";
  */
 export function useMolecule<T>(
   mol: MoleculeOrInterface<T>,
-  options?: MoleculeScopeOptions
+  options?: MoleculeScopeOptions,
 ): T {
   const { memoizedTuples, context } = useScopeSubscription(options);
   const injector = useInjector();

@@ -1,43 +1,112 @@
+import { MoleculeInjector } from ".";
 import { AnyMoleculeScope, AnyScopeTuple } from "./internal/internal-types";
 import { CleanupCallback } from "./lifecycle";
 import { ScopeTuple } from "./types";
 
-type ScopeCleanups = Set<CleanupCallback>;
-
 /**
- * What is stored in the {@link ScopeCache}
+ * The scoper is not aware of molecules, but keeps track of scopes
+ *
+ *  - it provides referentially-equal scope tuples for use in other weak maps
+ *  - it tracks subscriptions, and runs cleanups when nothing is subscribing anymore
+ *  - it keeps track of unmount functions and only ever runs them once
+ *
+ * Since the scoper uses `Map` and `Set` instead of `WeakMap` and `WeakSet` it
+ * is the most likely destination for memory leaks, likely due to scopes not being
+ * released.
+ *
  */
-type ScopeCacheValue = {
-  references: Set<Symbol>;
-  tuple: AnyScopeTuple;
-  cleanups: ScopeCleanups;
-};
-
-/**
- * Key = Scope value
- * Value = cached stuff
- */
-type ScopeValueMap = Map<unknown, ScopeCacheValue>;
-
 export function createScoper() {
-  const scopeCache = new WeakMap<AnyMoleculeScope, ScopeValueMap>();
+  /**
+   * This scope cache is the key state of this scoper.
+   *
+   * It is a 2-lever map
+   *
+   *      Scope
+   *       / \
+   *         Scope Values
+   *            /  \
+   *                o
+   *                - List of subscriptions (references)
+   *                - Memoized tuple, for use as a key in other caches and WeakMaps
+   *                - Cleanups for when this scope/value pair is released
+   *
+   *
+   */
+  const scopeCache = new WeakMap<
+    /**
+     * All scopes are objects, so they can be used as a WeakMap key
+     * If scopes are created temporarily, this will automatically be cleaned up
+     * from this WeakMap
+     */
+    AnyMoleculeScope,
+    /**
+     * Ideally we would prefer to use a WeakMap here instead of a Map, but
+     * since scope values can be primitives, they aren't allowed as a
+     * key in a WeakMap.
+     */
+    Map<
+      /**
+       * The scope value, which should match the type of the MoleculeScope
+       */
+      unknown,
+      /**
+       * The point of the cache is to store this object
+       * of things related to a scope value
+       */
+      {
+        /**
+         * The set of subscription IDs that are using this scope value
+         */
+        references: Set<Symbol>;
+        /**
+         * A referentially-stable array (i.e. Tuple) for the scope value.
+         *
+         * This is used as a key in other places in WeakMap and WeakSet
+         */
+        tuple: AnyScopeTuple;
+        /**
+         * These callbacks should be called when there are no more subscriptions
+         */
+        cleanups: Set<CleanupCallback>;
+      }
+    >
+  >();
 
-  const subscriptionIdToTuples = new WeakMap<Symbol, Set<AnyScopeTuple>>();
+  /**
+   * The ideally structure that we want is actualy a "multimap" between
+   * scopes and subscription.
+   *
+   *  - from a scope, find it's subscriptions
+   *  - from a subscription, find it's scopes
+   *
+   */
+  const subscriptionIdToTuples = new WeakMap<
+    /**
+     * A subscription ID
+     */
+    Symbol,
+    /**
+     * The set of scopes that are leased by this subscription
+     *
+     * Ideally we'd like to use a WeakSet here, but weaksets are not iterable,
+     * so we must use a Set.
+     */
+    Set<AnyScopeTuple>
+  >();
 
   /**
    * A weakset that makes sure that we never call a cleanup
-   * function for a molecule more than once.
+   * function more than once.
    *
-   * You can think of this as a Map<CleanupCallback, boolean>
+   * Think of every callback having an `hasBeenRun` property:
+   *
+   * `callback.hasBeenRun = true`.
+   *
+   * You can also think of this as a Map<CleanupCallback, boolean>
    * where we set the value to "true" once the callback has
    * been run:
    *
    * `hasBeenRun.set(callback, true)`
-   *
-   * Another way is to think of every callback having an
-   * `hasBeenRun` property:
-   *
-   * `callback.hasBeenRun = true`.
    *
    * The weakset provides a simpler, mutation free and memory
    * efficient way to signal that the callback has been run
@@ -50,7 +119,7 @@ export function createScoper() {
 
   function leaseScopes<T>(
     tuples: ScopeTuple<T>[],
-    subscriptionId: Symbol
+    subscriptionId: Symbol,
   ): ScopeTuple<T>[] {
     return tuples.map((t) => leaseScope(t, subscriptionId));
   }
@@ -64,7 +133,7 @@ export function createScoper() {
    */
   function leaseScope<T>(
     tuple: ScopeTuple<T>,
-    subscriptionId: Symbol
+    subscriptionId: Symbol,
   ): ScopeTuple<T> {
     const [scope, value] = tuple;
 
@@ -83,11 +152,9 @@ export function createScoper() {
       return cached.tuple as ScopeTuple<T>;
     }
 
-    const references = new Set<Symbol>();
-    references.add(subscriptionId);
     valuesForScope.set(value, {
-      references,
       tuple,
+      references: new Set<Symbol>([subscriptionId]),
       cleanups: new Set(),
     });
 
@@ -110,7 +177,7 @@ export function createScoper() {
    * deregisters them from the primitive scope
    * cache to ensure no memory leaks
    */
-  function unleaseScope<T>(subscriptionId: Symbol) {
+  function unleaseScopes(subscriptionId: Symbol) {
     const tuples = subscriptionIdToTuples.get(subscriptionId);
     if (!tuples) return;
     tuples.forEach(([scope, value]) => {
@@ -123,6 +190,7 @@ export function createScoper() {
       if (references && references.size <= 0) {
         scopeMap?.delete(value);
 
+        const errors = new Set<unknown>();
         // Run all cleanups
         cached?.cleanups.forEach((cb) => {
           if (!cleanupsRun.has(cb)) {
@@ -137,7 +205,7 @@ export function createScoper() {
 
   function registerCleanups(
     scopeKeys: AnyScopeTuple[],
-    cleanupSet: Set<CleanupCallback>
+    cleanupSet: Set<CleanupCallback>,
   ) {
     scopeKeys.forEach(([scopeKey, scopeValue]) => {
       cleanupSet.forEach((cleanup) => {
@@ -146,11 +214,38 @@ export function createScoper() {
     });
   }
 
+  /**
+   * The subscriptionIndex provides a unique name to use
+   * in debugging.
+   *  - It does not need to be unique
+   *  - It does not need to auto-increment,
+   *  - It does not need to be a number
+   *  - It has to affect on business logic
+   *  - It's only for display purposes
+   */
+  let subscriptionIndex = 0;
+
+  function useScopes(
+    ...scopes: AnyScopeTuple[]
+  ): ReturnType<MoleculeInjector["useScopes"]> {
+    const subscriptionId = Symbol(
+      // This name is only used for display purposes
+      // Do NOT replace this `Symbol` with `Symbol.for`
+      // it is NOT intended to be global
+      `bunshi.scope.subscription ${subscriptionIndex++}`,
+    );
+
+    const tuples = leaseScopes(scopes, subscriptionId);
+    const unsub = () => unleaseScopes(subscriptionId);
+
+    return [tuples, unsub, { subscriptionId }];
+  }
+
   return {
+    useScopes,
     registerCleanups,
     leaseScope,
     leaseScopes,
     trackSubcription,
-    unleaseScope,
   };
 }

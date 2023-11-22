@@ -34,7 +34,7 @@ describe("Weak cache", () => {
     const one = memoize.deepCache(
       () => 0,
       () => {},
-      [first]
+      [first],
     );
 
     memoize.upsert(fn, [first]);
@@ -42,7 +42,7 @@ describe("Weak cache", () => {
     const two = memoize.deepCache(
       () => 0,
       () => {},
-      [first]
+      [first],
     );
 
     expect(one).toBe(1);

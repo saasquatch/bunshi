@@ -73,7 +73,7 @@ strictModeSuite(({ wrapper: Outer }) => {
 
   function testOneCounter(
     mol: typeof ComponentScopedCountMolecule,
-    expectedResult: number
+    expectedResult: number,
   ) {
     const TestInjectorProvider = createTestInjectorProvider(Outer);
 
@@ -95,7 +95,7 @@ strictModeSuite(({ wrapper: Outer }) => {
       actual2: boolean;
       expected2: number;
       expected1: number;
-    }
+    },
   ) {
     const TestInjectorProvider = createTestInjectorProvider(Outer);
 

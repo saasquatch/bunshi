@@ -1,6 +1,12 @@
 import type { MoleculeInjector } from "../injector";
 import type { AnyMolecule, AnyMoleculeScope } from "./internal-types";
-import { Injector, MoleculeInterfaceSymbol, MoleculeSymbol, ScopeSymbol, TypeSymbol } from "./symbols";
+import {
+  Injector,
+  MoleculeInterfaceSymbol,
+  MoleculeSymbol,
+  ScopeSymbol,
+  TypeSymbol,
+} from "./symbols";
 
 function __isInternalType<T>(value: unknown, typeSymbol: symbol): value is T {
   if (!value) return false;

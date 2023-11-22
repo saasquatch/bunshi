@@ -16,7 +16,7 @@ export type WeakCache<TKey extends {}, TValue> = WeakMap<
 
 const getWeakCacheItem = <TKey extends {}, TValue>(
   cache: WeakCache<TKey, TValue>,
-  deps: Deps<TKey>
+  deps: Deps<TKey>,
 ): TValue | undefined => {
   while (true) {
     const [dep, ...rest] = deps;
@@ -35,7 +35,7 @@ const getWeakCacheItem = <TKey extends {}, TValue>(
 const setWeakCacheItem = <TKey extends {}, TValue>(
   cache: WeakCache<TKey, TValue>,
   deps: Deps<TKey>,
-  item: TValue
+  item: TValue,
 ): void => {
   while (true) {
     const [dep, ...rest] = deps;
@@ -77,7 +77,7 @@ export type DeepCache<TKey extends {}, TValue> = {
   deepCache(
     createFn: () => TValue,
     foundFn: (found: TValue) => void,
-    deps: Deps<TKey>
+    deps: Deps<TKey>,
   ): TValue;
 
   /**
@@ -92,7 +92,7 @@ export type DeepCache<TKey extends {}, TValue> = {
    */
   upsert(
     createFn: (previous: TValue | undefined) => TValue,
-    deps: Deps<TKey>
+    deps: Deps<TKey>,
   ): void;
 };
 
@@ -104,7 +104,7 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   const deepCache = (
     createFn: () => TValue,
     foundFn: (found: TValue) => void,
-    deps: Deps<TKey>
+    deps: Deps<TKey>,
   ) => {
     if (!deps.length) throw new Error("Dependencies need to exist.");
     const cachedValue = getWeakCacheItem(cache, deps);
@@ -118,7 +118,7 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   };
   const upsert = (
     createFn: (previous: TValue | undefined) => TValue,
-    deps: Deps<TKey>
+    deps: Deps<TKey>,
   ) => {
     if (!deps.length) throw new Error("Dependencies need to exist.");
     const cachedValue = getWeakCacheItem(cache, deps);

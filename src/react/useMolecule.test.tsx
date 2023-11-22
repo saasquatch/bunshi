@@ -95,7 +95,7 @@ strictModeSuite(({ wrapper }) => {
       const { result } = renderHook(useUserMolecule, {});
 
       expect(result.current.molecule1.userId).not.toBe(
-        result.current.molecule2.userId
+        result.current.molecule2.userId,
       );
     });
 
@@ -162,7 +162,7 @@ strictModeSuite(({ wrapper }) => {
 
       function expectUserLifecycle(
         testHook: typeof useUserMolecule,
-        expectedUser: string
+        expectedUser: string,
       ) {
         expect(runs).not.toBeCalled();
         expect(mounts).not.toBeCalled();

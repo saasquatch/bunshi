@@ -26,7 +26,7 @@ strictModeSuite(({ wrapper }) => {
   function testTwoInjectorSwap<T>(
     mol: MoleculeOrInterface<T>,
     firstInjector: MoleculeInjector,
-    secondInjector: MoleculeInjector
+    secondInjector: MoleculeInjector,
   ): { before: T; after: T } {
     const injectorAtom = atom(firstInjector);
     const swap = () => {
@@ -73,7 +73,7 @@ strictModeSuite(({ wrapper }) => {
     const { before, after } = testTwoInjectorSwap(
       NumberMolecule,
       injector1,
-      injector2
+      injector2,
     );
 
     expect(before).toStrictEqual(0);
@@ -85,7 +85,7 @@ strictModeSuite(({ wrapper }) => {
     const { before, after } = testTwoInjectorSwap(
       IdentityMolecule,
       defaultInjector,
-      injector2
+      injector2,
     );
 
     // Different injectors, different values;
@@ -96,7 +96,7 @@ strictModeSuite(({ wrapper }) => {
     const { before, after } = testTwoInjectorSwap(
       IdentityMolecule,
       defaultInjector,
-      defaultInjector
+      defaultInjector,
     );
 
     // Same injectors, same values;
@@ -117,12 +117,12 @@ strictModeSuite(({ wrapper }) => {
     const { before: beforeA, after: afterA } = testTwoInjectorSwap(
       IdentityMoleculeA,
       defaultInjector,
-      injector2
+      injector2,
     );
     const { before: beforeB, after: afterB } = testTwoInjectorSwap(
       IdentityMoleculeB,
       defaultInjector,
-      injector2
+      injector2,
     );
 
     // Default injector returns different values because bindings are all the same

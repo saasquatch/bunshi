@@ -1,7 +1,7 @@
 import {
   ErrorAsyncGetMol,
   ErrorAsyncGetScope,
-  ErrorInvalidGlobalInjector,
+  ErrorBadUse,
   ErrorInvalidMolecule,
   ErrorInvalidScope,
   ErrorUnboundMolecule,
@@ -13,14 +13,8 @@ import type {
   AnyScopeTuple,
   MoleculeInternal,
 } from "./internal/internal-types";
+import { GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
 import {
-  DefaultInjector,
-  GetterSymbol,
-  Injector,
-  TypeSymbol,
-} from "./internal/symbols";
-import {
-  isInjector,
   isMolecule,
   isMoleculeInterface,
   isMoleculeScope,
@@ -170,7 +164,7 @@ function bindingsToMap(bindings?: Bindings): BindingMap {
  * ```
  */
 export function createInjector(
-  props: CreateInjectorProps = {}
+  props: CreateInjectorProps = {},
 ): MoleculeInjector {
   /*
    *
@@ -198,7 +192,7 @@ export function createInjector(
    *
    */
   function getTrueMolecule<T>(
-    molOrIntf: MoleculeOrInterface<T>
+    molOrIntf: MoleculeOrInterface<T>,
   ): MoleculeInternal<T> {
     const bound = bindings.get(molOrIntf);
     if (bound) return bound as MoleculeInternal<T>;
@@ -234,7 +228,7 @@ export function createInjector(
             });
           }
         },
-        dependencies
+        dependencies,
       ) as MoleculeCacheValue;
     }
     return runAndCache<T>(m, context, scopes);
@@ -243,7 +237,7 @@ export function createInjector(
   function runAndCache<T>(
     m: Molecule<T>,
     context: { subscriptionId?: Symbol | undefined },
-    scopes: AnyScopeTuple[]
+    scopes: AnyScopeTuple[],
   ) {
     const defaultScopeTuples = new Set<AnyScopeTuple>();
 
@@ -286,13 +280,13 @@ export function createInjector(
       m,
       getScopeValue,
       (m) => getInternal(m, context, ...scopes),
-      getTrueMolecule
+      getTrueMolecule,
     );
 
     const relatedScope = scopes.filter(([key]) => mounted.deps.scopes.has(key));
 
     const transitiveRelatedScope = scopes.filter(([key]) =>
-      mounted.deps.transitiveScopes.has(key)
+      mounted.deps.transitiveScopes.has(key),
     );
 
     const scopeKeySet = dependencyCache.get(m) ?? new Set<AnyMoleculeScope>();
@@ -317,7 +311,7 @@ export function createInjector(
         if (mounted.mountedCallbacks.size > 0) {
           if (scopeKeys.length <= 0)
             throw new Error(
-              "Can't use mount lifecycle in globally scoped molecules."
+              "Can't use mount lifecycle in globally scoped molecules.",
             );
 
           const cleanupSet = new Set<CleanupCallback>();
@@ -349,7 +343,7 @@ export function createInjector(
           });
         }
       },
-      dependencies
+      dependencies,
     ) as MoleculeCacheValue;
   }
 
@@ -378,20 +372,7 @@ export function createInjector(
     }
     // 3nd param is context
     // Extract subscription ID
-    return getInternal(bound, { ...contextOrScope }, ...scopes).value as T;
-  }
-
-  function useScopes(
-    ...scopes: AnyScopeTuple[]
-  ): ReturnType<MoleculeInjector["useScopes"]> {
-    const subscriptionId = Symbol(Math.random());
-
-    const tuples = scoper.leaseScopes(scopes, subscriptionId);
-    const unsub = () => {
-      scoper.unleaseScope(subscriptionId);
-    };
-
-    return [tuples, unsub, { subscriptionId }];
+    return getInternal(bound, contextOrScope as any, ...scopes).value as T;
   }
 
   function use<T>(
@@ -401,7 +382,7 @@ export function createInjector(
     if (!isMolecule(m) && !isMoleculeInterface(m))
       throw new Error(ErrorInvalidMolecule);
 
-    const [tuples, unsub, { subscriptionId }] = useScopes(...scopes);
+    const [tuples, unsub, { subscriptionId }] = scoper.useScopes(...scopes);
     const bound = getTrueMolecule(m);
 
     const value = getInternal<T>(bound, { subscriptionId }, ...tuples)
@@ -413,30 +394,9 @@ export function createInjector(
     [TypeSymbol]: Injector,
     get,
     use,
-    useScopes,
+    useScopes: scoper.useScopes,
   };
 }
-
-/**
- * Returns the globally defined {@link MoleculeInjector}
- *
- * @returns
- */
-export const getDefaultInjector = () => {
-  const defaultInjector = (globalThis as any)[DefaultInjector];
-
-  if (defaultInjector === undefined) {
-    const newInjector = createInjector();
-    (globalThis as any)[DefaultInjector] = newInjector;
-    return newInjector;
-  }
-
-  if (isInjector(defaultInjector)) {
-    return defaultInjector;
-  }
-
-  throw new Error(ErrorInvalidGlobalInjector);
-};
 
 /**
  * Create a new instance of a molecule
@@ -447,8 +407,8 @@ function runMolecule(
   getScopeValue: (scope: AnyMoleculeScope) => UseScopeDetails,
   getMoleculeValue: (mol: AnyMolecule) => MoleculeCacheValue,
   getTrueMolecule: (
-    molOrIntf: AnyMolecule | AnyMoleculeInterface
-  ) => MoleculeInternal<unknown>
+    molOrIntf: AnyMolecule | AnyMoleculeInterface,
+  ) => MoleculeInternal<unknown>,
 ) {
   const m = getTrueMolecule(maybeMolecule);
 
@@ -475,7 +435,7 @@ function runMolecule(
       });
       return mol.value as any;
     }
-    throw new Error("Can only call `use` with a molecule, interface or scope");
+    throw new Error(ErrorBadUse);
   };
   const trackingScopeGetter: ScopeGetter = (s) => {
     if (!running) throw new Error(ErrorAsyncGetScope);

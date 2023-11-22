@@ -3,7 +3,7 @@ import { createInjector } from "..";
 import { InjectorProvider } from "../InjectorProvider";
 
 export function createTestInjectorProvider(
-  Wrapper?: React.FC<{ children: React.ReactNode }>
+  Wrapper?: React.FC<{ children: React.ReactNode }>,
 ) {
   const injector = createInjector();
 

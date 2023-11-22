@@ -1,4 +1,3 @@
-
 export { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 
 export * from "../vanilla";
@@ -13,5 +12,3 @@ export * from "./useScopes";
 // Advanced API - injectors
 export * from "./InjectorProvider";
 export * from "./useInjector";
-
-

@@ -21,7 +21,9 @@
     "test": "run-p test:*",
     "test:code": "vitest run --coverage",
     "test:typings": "cd examples/old-typescript && npm i && npm run build",
-    "test:size": "size-limit"
+    "test:format": "prettier -c src",
+    "test:size": "size-limit",
+    "format": "prettier -w src"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",
@@ -78,15 +80,15 @@
   "size-limit": [
     {
       "path": "dist/vanilla.js",
-      "limit": "2 KB"
+      "limit": "3 KB"
     },
     {
       "path": "dist/react.js",
-      "limit": "2.3 KB"
+      "limit": "3 KB"
     },
     {
       "path": "dist/vue.js",
-      "limit": "2.3 KB"
+      "limit": "3 KB"
     },
     {
       "path": "dist/vanilla.mjs",
@@ -107,6 +109,7 @@
     "husky": "^7.0.4",
     "jotai": "^2.4.2",
     "npm-run-all": "^4.1.5",
+    "prettier": "^3.1.0",
     "react": "^17",
     "react-is": "^17",
     "react-test-renderer": "^17",

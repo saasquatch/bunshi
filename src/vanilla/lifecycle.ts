@@ -17,7 +17,7 @@ class GlobalFunctionImplementation<T> {
     const top = this._s[this._s.length - 1];
     if (!top)
       throw new Error(
-        `Cannot call \`${publicApi}\` outside of a molecule function`
+        `Cannot call \`${publicApi}\` outside of a molecule function`,
       );
     return top;
   };
@@ -26,7 +26,8 @@ class GlobalFunctionImplementation<T> {
 export type InternalOnMounted = typeof onMount;
 export type InternalUse = typeof use;
 
-export const onMountImpl = new GlobalFunctionImplementation<InternalOnMounted>();
+export const onMountImpl =
+  new GlobalFunctionImplementation<InternalOnMounted>();
 export const useImpl = new GlobalFunctionImplementation<InternalUse>();
 
 export type CleanupCallback = () => unknown;

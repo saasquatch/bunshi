@@ -15,7 +15,7 @@ import { useInjector } from "./useInjector";
  * @returns
  */
 export function useScopes(
-  options?: MoleculeScopeOptions
+  options?: MoleculeScopeOptions,
 ): ScopeTuple<unknown>[] {
   return useScopeSubscription(options).memoizedTuples;
 }
@@ -25,7 +25,7 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
 
   const generatedValue = useMemo(
     () => new Error("Do not use this scope value. It is a placeholder only."),
-    []
+    [],
   );
 
   const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
@@ -39,13 +39,13 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
           options.withUniqueScope,
           generatedValue,
         ] as ScopeTuple<unknown>),
-        componentScopeTuple
+        componentScopeTuple,
       );
     }
     if (options.withScope) {
       return getDownstreamScopes(
         getDownstreamScopes(parentScopes, options.withScope),
-        componentScopeTuple
+        componentScopeTuple,
       );
     }
     if (options.exclusiveScope) {
@@ -58,7 +58,7 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
 
   const [memoizedTuples, unsub, context] = useMemo(
     () => injector.useScopes(...inputTuples),
-    flattenTuples(inputTuples)
+    flattenTuples(inputTuples),
   );
 
   useEffect(() => {
