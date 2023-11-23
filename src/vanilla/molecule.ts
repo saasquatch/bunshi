@@ -1,3 +1,4 @@
+import type { MoleculeInjector } from "./injector";
 import type {
   MoleculeInterfaceInternal,
   MoleculeInternal,
@@ -9,7 +10,6 @@ import {
   TypeSymbol,
 } from "./internal/symbols";
 import type { MoleculeScope } from "./scope";
-import type { MoleculeInjector } from "./injector";
 
 /**
  * Calling this function creates an implicit dependency between the
@@ -45,6 +45,12 @@ export type MoleculeConstructor<T> = (
  *
  * This can be used as a reference to create objects by calling `useMolecule`
  * in one of the frontend integrations.
+ *
+ * Create a {@link Molecule} by callig {@link molecule}
+ *
+ * ```ts
+ * export const RandomNumberMolecule = molecule(()=>Math.random());
+ * ```
  *
  * @typeParam T - the type of object that will be provided by this molecule
  */
@@ -88,24 +94,24 @@ export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
  * - A molecule that depends on a *scoped* molecule will be called once per unique scope of it’s dependency.
  * - If a molecule calls `scope` then it will be a scoped molecule.
  * - If a molecule calls `mol` then it will depend on that molecule.
- *
- * @param construct
- * @example
+
  * Create a global molecule
  * ```ts
  * const globalMolecule = molecule(()=>Math.random());
  * ```
- * @example
  * Create a dependent molecule
  * ```ts
+ * const dependentMolecule = molecule(()=>`My dependency: ${use(globalMolecule)}`);
  * const dependentMolecule = molecule((mol)=>`My dependency: ${mol(globalMolecule)}`);
  * ```
- * @example
  * Create a scoped molecule
  * ```ts
+ * const formScopedMolecule = molecule(()=>use(formScope));
  * const formScopedMolecule = molecule((_,scope)=>scope(formScope));
- * ```
- * @returns
+ * ```*
+ * 
+ * @param construct - A callback function called to create molecule instances
+ * @returns a molecule
  */
 export function molecule<T>(construct: MoleculeConstructor<T>): Molecule<T> {
   const mol: MoleculeInternal<T> = {

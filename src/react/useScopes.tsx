@@ -17,7 +17,7 @@ import { useInjector } from "./useInjector";
 export function useScopes(
   options?: MoleculeScopeOptions,
 ): ScopeTuple<unknown>[] {
-  return useScopeSubscription(options).memoizedTuples;
+  return useScopeSubscription(options)[0];
 }
 
 export function useScopeSubscription(options?: MoleculeScopeOptions) {
@@ -56,11 +56,12 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
 
   const injector = useInjector();
 
-  const [memoizedTuples, unsub, context] = useMemo(
+  const result = useMemo(
     () => injector.useScopes(...inputTuples),
     flattenTuples(inputTuples),
   );
 
+  const [_, unsub] = result;
   useEffect(() => {
     // Cleanup effect
     return () => {
@@ -68,7 +69,7 @@ export function useScopeSubscription(options?: MoleculeScopeOptions) {
     };
   }, [unsub]);
 
-  return { memoizedTuples, unsub, context };
+  return result;
 }
 
 function flattenTuples(tuples: AnyScopeTuple[]): unknown[] {

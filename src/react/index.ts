@@ -3,12 +3,12 @@ export { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 export * from "../vanilla";
 
 // Basic API
-export * from "./useMolecule";
-export * from "./ScopeProvider";
+export { ProviderProps, ScopeProvider } from "./ScopeProvider";
+export { useMolecule } from "./useMolecule";
 
 // Advanced API - scopes
-export * from "./useScopes";
+export { useScopeSubscription, useScopes } from "./useScopes";
 
 // Advanced API - injectors
-export * from "./InjectorProvider";
-export * from "./useInjector";
+export { InjectorProvider } from "./InjectorProvider";
+export { useInjector } from "./useInjector";

@@ -21,11 +21,11 @@ import {
 } from "./internal/utils";
 import { createDeepCache } from "./internal/weakCache";
 import {
-  CleanupCallback,
-  InternalUse,
-  MountedCallback,
   onMountImpl,
   useImpl,
+  type CleanupCallback,
+  type InternalUse,
+  type MountedCallback,
 } from "./lifecycle";
 import type {
   Molecule,

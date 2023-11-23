@@ -1,7 +1,10 @@
-import { MoleculeInjector } from ".";
-import { AnyMoleculeScope, AnyScopeTuple } from "./internal/internal-types";
-import { CleanupCallback } from "./lifecycle";
-import { ScopeTuple } from "./types";
+import type { MoleculeInjector } from ".";
+import type {
+  AnyMoleculeScope,
+  AnyScopeTuple,
+} from "./internal/internal-types";
+import type { CleanupCallback } from "./lifecycle";
+import type { ScopeTuple } from "./types";
 
 /**
  * The scoper is not aware of molecules, but keeps track of scopes
