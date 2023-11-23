@@ -24,3 +24,12 @@ export const getDefaultInjector = () => {
 
   throw new Error(ErrorInvalidGlobalInjector);
 };
+
+/**
+ * Resets the globally defined default injector
+ *
+ * Useful for tests
+ */
+export const resetDefaultInjector = () => {
+  (globalThis as any)[DefaultInjector] = createInjector();
+};

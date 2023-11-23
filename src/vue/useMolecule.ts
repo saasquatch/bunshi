@@ -1,7 +1,7 @@
 import type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import type { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
-import { useScopes } from "./useScopes";
+import { useScopeSubscription } from "./useScopes";
 
 /**
  * Gets an instance of a provided value from a {@link MoleculeOrInterface}
@@ -14,7 +14,7 @@ export const useMolecule = <T>(
   mol: MoleculeOrInterface<T>,
   options?: MoleculeScopeOptions,
 ) => {
-  const scopes = useScopes(options);
+  const [scopes, _, context] = useScopeSubscription(options);
   const injector = useInjector();
-  return injector.get(mol, ...scopes);
+  return injector.get(mol, context, ...scopes);
 };

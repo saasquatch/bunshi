@@ -99,7 +99,7 @@
     "@astrojs/language-server": "^2.3.3",
     "@size-limit/preset-small-lib": "^9.0.0",
     "@testing-library/react-hooks": "^8.0.1",
-    "@testing-library/vue": "^7.0.0",
+    "@testing-library/vue": "^8.0.1",
     "@types/react": "^17",
     "@vitejs/plugin-vue": "^4.2.3",
     "@vitest/coverage-v8": "^0.34.4",

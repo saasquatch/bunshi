@@ -16,11 +16,16 @@ import { useInjector } from "./useInjector";
 export const useScopes = (
   options: MoleculeScopeOptions = {},
 ): ScopeTuple<unknown>[] => {
+  const [memoizedTuples] = useScopeSubscription(options);
+  return memoizedTuples;
+};
+
+export const useScopeSubscription = (options: MoleculeScopeOptions = {}) => {
   const tuples = getTuples(options);
   const injector = useInjector();
-  const [memoizedTuples, unsub] = injector.useScopes(...tuples);
-  onUnmounted(unsub);
-  return memoizedTuples;
+  const result = injector.useScopes(...tuples);
+  onUnmounted(result[1]);
+  return result;
 };
 
 const getTuples = (
