@@ -41,18 +41,6 @@ export function onUnmount(fn: CleanupCallback): void {
   onMountImpl.active("onUnmount")(() => fn);
 }
 
-export function scope<T>(s: MoleculeScope<T>): T {
-  return useImpl.active("scope")(s);
-}
-
-export function mol<T>(s: MoleculeOrInterface<T>): T {
-  return useImpl.active("mol")(s);
-}
-
 export function use<T>(dep: MoleculeOrInterface<T> | MoleculeScope<T>): T {
   return useImpl.active("use")(dep);
-}
-
-export function inject<T>(dep: MoleculeOrInterface<T> | MoleculeScope<T>): T {
-  return useImpl.active("inject")(dep);
 }

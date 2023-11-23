@@ -693,3 +693,12 @@ describe("unmount lifecycle", () => {
     });
   });
 });
+
+describe("lifecycle API", () => {
+  test.each([{ fn: use }, { fn: onMount }, { fn: onUnmount }])(
+    "Can't use outside molecule",
+    ({ fn }) => {
+      expect(fn).toThrow();
+    },
+  );
+});
