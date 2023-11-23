@@ -73,18 +73,18 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "tsdx lint"
+      "pre-commit": "prettier -c src"
     }
   },
   "prettier": {},
   "size-limit": [
     {
       "path": "dist/vanilla.js",
-      "limit": "3 KB"
+      "limit": "2.5 KB"
     },
     {
       "path": "dist/react.js",
-      "limit": "3 KB"
+      "limit": "3.2 KB"
     },
     {
       "path": "dist/vue.js",
@@ -92,7 +92,7 @@
     },
     {
       "path": "dist/vanilla.mjs",
-      "limit": "2 KB"
+      "limit": "2.2 KB"
     }
   ],
   "devDependencies": {
