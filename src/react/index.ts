@@ -3,7 +3,7 @@ export { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 export * from "../vanilla";
 
 // Basic API
-export { ProviderProps, ScopeProvider } from "./ScopeProvider";
+export { ScopeProvider, type ProviderProps } from "./ScopeProvider";
 export { useMolecule } from "./useMolecule";
 
 // Advanced API - scopes
