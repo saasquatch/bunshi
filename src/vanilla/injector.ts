@@ -33,8 +33,11 @@ import type {
   MoleculeOrInterface,
   ScopeGetter,
 } from "./molecule";
+import { createScope } from "./scope";
 import { createScoper } from "./scoper";
 import type { BindingMap, Bindings, Injectable } from "./types";
+
+const InternalOnlyGlobalScope = createScope(undefined);
 
 type Deps = {
   scopes: Set<AnyMoleculeScope>;
@@ -265,7 +268,9 @@ export function createInjector(
         // `onUnmounted` can be used for default scopes
         defaultTuple = scoper.leaseScope(defaultTuple, context.subscriptionId);
       } else {
-        console.warn("Default subscription not leased!");
+        // TODO: Find a nice way to provide warnings only in dev mode
+        // so we don't put a bunch of junk in the console on production
+        // console.warn("Default subscription not leased!");
       }
 
       defaultScopeTuples.add(defaultTuple);
@@ -453,6 +458,7 @@ function runMolecule(
   onMountImpl.push((fn: MountedCallback) => mountedCallbacks.add(fn));
   useImpl.push(use);
   let running = true;
+  trackingScopeGetter(InternalOnlyGlobalScope);
   const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
   running = false;
   onMountImpl.pop();

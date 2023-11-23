@@ -280,21 +280,23 @@ describe("Two scope dependencies", () => {
 });
 
 test("Can't use `mounted` hook in globally scoped molecule", () => {
-  const testFn = vi.fn();
-
+  const lifecycle = createLifecycleUtils();
   const ExampleCleanupMolecule = molecule(() => {
-    onMount(() => {
-      testFn("mounted");
-      return () => testFn("unmounted");
-    });
-    testFn("created");
-    return testFn;
+    const uniqueValue = Math.random();
+    lifecycle.connect(uniqueValue);
+    return uniqueValue;
   });
 
   const injector = createInjector();
 
-  // FIXME: Would be very handy to be able to use globally scoped molecules
-  expect(() => injector.get(ExampleCleanupMolecule)).toThrowError();
+  lifecycle.expectUncalled();
+  const [value, unsub] = injector.use(ExampleCleanupMolecule);
+  lifecycle.expectActivelyMounted();
+
+  unsub();
+
+  lifecycle.expectToHaveBeenCalledTimes(1);
+  lifecycle.expectToMatchCalls([value]);
 });
 
 describe("Conditional dependencies", () => {
