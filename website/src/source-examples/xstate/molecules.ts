@@ -1,4 +1,4 @@
-import { molecule } from "bunshi";
+import { molecule, onMount } from "bunshi";
 import { assign, createMachine, interpret } from "xstate";
 
 interface CounterContext {
@@ -11,14 +11,20 @@ type CounterEvent = {
 
 export const CountMolecule = molecule(() => {
   const countMachine = createMachine<CounterContext, CounterEvent>({
-    id: 'counter',
+    id: "counter",
     context: { count: 0 },
     on: {
       INCREMENT: {
-        actions: assign({ count: (ctx) => ctx.count + 1 })
-      }
-    }
+        actions: assign({ count: (ctx) => ctx.count + 1 }),
+      },
+    },
   });
 
-  return interpret(countMachine).start();
+  const actor = interpret(countMachine);
+
+  onMount(() => {
+    actor.start();
+    return () => actor.stop();
+  });
+  return actor;
 });

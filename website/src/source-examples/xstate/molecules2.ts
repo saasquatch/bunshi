@@ -1,4 +1,4 @@
-import { ComponentScope, molecule } from "bunshi";
+import { ComponentScope, molecule, onMount, use } from "bunshi";
 import { assign, createMachine, interpret } from "xstate";
 
 interface CounterContext {
@@ -9,8 +9,8 @@ type CounterEvent = {
   type: "INCREMENT";
 };
 
-export const CountMolecule = molecule((_, scope) => {
-  scope(ComponentScope);
+export const CountMolecule = molecule(() => {
+  use(ComponentScope);
 
   const countMachine = createMachine<CounterContext, CounterEvent>({
     id: "counter",
@@ -22,5 +22,11 @@ export const CountMolecule = molecule((_, scope) => {
     },
   });
 
-  return interpret(countMachine).start();
+  const actor = interpret(countMachine);
+
+  onMount(() => {
+    actor.start();
+    return () => actor.stop();
+  });
+  return actor;
 });
