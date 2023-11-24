@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { atom, useAtom } from "jotai";
 import React, { ReactNode, useContext, useRef, useState } from "react";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";

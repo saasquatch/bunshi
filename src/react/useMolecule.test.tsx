@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import React, { useContext } from "react";
 import { createScope, molecule, onMount, onUnmount, use } from ".";
 import { ScopeProvider } from "./ScopeProvider";
