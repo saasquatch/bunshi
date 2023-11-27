@@ -704,3 +704,22 @@ describe("lifecycle API", () => {
     },
   );
 });
+
+test("Repeated leases work", () => {
+  const globalLifecycle = createLifecycleUtils();
+  const GlobalMolecule = molecule(() => {
+    const value = Math.random();
+    globalLifecycle.connect(value);
+    return value;
+  });
+
+  for (let iteration = 0; iteration < 20; iteration++) {
+    globalLifecycle.expectUncalled();
+    const [value, unsub] = injector.use(GlobalMolecule);
+    // FIXME: Repeated leases for the same molecule need to re-run lifecycle hooks
+    globalLifecycle.expectActivelyMounted();
+    unsub();
+    globalLifecycle.expectToMatchCalls([value]);
+    globalLifecycle.reset();
+  }
+});

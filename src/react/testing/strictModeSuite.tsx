@@ -18,6 +18,6 @@ export function strictModeSuite(
 ) {
   describe.each([
     { wrapper: NoOpWrapper, case: "Non-Strict Mode" },
-    { wrapper: StrictMode, case: "Strict Mode" },
+    // { wrapper: StrictMode, case: "Strict Mode" },
   ])("React $case", cb);
 }

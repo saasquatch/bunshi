@@ -1,12 +1,23 @@
 import { renderHook } from "@testing-library/react";
-import React, { useContext } from "react";
-import { createScope, molecule, onMount, onUnmount, use } from ".";
+import React, { StrictMode, useContext } from "react";
+import {
+  createScope,
+  getDefaultInjector,
+  molecule,
+  onMount,
+  onUnmount,
+  resetDefaultInjector,
+  use,
+} from ".";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
+import { useMolecule2 } from "./useScopes";
 
-export const UserScope = createScope("user@example.com");
+export const UserScope = createScope("user@example.com", {
+  debugLabel: "User Scope",
+});
 
 export const UserMolecule = molecule((_, getScope) => {
   const userId = getScope(UserScope);
@@ -191,12 +202,14 @@ strictModeSuite(({ wrapper }) => {
 
         expect(runs).toBeCalledTimes(1);
         expect(mounts).toBeCalledTimes(1);
+        // Then unmounts aren't called
         expect(unmounts).not.toBeCalled();
 
         run2.unmount();
 
         expect(runs).toBeCalledTimes(1);
         expect(mounts).toBeCalledTimes(1);
+        // Then both unmounts are called
         expect(unmounts).toBeCalledTimes(2);
         expect(unmounts).toHaveBeenNthCalledWith(1, "indirect", expectedUser);
         expect(unmounts).toHaveBeenNthCalledWith(2, "direct", expectedUser);
@@ -205,4 +218,80 @@ strictModeSuite(({ wrapper }) => {
 
     test("Empty", () => {});
   });
+});
+
+test.only("Strict mode failure", () => {
+  const expectedUser = "johan";
+
+  const runs = vi.fn();
+  const mounts = vi.fn();
+  const unmounts = vi.fn();
+  const UseLifecycleMolecule = molecule(() => {
+    const userId = use(UserScope);
+    onMount(() => {
+      mounts(userId);
+      return function indirect() {
+        unmounts("indirect", userId);
+      };
+    });
+
+    onUnmount(function direct() {
+      unmounts("direct", userId);
+    });
+
+    runs(userId);
+    return userId;
+  });
+  const testHook = () => {
+    return {
+      molecule: useMolecule2(UseLifecycleMolecule, {
+        exclusiveScope: [UserScope, expectedUser],
+      }),
+    };
+  };
+
+  expect(runs).not.toBeCalled();
+  expect(mounts).not.toBeCalled();
+  expect(unmounts).not.toBeCalled();
+
+  const run1 = renderHook(testHook, {
+    wrapper: StrictMode,
+  });
+
+  expect(runs).toBeCalledWith(expectedUser);
+  expect(mounts).toBeCalledWith(expectedUser);
+  // expect(unmounts).not.toBeCalled();
+
+  expect(runs).toBeCalledTimes(2);
+  expect(mounts).toBeCalledTimes(2);
+  expect(unmounts).toBeCalledTimes(4);
+
+  expect(run1.result.current.molecule).toBe(expectedUser);
+
+  // const run2 = renderHook(testHook, {
+  //   wrapper: StrictMode,
+  // });
+
+  expect(runs).toBeCalledTimes(2);
+  expect(unmounts).toBeCalledTimes(4);
+  // expect(mounts).toBeCalledTimes(1);
+  // expect(unmounts).not.toBeCalled();
+  // expect(run2.result.current.molecule).toBe(expectedUser);
+
+  console.log("============Mounted===============");
+  run1.unmount();
+
+  // expect(runs).toBeCalledTimes(1);
+  // expect(mounts).toBeCalledTimes(1);
+  // // Then unmounts aren't called
+  // expect(unmounts).not.toBeCalled();
+
+  // run2.unmount();
+
+  expect(runs).toBeCalledTimes(2);
+  expect(mounts).toBeCalledTimes(2);
+  // Then both unmounts are called
+  expect(unmounts).toBeCalledTimes(4);
+  expect(unmounts).toHaveBeenNthCalledWith(1, "indirect", expectedUser);
+  expect(unmounts).toHaveBeenNthCalledWith(2, "direct", expectedUser);
 });

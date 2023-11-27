@@ -3,6 +3,7 @@ import type {
   AnyMoleculeScope,
   AnyScopeTuple,
 } from "./internal/internal-types";
+import { Debug } from "./internal/symbols";
 import type { CleanupCallback } from "./lifecycle";
 import type { ScopeTuple } from "./types";
 
@@ -120,6 +121,8 @@ export function createScoper() {
    */
   const cleanupsRun = new WeakSet<CleanupCallback>();
 
+  const releasedSubscriptions = new WeakSet<Symbol>();
+
   function leaseScopes<T>(
     tuples: ScopeTuple<T>[],
     subscriptionId: Symbol,
@@ -138,9 +141,13 @@ export function createScoper() {
     tuple: ScopeTuple<T>,
     subscriptionId: Symbol,
   ): ScopeTuple<T> {
+    if (releasedSubscriptions.has(subscriptionId)) {
+      throw new Error(
+        "Can't extend a subscription has already been released. Use a new subscription ID instead.",
+      );
+    }
     const [scope, value] = tuple;
 
-    // Not an object, so we can't safely cache it in a WeakMap
     let valuesForScope = scopeCache.get(scope);
     if (!valuesForScope) {
       valuesForScope = new Map();
@@ -181,8 +188,17 @@ export function createScoper() {
    * cache to ensure no memory leaks
    */
   function unleaseScopes(subscriptionId: Symbol) {
+    if (releasedSubscriptions.has(subscriptionId)) {
+      throw new Error(
+        "Can't release a subscription that has already been released. Don't call unsub twice.",
+      );
+    } else {
+      releasedSubscriptions.add(subscriptionId);
+    }
     const tuples = subscriptionIdToTuples.get(subscriptionId);
     if (!tuples) return;
+
+    const cleanupsToRun = new Set<CleanupCallback>();
     tuples.forEach(([scope, value]) => {
       const scopeMap = scopeCache.get(scope);
       const cached = scopeMap?.get(value);
@@ -191,17 +207,25 @@ export function createScoper() {
       references?.delete(subscriptionId);
 
       if (references && references.size <= 0) {
+        console.log("-> Empty!", subscriptionId, scope[Debug]);
         scopeMap?.delete(value);
 
-        const errors = new Set<unknown>();
         // Run all cleanups
         cached?.cleanups.forEach((cb) => {
-          if (!cleanupsRun.has(cb)) {
-            // Only runs cleanups that haven't already been run
-            cb();
-            cleanupsRun.add(cb);
-          }
+          console.log("---> Queue cleanup", subscriptionId, cb);
+          cleanupsToRun.add(cb);
         });
+      } else {
+        console.log("-> Not empty yet", subscriptionId);
+      }
+    });
+
+    cleanupsToRun.forEach((cb) => {
+      if (!cleanupsRun.has(cb)) {
+        // Only runs cleanups that haven't already been run
+        console.log("---> Run cleanup", subscriptionId, cb);
+        cb();
+        cleanupsRun.add(cb);
       }
     });
   }
@@ -235,11 +259,27 @@ export function createScoper() {
       // This name is only used for display purposes
       // Do NOT replace this `Symbol` with `Symbol.for`
       // it is NOT intended to be global
-      `bunshi.scope.subscription ${subscriptionIndex++}`,
+      `bunshi.scope.sub ${subscriptionIndex++}`,
+    );
+    return leaseSubId(subscriptionId, ...scopes);
+  }
+
+  function leaseSubId(
+    subscriptionId: Symbol,
+    ...scopes: AnyScopeTuple[]
+  ): ReturnType<MoleculeInjector["useScopes"]> {
+    console.log(
+      "Started subscription",
+      subscriptionId,
+      scopes.map((s) => s[0][Debug]),
     );
 
     const tuples = leaseScopes(scopes, subscriptionId);
-    const unsub = () => unleaseScopes(subscriptionId);
+    const unsub = () => {
+      console.log("Released subscription", subscriptionId);
+
+      unleaseScopes(subscriptionId);
+    };
 
     return [tuples, unsub, { subscriptionId }];
   }
@@ -248,7 +288,6 @@ export function createScoper() {
     useScopes,
     registerCleanups,
     leaseScope,
-    leaseScopes,
-    trackSubcription,
+    leaseSubId,
   };
 }

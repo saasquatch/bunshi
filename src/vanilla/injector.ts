@@ -37,7 +37,10 @@ import { createScope } from "./scope";
 import { createScoper } from "./scoper";
 import type { BindingMap, Bindings, Injectable } from "./types";
 
-const InternalOnlyGlobalScope = createScope(undefined);
+const InternalOnlyGlobalScope = createScope(
+  Symbol("bunshi.global.scope.value"),
+  { debugLabel: "Global Scope" },
+);
 
 type Deps = {
   scopes: Set<AnyMoleculeScope>;
@@ -121,6 +124,18 @@ export type MoleculeInjector = {
    * @param scopes
    */
   useScopes(
+    ...scopes: AnyScopeTuple[]
+  ): [AnyScopeTuple[], Unsub, { subscriptionId: Symbol }];
+
+  /**
+   * Use and memoize scopes.
+   *
+   * Returns a function to cleanup scope tuples.
+   *
+   * @param scopes
+   */
+  leaseSubId(
+    subscriptionId: Symbol,
     ...scopes: AnyScopeTuple[]
   ): [AnyScopeTuple[], Unsub, { subscriptionId: Symbol }];
 } & Record<symbol, unknown>;
@@ -314,6 +329,7 @@ export function createInjector(
       () => {
         // No molecule exists, so mount a new one
         if (mounted.mountedCallbacks.size > 0) {
+          console.log("!!!!!!!Mounted!!!!!!!!!!");
           if (scopeKeys.length <= 0)
             throw new Error(
               "Can't use mount lifecycle in globally scoped molecules.",
@@ -325,7 +341,10 @@ export function createInjector(
             const cleanup = onMount();
 
             // Queues up the cleanup functions for later
-            if (cleanup) cleanupSet.add(cleanup);
+            if (cleanup) {
+              console.log("--> Mounted cleanup", cleanup);
+              cleanupSet.add(cleanup);
+            }
           });
 
           scoper.registerCleanups(scopeKeys, cleanupSet);
@@ -400,6 +419,7 @@ export function createInjector(
     get,
     use,
     useScopes: scoper.useScopes,
+    leaseSubId: scoper.leaseSubId,
   };
 }
 
