@@ -1,4 +1,4 @@
-import { ScopeSymbol, TypeSymbol } from "./internal/symbols";
+import { Debug, ScopeSymbol, TypeSymbol } from "./internal/symbols";
 
 /**
  * A scope that can be used to create scoped molecules.
@@ -31,9 +31,15 @@ export type MoleculeScope<T> = {
  * @param defaultValue
  * @returns a new unique {@link MoleculeScope}
  */
-export function createScope<T = undefined>(defaultValue: T): MoleculeScope<T> {
+export function createScope<T = undefined>(
+  defaultValue: T,
+  options?: { debugLabel?: string },
+): MoleculeScope<T> {
   return {
     defaultValue,
     [TypeSymbol]: ScopeSymbol,
+    [Debug]: Symbol(options?.debugLabel ?? `bunshi.scope ${debugId++}`),
   };
 }
+
+let debugId = 1;

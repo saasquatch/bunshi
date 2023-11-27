@@ -12,3 +12,4 @@ export const MoleculeInterfaceSymbol = Symbol.for(
 export const DefaultInjector = Symbol.for(
   "bunshi.injector.defaultGlobalInjector",
 );
+export const Debug = Symbol("bunshi.debug");

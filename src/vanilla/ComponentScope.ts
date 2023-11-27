@@ -39,4 +39,6 @@ import { createScope } from "./scope";
  * // const useCounter = () => ref(0)
  * ```
  */
-export const ComponentScope = createScope<undefined>(undefined);
+export const ComponentScope = createScope<undefined>(undefined, {
+  debugLabel: "Component Scope",
+});
