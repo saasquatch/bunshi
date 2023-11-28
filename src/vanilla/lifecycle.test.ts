@@ -705,7 +705,7 @@ describe("lifecycle API", () => {
   );
 });
 
-test("Repeated leases work", () => {
+describe("Repeated leases work", () => {
   const globalLifecycle = createLifecycleUtils();
   const GlobalMolecule = molecule(() => {
     const value = Math.random();
@@ -713,13 +713,53 @@ test("Repeated leases work", () => {
     return value;
   });
 
-  for (let iteration = 0; iteration < 20; iteration++) {
-    globalLifecycle.expectUncalled();
-    const [value, unsub] = injector.use(GlobalMolecule);
-    // FIXME: Repeated leases for the same molecule need to re-run lifecycle hooks
-    globalLifecycle.expectActivelyMounted();
-    unsub();
-    globalLifecycle.expectToMatchCalls([value]);
-    globalLifecycle.reset();
-  }
+  const scopedLifeycle = createLifecycleUtils();
+  const testScope = createScope(undefined);
+  const ScopedMolecule = molecule(() => {
+    use(testScope);
+    const value = Math.random();
+    scopedLifeycle.connect(value);
+    return value;
+  });
+
+  const DerivedMolecule = molecule(() => use(ScopedMolecule));
+
+  const DoubleDerived = molecule(() => {
+    use(GlobalMolecule);
+    return use(ScopedMolecule);
+  });
+
+  // TODO: Add more test suites for other scopes (component scope, custom scopes) and molecule combinations
+  test.each([
+    {
+      case: "Global",
+      run: () => injector.use(GlobalMolecule),
+      lifecycle: globalLifecycle,
+    },
+    {
+      case: "Scoped",
+      run: () => injector.use(ScopedMolecule, [testScope, "abc"]),
+      lifecycle: scopedLifeycle,
+    },
+    {
+      case: "Derived",
+      run: () => injector.use(DerivedMolecule, [testScope, "abc"]),
+      lifecycle: scopedLifeycle,
+    },
+    {
+      case: "Double Derived",
+      run: () => injector.use(DoubleDerived, [testScope, "abcdef"]),
+      lifecycle: scopedLifeycle,
+    },
+  ])("Case: $case", ({ run, lifecycle }) => {
+    // Loop a bunch of times
+    for (let iteration = 0; iteration < 10; iteration++) {
+      lifecycle.expectUncalled();
+      const [value, unsub] = run();
+      lifecycle.expectActivelyMounted();
+      unsub();
+      lifecycle.expectToMatchCalls([value]);
+      lifecycle.reset();
+    }
+  });
 });
