@@ -1,3 +1,4 @@
+import { getInstanceId, trackInstanceId } from "./instanceIds";
 import {
   ErrorAsyncGetMol,
   ErrorAsyncGetScope,
@@ -13,7 +14,8 @@ import type {
   AnyScopeTuple,
   MoleculeInternal,
 } from "./internal/internal-types";
-import { GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
+import { scopeTupleSort } from "./internal/scopeTupleSort";
+import { Debug, GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
 import {
   isMolecule,
   isMoleculeInterface,
@@ -43,9 +45,9 @@ const InternalOnlyGlobalScope = createScope(
 );
 
 type Deps = {
-  scopes: Set<AnyMoleculeScope>;
-  transitiveScopes: Set<AnyMoleculeScope>;
+  allScopes: Set<AnyMoleculeScope>;
   defaultScopes: Set<AnyMoleculeScope>;
+  mountedCallbacks: Set<MountedCallback>;
 };
 
 /**
@@ -54,6 +56,8 @@ type Deps = {
 type MoleculeCacheValue = {
   deps: Deps;
   value: unknown;
+  isMounted: boolean;
+  path: (AnyScopeTuple | AnyMolecule)[];
 };
 
 type UseScopeDetails = {
@@ -117,6 +121,19 @@ export type MoleculeInjector = {
   ): [T, Unsub, { subscriptionId: Symbol }];
 
   /**
+   * Use a molecule, and memoizes scope tuples.
+   *
+   * Returns a function to cleanup scope tuples.
+   *
+   * @param molecule
+   * @param scopes
+   */
+  lazyUse<T>(
+    molecule: MoleculeOrInterface<T>,
+    ...scopes: AnyScopeTuple[]
+  ): [T, { subscriptionId: Symbol; start: Unsub; stop: Unsub }];
+
+  /**
    * Use and memoize scopes.
    *
    * Returns a function to cleanup scope tuples.
@@ -134,10 +151,12 @@ export type MoleculeInjector = {
    *
    * @param scopes
    */
-  leaseSubId(
+  startSubscription(
     subscriptionId: Symbol,
     ...scopes: AnyScopeTuple[]
   ): [AnyScopeTuple[], Unsub, { subscriptionId: Symbol }];
+
+  stopSubscription(subscriptionId: Symbol): void;
 } & Record<symbol, unknown>;
 
 /**
@@ -196,13 +215,42 @@ export function createInjector(
     MoleculeCacheValue
   >();
 
+  /**
+   * The Dependency Cache reduces the number of times that a molecule needs
+   * to be run to determine it's dependencies.
+   *
+   * Give a molecule, what scopes might it depend on?
+   */
   const dependencyCache: WeakMap<
+    /**
+     * The key is the molecule itself
+     */
     AnyMolecule,
-    Set<AnyMoleculeScope>
+    /**
+     * This can be a weak set because it's only ever used to determine
+     * if the scopes in context should apply to this molecule.
+     *
+     * For example:
+     *  - Molecule is used with scopes context A, B and C
+     *  - This set contains B, C and D
+     *  - The relevant scopes are B and C
+     *  - This set doesn't need to be iterable, because the scope context (A, B and C) is iterable
+     */
+    WeakSet</**
+     * We only need to store the scope keys, not the scope values.
+     */
+    AnyMoleculeScope>
   > = new WeakMap();
 
   const bindings = bindingsToMap(props.bindings);
 
+  /**
+   * The scoper contains all the subscriptions and leases for managing scope lifecycle,
+   * ensuring scope tuples are memoizable keys for use in the injector.
+   *
+   *  - The scoper keeps track of "how long should this thing be alive"?
+   *  - The injector keeps track of the instances of the things, and all dependency magic
+   */
   const scoper = createScoper();
 
   /**
@@ -221,48 +269,63 @@ export function createInjector(
 
   function getInternal<T>(
     m: Molecule<T>,
-    context: { subscriptionId?: Symbol },
-    ...scopes: AnyScopeTuple[]
+    props: CreationProps,
   ): MoleculeCacheValue {
     const cachedDeps = dependencyCache.get(m);
 
+    const { scopes } = props;
     if (cachedDeps) {
-      const scopeKeys = scopes
-        .filter(([key]) => cachedDeps.has(key))
-        .filter(([key, value]) => key.defaultValue !== value);
-      const dependencies = [...scopeKeys, m];
+      const foundScopes = scopes.filter(([key]) => cachedDeps.has(key));
+      const dependencies = getDependencies(foundScopes, m);
 
-      return moleculeCache.deepCache(
+      console.log("!!! FOUND: Dependencies");
+      const cacheValue = multiCache(
         // Not found
-        () => runAndCache(m, context, scopes),
+        () => {
+          console.log("!!! EMPTY: Molecule value stage 1");
+          return runAndCache(m, props);
+        },
         // Found
         (found) => {
-          const { subscriptionId } = context;
-          if (subscriptionId) {
-            // Extend the lease to include the any default scopes
-            // that are implicitly leased
-            found.deps.defaultScopes.forEach((s) => {
-              scoper.leaseScope([s, s.defaultValue], subscriptionId);
-            });
-          }
+          console.log("!!! FOUND: Molecule value stage 1");
+
+          // Extend the lease to include the any default scopes
+          // that are implicitly leased
+          found.deps.defaultScopes.forEach((s) => {
+            props.lease([s, s.defaultValue]);
+          });
         },
         dependencies,
       ) as MoleculeCacheValue;
+
+      return runMount(cacheValue, props);
     }
-    return runAndCache<T>(m, context, scopes);
+    const cacheValue = runAndCache<T>(m, props);
+    return runMount(cacheValue, props);
   }
 
-  function runAndCache<T>(
-    m: Molecule<T>,
-    context: { subscriptionId?: Symbol | undefined },
-    scopes: AnyScopeTuple[],
-  ) {
+  function multiCache(
+    createFn: () => Omit<MoleculeCacheValue, "path">,
+    foundFn: (found: MoleculeCacheValue) => void,
+    deps: (AnyScopeTuple | AnyMolecule)[],
+  ): MoleculeCacheValue {
+    const cached = moleculeCache.deepCache(
+      () => {
+        return { ...createFn(), path: deps };
+      },
+      foundFn,
+      deps,
+    );
+    return cached;
+  }
+
+  function runAndCache<T>(m: Molecule<T>, props: CreationProps) {
     const defaultScopeTuples = new Set<AnyScopeTuple>();
 
     const getScopeValue = (scope: AnyMoleculeScope): UseScopeDetails => {
       const defaultScopes = new Set<AnyMoleculeScope>();
 
-      const found = scopes.find(([key]) => key === scope);
+      const found = props.scopes.find(([key]) => key === scope);
       if (found) {
         const isDefaultValue = found[1] === found[0].defaultValue;
         if (!isDefaultValue) {
@@ -275,19 +338,10 @@ export function createInjector(
         }
       }
 
-      let defaultTuple: AnyScopeTuple = [scope, scope.defaultValue];
-
-      if (context.subscriptionId) {
-        // We generate a lease for this scope
-        // for the subscription here to make sure that
-        // `onUnmounted` can be used for default scopes
-        defaultTuple = scoper.leaseScope(defaultTuple, context.subscriptionId);
-      } else {
-        // TODO: Find a nice way to provide warnings only in dev mode
-        // so we don't put a bunch of junk in the console on production
-        // console.warn("Default subscription not leased!");
-      }
-
+      const defaultTuple: AnyScopeTuple = props.lease([
+        scope,
+        scope.defaultValue,
+      ]);
       defaultScopeTuples.add(defaultTuple);
       defaultScopes.add(scope);
       return {
@@ -299,76 +353,143 @@ export function createInjector(
     const mounted = runMolecule(
       m,
       getScopeValue,
-      (m) => getInternal(m, context, ...scopes),
+      (m) => getInternal(m, props),
       getTrueMolecule,
     );
+    trackInstanceId(mounted.value);
 
-    const relatedScope = scopes.filter(([key]) => mounted.deps.scopes.has(key));
-
-    const transitiveRelatedScope = scopes.filter(([key]) =>
-      mounted.deps.transitiveScopes.has(key),
+    const relatedScope = props.scopes.filter(([key]) =>
+      mounted.deps.allScopes.has(key),
     );
 
-    const scopeKeySet = dependencyCache.get(m) ?? new Set<AnyMoleculeScope>();
-    mounted.deps.scopes.forEach((s) => scopeKeySet.add(s));
-    mounted.deps.transitiveScopes.forEach((s) => scopeKeySet.add(s));
+    const scopeKeySet =
+      dependencyCache.get(m) ?? new WeakSet<AnyMoleculeScope>();
+    mounted.deps.allScopes.forEach((s) => scopeKeySet.add(s));
     dependencyCache.set(m, scopeKeySet);
 
     const scopeKeys: AnyScopeTuple[] = [
       ...relatedScope,
-      ...transitiveRelatedScope,
       ...Array.from(defaultScopeTuples.values()),
     ];
-    const scopeCacheKeys: AnyScopeTuple[] = [
-      ...relatedScope,
-      ...transitiveRelatedScope,
-    ].filter(([key, value]) => key.defaultValue !== value);
-    const dependencies = [...scopeCacheKeys, m];
+    const scopeCacheKeys: AnyScopeTuple[] = [...relatedScope].filter(
+      ([key, value]) => key.defaultValue !== value,
+    );
+    const dependencies = [...scopeTupleSort(scopeCacheKeys), m];
 
-    return moleculeCache.deepCache(
+    return multiCache(
       () => {
         // No molecule exists, so mount a new one
-        if (mounted.mountedCallbacks.size > 0) {
-          console.log("!!!!!!!Mounted!!!!!!!!!!");
-          if (scopeKeys.length <= 0)
-            throw new Error(
-              "Can't use mount lifecycle in globally scoped molecules.",
-            );
+        console.log(
+          "!!! EMPTY: Molecule value stage 2",
+          getInstanceId(mounted.value),
+        );
 
-          const cleanupSet = new Set<CleanupCallback>();
-          mounted.mountedCallbacks.forEach((onMount) => {
-            // Call all the mount functions for the molecule
-            const cleanup = onMount();
+        // const cleanupSet = new Set<CleanupCallback>();
 
-            // Queues up the cleanup functions for later
-            if (cleanup) {
-              console.log("--> Mounted cleanup", cleanup);
-              cleanupSet.add(cleanup);
-            }
-          });
+        // cleanupSet.add(() => {
+        //   /**
+        //    * Purge the molecule cache when the scope set is released
+        //    *
+        //    * Since the moleculeCache is a weak cache, it will be cleaned up
+        //    * automatically when scopes and molecules are garbage collected,
+        //    * but if they aren't garbage collected, then there will continue to
+        //    * be a cached molecule value stored, and then lifecycle hooks will never be
+        //    * run.
+        //    *
+        //    * Without this repeated calls to `injector.use` would not create
+        //    * new values, and would not run lifecycle hooks (mount, unmount).
+        //    */
+        //   console.log("!!! Deleting cached value");
+        //   moleculeCache.remove(...dependencies);
+        // });
 
-          scoper.registerCleanups(scopeKeys, cleanupSet);
-        } else {
-          // No lifecycle callbacks to run
-        }
+        // scoper.registerCleanups(scopeKeys, cleanupSet);
 
         return {
           deps: mounted.deps,
           value: mounted.value,
+          isMounted: false,
+          path: dependencies,
         };
       },
       (found) => {
-        const { subscriptionId } = context;
-        if (subscriptionId) {
-          // Extend the lease to include the any default scopes
-          // that are implicitly leased
-          found.deps.defaultScopes.forEach((s) => {
-            scoper.leaseScope([s, s.defaultValue], subscriptionId);
-          });
-        }
+        console.log(
+          "!!!! FOUND: Molecule value stage 2",
+          getInstanceId(mounted.value),
+        );
+
+        // Extend the lease to include the any default scopes
+        // that are implicitly leased
+        found.deps.defaultScopes.forEach((s) => {
+          props.lease([s, s.defaultValue]);
+        });
       },
       dependencies,
     ) as MoleculeCacheValue;
+  }
+
+  function runMount(mol: MoleculeCacheValue, props: CreationProps) {
+    if (mol.isMounted) {
+      console.log("!!! INFO: Not mounting, already mounted");
+      // Don't re-run a molecule
+      return mol;
+    }
+
+    if (props.isLazy) {
+      console.log("!!! INFO: Not mounting, is used lazily");
+      // Don't run mounts on lazy
+      return mol;
+    }
+    console.log("!!! INFO: Running mount....");
+
+    const scopes: AnyScopeTuple[] = props.scopes.filter(
+      (s) => mol.deps.allScopes.has(s[0]), //|| mol.deps.defaultScopes.has(s[0]),
+    );
+    const cleanupSet = new Set<CleanupCallback>();
+
+    // FIXME: Need to mount dependencies if they are unmounted, too!
+    mol.deps.mountedCallbacks.forEach((onMount) => {
+      // Call all the mount functions for the molecule
+      const cleanup = onMount();
+
+      // Queues up the cleanup functions for later
+      if (cleanup) {
+        console.log(
+          "!!! --> Mounted cleanup",
+          cleanup,
+          scopes.map((s) => s[0][Debug]),
+        );
+        cleanupSet.add(cleanup);
+      }
+    });
+
+    cleanupSet.add(function moleculeCacheCleanup() {
+      /**
+       * Purge the molecule cache when the scope set is released
+       *
+       * Since the moleculeCache is a weak cache, it will be cleaned up
+       * automatically when scopes and molecules are garbage collected,
+       * but if they aren't garbage collected, then there will continue to
+       * be a cached molecule value stored, and then lifecycle hooks will never be
+       * run.
+       *
+       * Without this repeated calls to `injector.use` would not create
+       * new values, and would not run lifecycle hooks (mount, unmount).
+       */
+      console.log("!!! MUTATION: Removing molecule from cache");
+      moleculeCache.remove(...mol.path);
+    });
+
+    scoper.registerCleanups(scopes, cleanupSet);
+
+    // Don't re-run
+    mol.isMounted = true;
+    console.log(
+      "!!! MUTATION: Ran mounts and queued cleanups",
+      scopes.map((s) => s[0][Debug]),
+    );
+
+    return mol;
   }
 
   function get<T>(
@@ -382,45 +503,113 @@ export function createInjector(
     const bound = getTrueMolecule(m);
 
     if (!contextOrScope) {
+      // No subscription ID, so nothing to expand
+      const lease = (next: AnyScopeTuple) => next;
       // 2nd param is undefined
       // Molecules used without scopes or subscription
-      return getInternal(bound, {}, ...scopes).value as T;
+      return getInternal(bound, { lease, scopes }).value as T;
     } else if (Array.isArray(contextOrScope)) {
       const [key] = contextOrScope;
       if (!isMoleculeScope(key))
         throw new Error("Invalid molecule scope used.");
       // 2nd param is a scope
       // Molecule used without a context
-      return getInternal(bound, {}, contextOrScope as AnyScopeTuple, ...scopes)
-        .value as T;
+      // No subscription ID, so nothing to expand
+      const lease = (next: AnyScopeTuple) => next;
+      return getInternal(bound, {
+        lease,
+        scopes: [contextOrScope as AnyScopeTuple, ...scopes],
+      }).value as T;
     }
     // 3nd param is context
     // Extract subscription ID
-    return getInternal(bound, contextOrScope as any, ...scopes).value as T;
+
+    const { subscriptionId } = (contextOrScope ?? {}) as any;
+    const lease = (next: AnyScopeTuple) => {
+      // No subscription ID, so nothing to expand
+      if (!subscriptionId) return next;
+      const [[memoized]] = scoper.startOrExpandSubscription(
+        subscriptionId,
+        next,
+      );
+      return memoized;
+    };
+    return getInternal(bound, { lease, scopes }).value as T;
   }
 
   function use<T>(
     m: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
   ): [T, Unsub, { subscriptionId: Symbol }] {
+    const [moleculeValue, options] = lazyUse(m, ...scopes);
+
+    return [
+      options.start(),
+      options.stop,
+      { subscriptionId: options.subscriptionId },
+    ];
+  }
+
+  function lazyUse<T>(
+    m: MoleculeOrInterface<T>,
+    ...scopes: AnyScopeTuple[]
+  ): [T, { subscriptionId: Symbol; start: () => T; stop: Unsub }] {
     if (!isMolecule(m) && !isMoleculeInterface(m))
       throw new Error(ErrorInvalidMolecule);
 
-    const [tuples, unsub, { subscriptionId }] = scoper.useScopes(...scopes);
+    const sub = scoper.createSubscription();
+
+    const tuples = sub.expand(scopes);
+
     const bound = getTrueMolecule(m);
 
-    const value = getInternal<T>(bound, { subscriptionId }, ...tuples)
-      .value as T;
-    return [value, unsub, { subscriptionId }];
+    const lease = (tuple: AnyScopeTuple) => {
+      const [memoized] = sub.expand([tuple]);
+      return memoized;
+    };
+
+    const value = getInternal<T>(bound, {
+      scopes: tuples,
+      lease,
+      // Lazy so "mount" should never be called
+      isLazy: true,
+    }).value as T;
+
+    const start = () => {
+      // Leases the scope tuples for real
+      // Re-runs the molecules
+      const leasedTuples = sub.start();
+      console.log(
+        "Starting SUB",
+        leasedTuples.map((t) => t[0][Debug]),
+      );
+      const value = getInternal<T>(bound, {
+        scopes: leasedTuples,
+        lease,
+        // Not lazy this time!
+        isLazy: false,
+      }).value as T;
+      return value;
+    };
+
+    return [value, { subscriptionId: sub.subId, start, stop: sub.stop }];
   }
 
   return {
     [TypeSymbol]: Injector,
     get,
     use,
+    lazyUse,
     useScopes: scoper.useScopes,
-    leaseSubId: scoper.leaseSubId,
+    startSubscription: scoper.startOrExpandSubscription,
+    stopSubscription: scoper.stopSubscription,
   };
+}
+
+function getDependencies(scopes: AnyScopeTuple[], m: AnyMolecule) {
+  const scopeKeys = scopes.filter(([key, value]) => key.defaultValue !== value);
+  const dependencies = [...scopeTupleSort(scopeKeys), m];
+  return dependencies;
 }
 
 /**
@@ -438,26 +627,26 @@ function runMolecule(
   const m = getTrueMolecule(maybeMolecule);
 
   const dependentMolecules = new Set<AnyMolecule>();
-  const dependentScopes = new Set<AnyMoleculeScope>();
-  const transitiveScopes = new Set<AnyMoleculeScope>();
-  const transitiveDefaultScopes = new Set<AnyMoleculeScope>();
+  const allScopes = new Set<AnyMoleculeScope>();
+  const defaultScopes = new Set<AnyMoleculeScope>();
+  const mountedCallbacks = new Set<MountedCallback>();
 
   const use: InternalUse = (dep: Injectable<unknown>) => {
     if (isMoleculeScope(dep)) {
-      dependentScopes.add(dep);
+      allScopes.add(dep);
       const scopeDetails = getScopeValue(dep);
-      scopeDetails.defaultScopes.forEach((s) => transitiveDefaultScopes.add(s));
+      scopeDetails.defaultScopes.forEach((s) => defaultScopes.add(s));
       return scopeDetails.value;
     }
     if (isMolecule(dep) || isMoleculeInterface(dep)) {
       const dependentMolecule = getTrueMolecule(dep);
       dependentMolecules.add(dependentMolecule);
       const mol = getMoleculeValue(dependentMolecule);
-      mol.deps.scopes.forEach((s) => transitiveScopes.add(s));
-      mol.deps.transitiveScopes.forEach((s) => transitiveScopes.add(s));
+      mol.deps.allScopes.forEach((s) => allScopes.add(s));
       mol.deps.defaultScopes.forEach((s) => {
-        transitiveDefaultScopes.add(s);
+        defaultScopes.add(s);
       });
+      mol.deps.mountedCallbacks.forEach((cb) => mountedCallbacks.add(cb));
       return mol.value as any;
     }
     throw new Error(ErrorBadUse);
@@ -474,7 +663,6 @@ function runMolecule(
     return use(molOrInterface);
   };
 
-  const mountedCallbacks = new Set<MountedCallback>();
   onMountImpl.push((fn: MountedCallback) => mountedCallbacks.add(fn));
   useImpl.push(use);
   let running = true;
@@ -487,11 +675,16 @@ function runMolecule(
   return {
     deps: {
       molecules: dependentMolecules,
-      scopes: dependentScopes,
-      transitiveScopes,
-      defaultScopes: transitiveDefaultScopes,
+      allScopes,
+      defaultScopes,
+      mountedCallbacks,
     },
     value,
-    mountedCallbacks,
   };
 }
+
+type CreationProps = {
+  lease: (tuple: AnyScopeTuple) => AnyScopeTuple;
+  scopes: AnyScopeTuple[];
+  isLazy?: boolean;
+};

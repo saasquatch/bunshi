@@ -1,4 +1,4 @@
-import { Debug, ScopeSymbol, TypeSymbol } from "./internal/symbols";
+import { Debug, ScopeSymbol, SortId, TypeSymbol } from "./internal/symbols";
 
 /**
  * A scope that can be used to create scoped molecules.
@@ -35,10 +35,12 @@ export function createScope<T = undefined>(
   defaultValue: T,
   options?: { debugLabel?: string },
 ): MoleculeScope<T> {
+  const sortId=debugId++;
   return {
     defaultValue,
     [TypeSymbol]: ScopeSymbol,
-    [Debug]: Symbol(options?.debugLabel ?? `bunshi.scope ${debugId++}`),
+    [Debug]: Symbol(options?.debugLabel ?? `bunshi.scope ${sortId}`),
+    [SortId]: sortId
   };
 }
 

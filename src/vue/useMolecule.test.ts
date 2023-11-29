@@ -137,6 +137,7 @@ test("Default scope cleanup", () => {
   expect(lifecycle.unmounts).not.toHaveBeenCalled();
   rendered1.unmount();
   rendered2.unmount();
+  expect(lifecycle.unmounts).toHaveBeenCalled();
 
   lifecycle.expectToMatchCalls([userScope.defaultValue]);
 });

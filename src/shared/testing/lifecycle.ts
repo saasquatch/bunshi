@@ -6,17 +6,21 @@ export function createLifecycleUtils() {
   const unmounts = vi.fn();
   const executions = vi.fn();
 
-  const reset = () => {
+  function reset() {
     mounts.mockReset();
     unmounts.mockReset();
     executions.mockReset();
-  };
+  }
 
   const connect = (...args: unknown[]) => {
     executions(...args);
-    onMount(() => {
+    // Note: Uses `function` instead of arrow function
+    // because it's easier to use in debugging
+    onMount(function testMountFn() {
       mounts(...args);
-      return () => unmounts(...args);
+      return function testUnMountFn() {
+        unmounts(...args);
+      };
     });
   };
   beforeEach(() => reset());

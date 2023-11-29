@@ -13,3 +13,4 @@ export const DefaultInjector = Symbol.for(
   "bunshi.injector.defaultGlobalInjector",
 );
 export const Debug = Symbol("bunshi.debug");
+export const SortId = Symbol("bunshi.scope.sort");

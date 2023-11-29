@@ -1,11 +1,14 @@
 import type { MoleculeInjector } from ".";
+import { createSubId } from "./createSubId";
 import type {
   AnyMoleculeScope,
   AnyScopeTuple,
 } from "./internal/internal-types";
 import { Debug } from "./internal/symbols";
-import type { CleanupCallback } from "./lifecycle";
+import type { CleanupCallback, MountedCallback } from "./lifecycle";
 import type { ScopeTuple } from "./types";
+
+type MaybeWeakMap<K, V> = K extends {} ? WeakMap<K, V> : Map<K, V>;
 
 /**
  * The scoper is not aware of molecules, but keeps track of scopes
@@ -48,7 +51,7 @@ export function createScoper() {
      * since scope values can be primitives, they aren't allowed as a
      * key in a WeakMap.
      */
-    Map<
+    MaybeWeakMap<
       /**
        * The scope value, which should match the type of the MoleculeScope
        */
@@ -68,6 +71,11 @@ export function createScoper() {
          * This is used as a key in other places in WeakMap and WeakSet
          */
         tuple: AnyScopeTuple;
+        /**
+         * These are the functions that should be called when this scope
+         * is mounted
+         */
+        mounts: Set<MountedCallback>;
         /**
          * These callbacks should be called when there are no more subscriptions
          */
@@ -123,11 +131,11 @@ export function createScoper() {
 
   const releasedSubscriptions = new WeakSet<Symbol>();
 
-  function leaseScopes<T>(
+  function getScopes<T>(
     tuples: ScopeTuple<T>[],
     subscriptionId: Symbol,
   ): ScopeTuple<T>[] {
-    return tuples.map((t) => leaseScope(t, subscriptionId));
+    return tuples.map((t) => getScope(t, subscriptionId));
   }
 
   /**
@@ -137,7 +145,7 @@ export function createScoper() {
    * and needs to be cleaned up with `deregisterScopeTuple`
    *
    */
-  function leaseScope<T>(
+  function getScope<T>(
     tuple: ScopeTuple<T>,
     subscriptionId: Symbol,
   ): ScopeTuple<T> {
@@ -148,29 +156,57 @@ export function createScoper() {
     }
     const [scope, value] = tuple;
 
-    let valuesForScope = scopeCache.get(scope);
-    if (!valuesForScope) {
-      valuesForScope = new Map();
-      scopeCache.set(scope, valuesForScope);
-    }
+    // Timing issue. What happens if the cache is empty between
+    // when this function was created and when it was run?
+    // const start = () => startSubscription<T>(subscriptionId, tuple);
 
-    let cached = valuesForScope.get(value);
+    const cached = scopeCache.get(scope)?.get(value);
     if (cached) {
-      // Increment references
-      cached.references.add(subscriptionId);
-      trackSubcription(subscriptionId, cached.tuple as ScopeTuple<T>);
       return cached.tuple as ScopeTuple<T>;
     }
-
-    valuesForScope.set(value, {
-      tuple,
-      references: new Set<Symbol>([subscriptionId]),
-      cleanups: new Set(),
-    });
-
-    trackSubcription(subscriptionId, tuple);
-
     return tuple;
+  }
+
+  /**
+   * Mutates the cache and starts the subscription
+   *
+   * @param subscriptionId
+   * @param tuple
+   */
+  function startSubscription<T>(
+    subscriptionId: Symbol,
+    tuple: ScopeTuple<T>,
+  ): ScopeTuple<T> {
+    const [scope, value] = tuple;
+    const innerCached = scopeCache.get(scope)?.get(value);
+    if (innerCached) {
+      // Increment references
+      innerCached.references.add(subscriptionId);
+      trackSubcription(subscriptionId, innerCached.tuple as ScopeTuple<T>);
+      return innerCached.tuple as ScopeTuple<T>;
+    } else {
+      // Get or create initial map
+      const valuesForScope =
+        scopeCache.get(scope) ?? scopeCache.set(scope, new Map()).get(scope)!;
+
+      // Increment references
+      valuesForScope.set(value, {
+        tuple,
+        references: new Set<Symbol>([subscriptionId]),
+        cleanups: new Set(),
+        mounts: new Set(),
+      });
+
+      trackSubcription(subscriptionId, tuple);
+      return tuple;
+    }
+  }
+
+  function startSubscriptions(
+    subscriptionId: Symbol,
+    tuples: AnyScopeTuple[],
+  ): AnyScopeTuple[] {
+    return tuples.map((t) => startSubscription(subscriptionId, t));
   }
 
   function trackSubcription(subscriptionId: Symbol, tuple: AnyScopeTuple) {
@@ -187,11 +223,12 @@ export function createScoper() {
    * deregisters them from the primitive scope
    * cache to ensure no memory leaks
    */
-  function unleaseScopes(subscriptionId: Symbol) {
+  function stopSubscription(subscriptionId: Symbol) {
     if (releasedSubscriptions.has(subscriptionId)) {
-      throw new Error(
-        "Can't release a subscription that has already been released. Don't call unsub twice.",
-      );
+      // throw new Error(
+      //   "Can't release a subscription that has already been released. Don't call unsub twice.",
+      // );
+      return;
     } else {
       releasedSubscriptions.add(subscriptionId);
     }
@@ -241,30 +278,14 @@ export function createScoper() {
     });
   }
 
-  /**
-   * The subscriptionIndex provides a unique name to use
-   * in debugging.
-   *  - It does not need to be unique
-   *  - It does not need to auto-increment,
-   *  - It does not need to be a number
-   *  - It has to affect on business logic
-   *  - It's only for display purposes
-   */
-  let subscriptionIndex = 0;
-
   function useScopes(
     ...scopes: AnyScopeTuple[]
   ): ReturnType<MoleculeInjector["useScopes"]> {
-    const subscriptionId = Symbol(
-      // This name is only used for display purposes
-      // Do NOT replace this `Symbol` with `Symbol.for`
-      // it is NOT intended to be global
-      `bunshi.scope.sub ${subscriptionIndex++}`,
-    );
-    return leaseSubId(subscriptionId, ...scopes);
+    const subscriptionId = createSubId();
+    return startOrExpandSubscription(subscriptionId, ...scopes);
   }
 
-  function leaseSubId(
+  function startOrExpandSubscription(
     subscriptionId: Symbol,
     ...scopes: AnyScopeTuple[]
   ): ReturnType<MoleculeInjector["useScopes"]> {
@@ -274,20 +295,69 @@ export function createScoper() {
       scopes.map((s) => s[0][Debug]),
     );
 
-    const tuples = leaseScopes(scopes, subscriptionId);
+    const tuples = getScopes(scopes, subscriptionId);
+    const leased = startSubscriptions(subscriptionId, scopes);
+
+    if (!shallowEqual(tuples, leased)) {
+      throw new Error("Leased scopes don't match actual scopes");
+    }
+
     const unsub = () => {
       console.log("Released subscription", subscriptionId);
-
-      unleaseScopes(subscriptionId);
+      stopSubscription(subscriptionId);
     };
 
     return [tuples, unsub, { subscriptionId }];
   }
 
+  function createSubscription() {
+    let subId: symbol | undefined = createSubId();
+    const tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
+    return {
+      subId,
+      expand(next: AnyScopeTuple[]) {
+        if (!subId)
+          throw new Error(
+            "Can't expand a subscription that is already stopped",
+          );
+        const tuples = getScopes(next, subId);
+        tuples.forEach((t) => {
+          tupleMap.set(t[0], t);
+        });
+        return tuples;
+      },
+      restart() {
+        subId = createSubId();
+        getScopes(Array.from(tupleMap.values()), subId);
+        return startSubscriptions(subId, Array.from(tupleMap.values()));
+      },
+      start() {
+        if (!subId) {
+          return this.restart();
+        }
+        return startSubscriptions(subId, Array.from(tupleMap.values()));
+      },
+      stop() {
+        if (!subId)
+          throw new Error("Can't stop a subscription that is already stopped");
+        stopSubscription(subId);
+        subId = undefined;
+      },
+    };
+  }
+
   return {
     useScopes,
     registerCleanups,
-    leaseScope,
-    leaseSubId,
+    startOrExpandSubscription,
+    stopSubscription,
+    createSubscription,
   };
+}
+
+function shallowEqual(first: unknown[], second: unknown[]): boolean {
+  if (first.length !== second.length) {
+    return false;
+  }
+  return first.every((item, index) => item === second[index]);
 }

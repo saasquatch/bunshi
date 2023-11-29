@@ -184,9 +184,17 @@ describe("Scoping", () => {
   test("Creates ONLY one molecule per dependent molecule, regardless of scope order", () => {
     const injector = createInjector();
 
-    const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
-    const secondValue = injector.get(userMolecule, user1Scope, company1Scope);
-    const thirdValue = injector.get(
+    const [firstValue, unsub1] = injector.use(
+      userMolecule,
+      company1Scope,
+      user1Scope,
+    );
+    const [secondValue, unsub2] = injector.use(
+      userMolecule,
+      user1Scope,
+      company1Scope,
+    );
+    const [thirdValue, unsub3] = injector.use(
       userMolecule,
       unrelatedScope1,
       user1Scope,

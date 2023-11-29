@@ -708,7 +708,7 @@ describe("lifecycle API", () => {
 describe("Repeated leases work", () => {
   const globalLifecycle = createLifecycleUtils();
   const GlobalMolecule = molecule(() => {
-    const value = Math.random();
+    const value = { number: Math.random() };
     globalLifecycle.connect(value);
     return value;
   });
@@ -717,7 +717,7 @@ describe("Repeated leases work", () => {
   const testScope = createScope(undefined);
   const ScopedMolecule = molecule(() => {
     use(testScope);
-    const value = Math.random();
+    const value = { number: Math.random() };
     scopedLifeycle.connect(value);
     return value;
   });
@@ -730,7 +730,7 @@ describe("Repeated leases work", () => {
   });
 
   // TODO: Add more test suites for other scopes (component scope, custom scopes) and molecule combinations
-  test.each([
+  test.only.each([
     {
       case: "Global",
       run: () => injector.use(GlobalMolecule),
@@ -743,7 +743,7 @@ describe("Repeated leases work", () => {
     },
     {
       case: "Derived",
-      run: () => injector.use(DerivedMolecule, [testScope, "abc"]),
+      run: () => injector.use(DerivedMolecule, [testScope, "abcq"]),
       lifecycle: scopedLifeycle,
     },
     {

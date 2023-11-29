@@ -28,7 +28,7 @@ export const useScopeSubscription = (options: MoleculeScopeOptions = {}) => {
   return result;
 };
 
-const getTuples = (
+export const getTuples = (
   options: MoleculeScopeOptions = {},
 ): ScopeTuple<unknown>[] => {
   const parentScopes = inject(ScopeSymbol, [] as ScopeTuple<unknown>[]);
