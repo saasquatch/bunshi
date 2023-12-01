@@ -20,6 +20,7 @@
     "dev": "run-p dev:*",
     "dev:build": "tsup --watch",
     "dev:test": "vitest --watch",
+    "benchmark": "vitest bench --run",
     "test": "run-p test:*",
     "test:code": "vitest run --coverage",
     "test:typings": "cd examples/old-typescript && npm i && npm run build",
