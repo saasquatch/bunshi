@@ -1,6 +1,3 @@
-import { MoleculeOrInterface } from "../molecule";
-import { AnyScopeTuple } from "./internal-types";
-
 /**
  * A weak, deep cache
  *
@@ -85,6 +82,8 @@ export type DeepCache<TKey extends {}, TValue> = {
     deps: Deps<TKey>,
   ): TValue;
 
+  get(deps: Deps<TKey>): TValue | undefined;
+
   /**
    * Create or update an item in the cache
    *
@@ -135,7 +134,10 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
     removeWeakCacheItem(cache, deps);
   };
 
+  const get = (deps: Deps<TKey>) => getWeakCacheItem(cache, deps);
+
   return {
+    get,
     cache,
     deepCache,
     upsert,
@@ -153,7 +155,6 @@ const removeWeakCacheItem = <TKey extends {}, TValue>(
     if (!entry) {
       // No base level value
       // So nothing to remove
-      console.log("??? Nothing in cache to remove");
       return;
     }
     // We have hit the bottom of the tree when there are no more deps

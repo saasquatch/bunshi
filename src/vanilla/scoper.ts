@@ -4,8 +4,7 @@ import type {
   AnyMoleculeScope,
   AnyScopeTuple,
 } from "./internal/internal-types";
-import { Debug } from "./internal/symbols";
-import type { CleanupCallback, MountedCallback } from "./lifecycle";
+import type { CleanupCallback } from "./lifecycle";
 import type { ScopeTuple } from "./types";
 
 type MaybeWeakMap<K, V> = K extends {} ? WeakMap<K, V> : Map<K, V>;
@@ -71,11 +70,6 @@ export function createScoper() {
          * This is used as a key in other places in WeakMap and WeakSet
          */
         tuple: AnyScopeTuple;
-        /**
-         * These are the functions that should be called when this scope
-         * is mounted
-         */
-        mounts: Set<MountedCallback>;
         /**
          * These callbacks should be called when there are no more subscriptions
          */
@@ -194,7 +188,6 @@ export function createScoper() {
         tuple,
         references: new Set<Symbol>([subscriptionId]),
         cleanups: new Set(),
-        mounts: new Set(),
       });
 
       trackSubcription(subscriptionId, tuple);
@@ -244,27 +237,26 @@ export function createScoper() {
       references?.delete(subscriptionId);
 
       if (references && references.size <= 0) {
-        console.log("-> Empty!", subscriptionId, scope[Debug]);
         scopeMap?.delete(value);
 
         // Run all cleanups
         cached?.cleanups.forEach((cb) => {
-          console.log("---> Queue cleanup", subscriptionId, cb);
           cleanupsToRun.add(cb);
         });
       } else {
-        console.log("-> Not empty yet", subscriptionId);
+        // Not empty yet, do not run cleanups
       }
     });
 
-    cleanupsToRun.forEach((cb) => {
-      if (!cleanupsRun.has(cb)) {
-        // Only runs cleanups that haven't already been run
-        console.log("---> Run cleanup", subscriptionId, cb);
-        cb();
-        cleanupsRun.add(cb);
-      }
-    });
+    Array.from(cleanupsToRun.values())
+      .toReversed()
+      .forEach((cb) => {
+        if (!cleanupsRun.has(cb)) {
+          // Only runs cleanups that haven't already been run
+          cb();
+          cleanupsRun.add(cb);
+        }
+      });
   }
 
   function registerCleanups(
@@ -289,12 +281,6 @@ export function createScoper() {
     subscriptionId: Symbol,
     ...scopes: AnyScopeTuple[]
   ): ReturnType<MoleculeInjector["useScopes"]> {
-    console.log(
-      "Started subscription",
-      subscriptionId,
-      scopes.map((s) => s[0][Debug]),
-    );
-
     const tuples = getScopes(scopes, subscriptionId);
     const leased = startSubscriptions(subscriptionId, scopes);
 
@@ -303,18 +289,25 @@ export function createScoper() {
     }
 
     const unsub = () => {
-      console.log("Released subscription", subscriptionId);
       stopSubscription(subscriptionId);
     };
 
-    return [tuples, unsub, { subscriptionId }];
+    return [tuples, unsub];
   }
 
-  function createSubscription() {
+  function createSubscription(): ScopeSubscription {
     let subId: symbol | undefined = createSubId();
     const tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
+
+    function restart() {
+      subId = createSubId();
+      getScopes(Array.from(tupleMap.values()), subId);
+      return startSubscriptions(subId, Array.from(tupleMap.values()));
+    }
     return {
-      subId,
+      tuples() {
+        return Array.from(tupleMap.values());
+      },
       expand(next: AnyScopeTuple[]) {
         if (!subId)
           throw new Error(
@@ -326,14 +319,9 @@ export function createScoper() {
         });
         return tuples;
       },
-      restart() {
-        subId = createSubId();
-        getScopes(Array.from(tupleMap.values()), subId);
-        return startSubscriptions(subId, Array.from(tupleMap.values()));
-      },
       start() {
         if (!subId) {
-          return this.restart();
+          return restart();
         }
         return startSubscriptions(subId, Array.from(tupleMap.values()));
       },
@@ -354,6 +342,13 @@ export function createScoper() {
     createSubscription,
   };
 }
+
+export type ScopeSubscription = {
+  tuples(): AnyScopeTuple[];
+  expand(next: AnyScopeTuple[]): AnyScopeTuple[];
+  start(): AnyScopeTuple[];
+  stop(): void;
+};
 
 function shallowEqual(first: unknown[], second: unknown[]): boolean {
   if (first.length !== second.length) {

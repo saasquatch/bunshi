@@ -1,8 +1,10 @@
+import { useEffect, useMemo } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { MoleculeOrInterface } from "../vanilla";
 import type { ScopeProvider } from "./ScopeProvider";
+import { flattenTuples } from "./internal/flattenTuples";
 import { useInjector } from "./useInjector";
-import { useScopeSubscription } from "./useScopes";
+import { useScopeTuplesRaw } from "./useScopes";
 
 /**
  * Get an instance from a {@link MoleculeOrInterface}
@@ -18,11 +20,26 @@ import { useScopeSubscription } from "./useScopes";
  * @typeParam T - the type of the molecule or interface, and the type of interface returned
  * @returns a instance provided by the molecule
  */
+
 export function useMolecule<T>(
   mol: MoleculeOrInterface<T>,
   options?: MoleculeScopeOptions,
 ): T {
-  const [memoizedTuples, _, context] = useScopeSubscription(options);
   const injector = useInjector();
-  return injector.get(mol, context, ...memoizedTuples);
+
+  // FIXME: Memoize these so a new handle is only created when the tuples change
+  const inputTuples = useScopeTuplesRaw(options);
+  const [value, handle] = useMemo(
+    () => injector.useLazily(mol, ...inputTuples),
+    [mol, injector, flattenTuples(inputTuples)],
+  );
+
+  useEffect(() => {
+    handle.start();
+    return () => {
+      handle.stop();
+    };
+  }, [handle]);
+
+  return value;
 }

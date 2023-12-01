@@ -1,6 +1,6 @@
 import React from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-import { MoleculeScope, ComponentScope } from "../vanilla";
+import { ComponentScope, MoleculeScope } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useScopes } from "./useScopes";
 
@@ -38,9 +38,12 @@ export function ScopeProvider<T>(
       withScope: [scope, value],
     };
   }
+
+  // FIXME: This sends a new array downstream to the ScopeContext on every render
   const downstreamScopes = useScopes(options).filter(
     ([scope]) => scope !== ComponentScope,
   );
+
   return React.createElement(
     ScopeContext.Provider,
     { value: downstreamScopes },

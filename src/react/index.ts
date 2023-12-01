@@ -7,7 +7,7 @@ export { ScopeProvider, type ProviderProps } from "./ScopeProvider";
 export { useMolecule } from "./useMolecule";
 
 // Advanced API - scopes
-export { useScopeSubscription, useScopes } from "./useScopes";
+export { useScopes } from "./useScopes";
 
 // Advanced API - injectors
 export { InjectorProvider } from "./InjectorProvider";

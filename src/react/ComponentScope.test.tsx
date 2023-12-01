@@ -1,21 +1,24 @@
 import { act, renderHook } from "@testing-library/react";
 import { atom, useAtom } from "jotai";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
-import { ComponentScope, molecule } from "./";
+import { ComponentScope, molecule, resetDefaultInjector, use } from "./";
 import { createTestInjectorProvider } from "./testing/TestInjectorProvider";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
 
 const compLifecycle = createLifecycleUtils();
 
-const ComponentScopedCountMolecule = molecule((_, scope) => {
-  scope(ComponentScope);
+const ComponentScopedCountMolecule = molecule(() => {
+  use(ComponentScope);
   compLifecycle.connect();
   return atom(0);
 });
 
-const GlobalScopedMoleculeCountMolecule = molecule((_, scope) => {
-  return atom(0);
+const globalCompLifecycle = createLifecycleUtils();
+const GlobalScopedMoleculeCountMolecule = molecule(() => {
+  const value = atom(0);
+  globalCompLifecycle.connect(value);
+  return value;
 });
 
 const useCounter = (mol: typeof ComponentScopedCountMolecule) => {
@@ -26,22 +29,35 @@ const useCounter = (mol: typeof ComponentScopedCountMolecule) => {
   };
 };
 
+beforeEach(() => {
+  resetDefaultInjector();
+});
 strictModeSuite(({ wrapper: Outer }) => {
   describe("Global scoped molecules", () => {
     test("should increment counter", () => {
+      globalCompLifecycle.expectUncalled();
       testOneCounter(GlobalScopedMoleculeCountMolecule, 1);
+      expect.soft(globalCompLifecycle.executions).toHaveBeenCalledOnce();
+      expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
+      expect.soft(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
     });
     test("two counters should be connected for global scope", () => {
       // Note: This is an important test case, because
       // it makes sure that our `testTwoCounters` function
       // can tell the difference between a globally
       // scoped molecule and not component-scope molecule
+      globalCompLifecycle.expectUncalled();
+
       testTwoCounters(GlobalScopedMoleculeCountMolecule, {
         actual1: true,
         actual2: true,
         expected1: 2,
         expected2: 2,
       });
+
+      expect.soft(globalCompLifecycle.executions).toHaveBeenCalledOnce();
+      expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
+      expect.soft(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
     });
   });
 
@@ -66,7 +82,7 @@ strictModeSuite(({ wrapper: Outer }) => {
       expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
       expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
     });
-    test("two counters should be not be connected when component scoped, only one", () => {
+    test("two counters should be not be connected when component scoped, use first one", () => {
       testTwoCounters(ComponentScopedCountMolecule, {
         actual1: true,
         actual2: false,
@@ -74,7 +90,7 @@ strictModeSuite(({ wrapper: Outer }) => {
         expected2: 0,
       });
     });
-    test("two counters should be not be connected when component scoped, only one", () => {
+    test("two counters should be not be connected when component scoped, use second one", () => {
       testTwoCounters(ComponentScopedCountMolecule, {
         actual1: false,
         actual2: true,

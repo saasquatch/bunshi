@@ -148,55 +148,57 @@ strictModeSuite(({ wrapper: Outer }) => {
     );
   });
 
-  describe("String scopes", () => {
+  describe("Separate ScopeProviders", () => {
     test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
-      const StringScopeTestContext = React.createContext<
-        ReturnType<typeof useTextHook>
+      const TestHookContext = React.createContext<
+        ReturnType<typeof useTestHook>
       >(undefined as any);
-      const useTextHook = () => {
+
+      const useTestHook = () => {
         const [mountA, setMountA] = useState(true);
         const [mountB, setMountB] = useState(true);
         const insideValue = useRef(null as any);
         const props = { mountA, mountB, setMountA, setMountB, insideValue };
         return props;
       };
+
       const sharedAtExample = "shared@example.com";
-      const TestStuffProvider: React.FC<{ children: ReactNode }> = ({
-        children,
-      }) => {
-        const props = useTextHook();
-        return (
-          <Outer>
-            <StringScopeTestContext.Provider value={props}>
-              {children}
-              <Controller {...props} />
-            </StringScopeTestContext.Provider>
-          </Outer>
-        );
-      };
+
       const Child = () => {
-        const scopes = useScopes().filter(
-          ([scope]) => scope !== ComponentScope,
-        );
-        const context = useContext(StringScopeTestContext);
-        useMolecule(UserMolecule);
-        context.insideValue.current = scopes;
+        // const scopes = useScopes().filter(
+        //   ([scope]) => scope !== ComponentScope,
+        // );
+        const context = useContext(TestHookContext);
+        const value = useMolecule(UserMolecule);
+        context.insideValue.current = useContext(ScopeContext);
         return <div>Bad</div>;
       };
+      const ProviderWithChild = () => (
+        <ScopeProvider scope={UserScope} value={sharedAtExample}>
+          <Child />
+        </ScopeProvider>
+      );
+
       const Controller = (props: any) => {
         return (
           <>
-            {props.mountA && (
-              <ScopeProvider scope={UserScope} value={sharedAtExample}>
-                <Child />
-              </ScopeProvider>
-            )}
-            {props.mountB && (
-              <ScopeProvider scope={UserScope} value={sharedAtExample}>
-                <Child />
-              </ScopeProvider>
-            )}
+            {props.mountA && <ProviderWithChild />}
+            {props.mountB && <ProviderWithChild />}
           </>
+        );
+      };
+
+      const TestHookProvider: React.FC<{ children: ReactNode }> = ({
+        children,
+      }) => {
+        const props = useTestHook();
+        return (
+          <Outer>
+            <TestHookContext.Provider value={props}>
+              {children}
+              <Controller {...props} />
+            </TestHookContext.Provider>
+          </Outer>
         );
       };
 
@@ -204,27 +206,28 @@ strictModeSuite(({ wrapper: Outer }) => {
 
       // When the component is initially mounted
       const { result, ...rest } = renderHook(
-        () => useContext(StringScopeTestContext),
+        () => useContext(TestHookContext),
         {
-          wrapper: TestStuffProvider,
+          wrapper: TestHookProvider,
         },
       );
 
       const { insideValue } = result.current;
-
-      // Then the lifecycle events are called
+      // Then the molecule is mounted
+      userLifecycle.expectActivelyMounted();
+      // And the lifecycle events are called
       expect(userLifecycle.mounts).toHaveBeenCalledWith(sharedAtExample);
-      // Then the scopes matches the initial value
+      // And the scopes matches the initial value
       expect(insideValue.current).toStrictEqual([[UserScope, sharedAtExample]]);
 
       const userScopeTuple = insideValue.current[0];
 
-      // When A is unmounted
       act(() => {
+        // When A is unmounted
         result.current.setMountA(false);
       });
-
       // Then the molecule is still mounted
+      // Because it's still being used by B
       userLifecycle.expectActivelyMounted();
 
       const afterUnmountCache = insideValue.current;

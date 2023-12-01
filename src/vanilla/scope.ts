@@ -1,4 +1,5 @@
 import { Debug, ScopeSymbol, SortId, TypeSymbol } from "./internal/symbols";
+import { ScopeTuple } from "./types";
 
 /**
  * A scope that can be used to create scoped molecules.
@@ -15,6 +16,7 @@ import { Debug, ScopeSymbol, SortId, TypeSymbol } from "./internal/symbols";
 export type MoleculeScope<T> = {
   defaultValue: T;
   displayName?: string;
+  defaultTuple: ScopeTuple<T>;
 } & Record<symbol, unknown>;
 
 /**
@@ -35,12 +37,19 @@ export function createScope<T = undefined>(
   defaultValue: T,
   options?: { debugLabel?: string },
 ): MoleculeScope<T> {
-  const sortId=debugId++;
+  const sortId = debugId++;
+  let staticDefaultTupleValue: ScopeTuple<T> | undefined;
+  const debugValue = Symbol(options?.debugLabel ?? `bunshi.scope ${sortId}`);
   return {
     defaultValue,
     [TypeSymbol]: ScopeSymbol,
-    [Debug]: Symbol(options?.debugLabel ?? `bunshi.scope ${sortId}`),
-    [SortId]: sortId
+    [Debug]: debugValue,
+    [SortId]: sortId,
+    get defaultTuple() {
+      if (staticDefaultTupleValue) return staticDefaultTupleValue;
+      staticDefaultTupleValue = [this, defaultValue];
+      return staticDefaultTupleValue;
+    },
   };
 }
 

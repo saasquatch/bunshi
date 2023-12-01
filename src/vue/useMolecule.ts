@@ -1,8 +1,8 @@
-import { onMounted, onUnmounted, shallowRef } from "vue";
+import { onMounted, onUnmounted } from "vue";
 import type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import type { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
-import { getTuples, useScopeSubscription } from "./useScopes";
+import { getTuples } from "./useScopes";
 
 /**
  * Gets an instance of a provided value from a {@link MoleculeOrInterface}
@@ -18,8 +18,7 @@ export const useMolecule = <T>(
   const tuples = getTuples(options);
   const injector = useInjector();
 
-  const [value, handle] = injector.lazyUse(mol, ...tuples);
-  const valueRef = shallowRef(value);
+  const [value, handle] = injector.useLazily(mol, ...tuples);
 
   onMounted(() => {
     handle.start();
