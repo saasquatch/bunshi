@@ -1,11 +1,19 @@
 import { renderHook } from "@testing-library/react";
 import React, { StrictMode, useContext } from "react";
-import { createScope, molecule, onMount, onUnmount, use } from ".";
+import {
+  createScope,
+  molecule,
+  onMount,
+  onUnmount,
+  resetDefaultInjector,
+  use,
+} from ".";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
+import { LoggingInstrumentation } from "../vanilla/internal/instrumentation";
 
 export const UserScope = createScope("user@example.com", {
   debugLabel: "User Scope",
@@ -212,8 +220,9 @@ strictModeSuite(({ wrapper }) => {
   });
 });
 
-test.todo("Strict mode", () => {
-  const expectedUser = "johan";
+test.only("Strict mode", () => {
+  resetDefaultInjector({ instrumentation: new LoggingInstrumentation() });
+  const expectedUser = "strict@example.com";
 
   const lifecycle = createLifecycleUtils();
   const UseLifecycleMolecule = molecule(() => {
@@ -224,35 +233,38 @@ test.todo("Strict mode", () => {
   const testHook = () => {
     return {
       molecule: useMolecule(UseLifecycleMolecule, {
-        // exclusiveScope: [UserScope, expectedUser],
+        exclusiveScope: [UserScope, expectedUser],
       }),
     };
   };
 
   lifecycle.expectUncalled();
 
+  console.log("Render 1");
   const run1 = renderHook(testHook, {
     wrapper: StrictMode,
   });
+  console.log("==========Render 1 done");
 
-  expect.soft(lifecycle.executions).toBeCalledWith(expectedUser);
-  expect.soft(lifecycle.mounts).toBeCalledWith(expectedUser);
-  expect.soft(lifecycle.executions).toBeCalledTimes(2);
-  expect.soft(lifecycle.mounts).toBeCalledTimes(2);
-  expect.soft(lifecycle.unmounts).toBeCalledTimes(1);
-  expect.soft(run1.result.current.molecule).toBe(expectedUser);
+  expect(lifecycle.executions).toBeCalledTimes(2);
+  expect(lifecycle.mounts).toBeCalledTimes(1);
+  expect(lifecycle.unmounts).toBeCalledTimes(1);
+  expect(run1.result.current.molecule).toBe(expectedUser);
 
+  console.log("==========Render 2");
   const run2 = renderHook(testHook, {
     wrapper: StrictMode,
   });
+  console.log("Render 2 done");
 
-  // expect(runs).toBeCalledTimes(2);
-  // expect(unmounts).toBeCalledTimes(4);
-  // expect(mounts).toBeCalledTimes(1);
-  // expect(unmounts).not.toBeCalled();
-  // expect(run2.result.current.molecule).toBe(expectedUser);
+  expect(lifecycle.executions).toBeCalledTimes(3);
+  expect(lifecycle.mounts).toBeCalledTimes(2);
+  expect(lifecycle.unmounts).toBeCalledTimes(1);
+  expect(run2.result.current.molecule).toBe(expectedUser);
 
+  console.log("Unmount 1");
   run1.unmount();
+  console.log("Unmount 1 done");
 
   expect(lifecycle.executions).toBeCalledWith(expectedUser);
   expect(lifecycle.mounts).toBeCalledWith(expectedUser);
@@ -261,7 +273,9 @@ test.todo("Strict mode", () => {
   expect(lifecycle.unmounts).toBeCalledTimes(1);
   expect(run1.result.current.molecule).toBe(expectedUser);
 
+  console.log("Unmount 2");
   run2.unmount();
+  console.log("Unmount 2 done");
 
   expect(lifecycle.executions).toBeCalledTimes(3);
   expect(lifecycle.mounts).toBeCalledTimes(2);

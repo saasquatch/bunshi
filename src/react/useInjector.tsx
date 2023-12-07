@@ -7,5 +7,5 @@ import { InjectorContext } from "./contexts/InjectorContext";
  * @returns
  */
 export function useInjector() {
-  return useContext(InjectorContext);
+  return useContext(InjectorContext)();
 }

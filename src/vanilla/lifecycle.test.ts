@@ -870,3 +870,70 @@ describe("Repeated leases work", () => {
     }
   });
 });
+
+describe("Repeated lazy leases work", () => {
+  const globalLifecycle = createLifecycleUtils();
+  const GlobalMolecule = molecule(() => {
+    const value = { number: Math.random() };
+    globalLifecycle.connect(value);
+    return value;
+  });
+
+  const scopedLifeycle = createLifecycleUtils();
+  const testScope = createScope(undefined);
+  const ScopedMolecule = molecule(() => {
+    use(testScope);
+    const value = { number: Math.random() };
+    scopedLifeycle.connect(value);
+    return value;
+  });
+
+  const DerivedMolecule = molecule(() => use(ScopedMolecule));
+
+  const DoubleDerived = molecule(() => {
+    use(GlobalMolecule);
+    return use(ScopedMolecule);
+  });
+
+  // TODO: Add more test suites for other scopes (component scope, custom scopes) and molecule combinations
+  test.each([
+    {
+      case: "Global",
+      run: () => injector.useLazily(GlobalMolecule),
+      lifecycle: globalLifecycle,
+    },
+    {
+      case: "Scoped",
+      run: () => injector.useLazily(ScopedMolecule, [testScope, "abc"]),
+      lifecycle: scopedLifeycle,
+    },
+    {
+      case: "Derived",
+      run: () => injector.useLazily(DerivedMolecule, [testScope, "abcq"]),
+      lifecycle: scopedLifeycle,
+    },
+    {
+      case: "Double Derived",
+      run: () => injector.useLazily(DoubleDerived, [testScope, "abcdef"]),
+      lifecycle: scopedLifeycle,
+    },
+  ])("Case: $case", ({ run, lifecycle }) => {
+    // Loop a bunch of times
+    for (let iteration = 0; iteration < 10; iteration++) {
+      lifecycle.expectUncalled();
+      const [value, handle] = run();
+      lifecycle.expectRunButUnmounted();
+      handle.start();
+      lifecycle.expectActivelyMounted();
+      handle.stop();
+      lifecycle.expectToMatchCalls([value]);
+      lifecycle.reset();
+
+      lifecycle.expectRunButUnmounted();
+      handle.start();
+      lifecycle.expectActivelyMounted();
+      handle.stop();
+      lifecycle.expectToMatchCalls([value]);
+    }
+  });
+});

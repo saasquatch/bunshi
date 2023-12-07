@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, useAtomValue } from "jotai";
-import React from "react";
+import React, { useCallback } from "react";
 import {
   MoleculeInjector,
   MoleculeOrInterface,
@@ -41,10 +41,11 @@ strictModeSuite(({ wrapper }) => {
 
     const Wrapper = ({ children }: { children?: React.ReactNode }) => {
       const injector = useAtomValue(injectorAtom);
+      const getInjector = useCallback(() => injector, [injector]);
       const Outer = wrapper;
       return (
         <Outer>
-          <InjectorProvider value={injector}>{children}</InjectorProvider>
+          <InjectorProvider value={getInjector}>{children}</InjectorProvider>
         </Outer>
       );
     };

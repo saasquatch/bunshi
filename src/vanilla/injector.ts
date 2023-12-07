@@ -7,6 +7,7 @@ import {
   ErrorInvalidScope,
   ErrorUnboundMolecule,
 } from "./internal/errors";
+import { Instrumentation } from "./internal/instrumentation";
 import type {
   AnyMolecule,
   AnyMoleculeInterface,
@@ -14,6 +15,7 @@ import type {
   AnyScopeTuple,
   MoleculeInternal,
 } from "./internal/internal-types";
+import { MoleculeCacheValue } from "./internal/internal-types";
 import { scopeTupleSort } from "./internal/scopeTupleSort";
 import {
   GetterSymbol,
@@ -48,25 +50,6 @@ const InternalOnlyGlobalScope = createScope(
   Symbol("bunshi.global.scope.value"),
   { debugLabel: "Global Scope" },
 );
-
-type Deps = {
-  allScopes: Set<AnyMoleculeScope>;
-  defaultScopes: Set<AnyMoleculeScope>;
-  mountedCallbacks: Set<MountedCallback>;
-  // Dependencies
-  buddies: MoleculeCacheValue[];
-};
-
-/**
- * The value stored in the molecule cache
- */
-type MoleculeCacheValue = {
-  deps: Deps;
-  value: unknown;
-  isMounted: boolean;
-  path: (AnyScopeTuple | AnyMolecule)[];
-  instanceId: symbol;
-};
 
 type UseScopeDetails = {
   value: unknown;
@@ -162,6 +145,12 @@ export type CreateInjectorProps = {
    * implementation
    */
   bindings?: Bindings;
+
+  /**
+   * Instrumentation to observe the internals of the caches
+   * uses in the injector
+   */
+  instrumentation?: Instrumentation;
 };
 
 function bindingsToMap(bindings?: Bindings): BindingMap {
@@ -191,7 +180,7 @@ function bindingsToMap(bindings?: Bindings): BindingMap {
  * ```
  */
 export function createInjector(
-  props: CreateInjectorProps = {},
+  injectorProps: CreateInjectorProps = {},
 ): MoleculeInjector {
   /*
    *
@@ -232,7 +221,7 @@ export function createInjector(
     AnyMoleculeScope>
   > = new WeakMap();
 
-  const bindings = bindingsToMap(props.bindings);
+  const bindings = bindingsToMap(injectorProps.bindings);
 
   /**
    * The scoper contains all the subscriptions and leases for managing scope lifecycle,
@@ -261,6 +250,7 @@ export function createInjector(
     m: Molecule<T>,
     props: CreationProps,
   ): MoleculeCacheValue {
+    injectorProps.instrumentation?.getInternal(m);
     const cachedDeps = dependencyCache.get(m);
 
     if (cachedDeps) {
@@ -289,6 +279,7 @@ export function createInjector(
           props.lease(s.defaultTuple);
         });
 
+        injectorProps.instrumentation?.stage1CacheHit(m, cachedValue);
         return cachedValue;
       } else {
         /**
@@ -300,6 +291,7 @@ export function createInjector(
          */
       }
     }
+    injectorProps.instrumentation?.stage1CacheMiss();
     return runAndCache<T>(m, props);
   }
 
@@ -362,6 +354,7 @@ export function createInjector(
       (m) => getInternal(m, props),
       getTrueMolecule,
     );
+    injectorProps.instrumentation?.executed(m, mounted);
 
     const relatedScope = props.scopes.filter(([key]) =>
       mounted.deps.allScopes.has(key),
@@ -396,11 +389,13 @@ export function createInjector(
         mounted.deps.defaultScopes.forEach((s) => {
           props.lease(s.defaultTuple);
         });
-        return {
+        const created = {
           deps: mounted.deps,
           value: mounted.value,
           isMounted: false,
         };
+        injectorProps.instrumentation?.stage2CacheMiss(created);
+        return created;
       },
       (found) => {
         // Extend the lease to include the any default scopes
@@ -408,11 +403,19 @@ export function createInjector(
         found.deps.defaultScopes.forEach((s) => {
           props.lease(s.defaultTuple);
         });
+        injectorProps.instrumentation?.stage2CacheHit(m, found);
       },
     ) as MoleculeCacheValue;
   }
 
   function runMount(mol: MoleculeCacheValue) {
+    /**
+     * FIXME: In react strict mode this case is hit `isMounted` is true even though
+     * it has already been umounted.
+     *
+     * To solve this, we need to make sure that the cache is cleanup at the right time.
+     *
+     */
     if (mol.isMounted) {
       // Don't re-run a molecule
       return mol;
@@ -437,6 +440,8 @@ export function createInjector(
     });
 
     cleanupSet.add(function moleculeCacheCleanup() {
+      injectorProps.instrumentation?.cleanup(mol);
+
       /**
        * Purge the molecule cache when the scope set is released
        *
@@ -472,6 +477,8 @@ export function createInjector(
       Array.isArray(molOrScope),
     ) as AnyScopeTuple[];
     scoper.registerCleanups(usedScopes, cleanupSet);
+
+    injectorProps?.instrumentation?.mounted(mol, usedScopes, cleanupSet);
 
     return mol;
   }
@@ -515,13 +522,25 @@ export function createInjector(
     });
 
     const start = () => {
+      injectorProps?.instrumentation?.subscribe(bound, cacheValue);
       sub.start();
       // Runs mounts
       runMount(cacheValue);
       return cacheValue.value as T;
     };
+    const stop = () => {
+      injectorProps?.instrumentation?.unsubscribe(bound, cacheValue);
+      sub.stop();
+      /**
+       * FIXME: The next run to `start` needs to create a new molecule value
+       * otherwise lifecycle hooks won't be called.
+       *
+       * a) We either need to accept that molecule values are re-usable (could be mounted and unmounted multiple times)
+       * b) We need to return a new molecule value from start and connect that into a useState in react strict mode
+       */
+    };
 
-    return [cacheValue.value as T, { start, stop: sub.stop }];
+    return [cacheValue.value as T, { start, stop }];
   }
 
   return {
@@ -635,7 +654,7 @@ function runMolecule(
        * mounts are called with transient dependencies.
        *
        */
-      buddies: buddies.toReversed(),
+      buddies: buddies.slice().reverse(),
     },
     value,
   };

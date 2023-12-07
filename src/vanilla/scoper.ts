@@ -249,7 +249,7 @@ export function createScoper() {
     });
 
     Array.from(cleanupsToRun.values())
-      .toReversed()
+      .reverse()
       .forEach((cb) => {
         if (!cleanupsRun.has(cb)) {
           // Only runs cleanups that haven't already been run

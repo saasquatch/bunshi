@@ -1,4 +1,4 @@
-export { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
+export { type MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 
 export * from "../vanilla";
 

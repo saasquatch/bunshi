@@ -1,3 +1,4 @@
+import { MountedCallback } from "../lifecycle";
 import type {
   Molecule,
   MoleculeConstructor,
@@ -5,12 +6,31 @@ import type {
 } from "../molecule";
 import type { MoleculeScope } from "../scope";
 import type { ScopeTuple } from "../types";
+import { AnyScopeTuple, AnyMolecule, AnyMoleculeScope } from "./internal-types";
 import {
   GetterSymbol,
   MoleculeInterfaceSymbol,
   MoleculeSymbol,
   TypeSymbol,
 } from "./symbols";
+
+/**
+ * The value stored in the molecule cache
+ */
+export type MoleculeCacheValue = {
+  deps: Deps;
+  value: unknown;
+  isMounted: boolean;
+  path: (AnyScopeTuple | AnyMolecule)[];
+  instanceId: symbol;
+};
+type Deps = {
+  allScopes: Set<AnyMoleculeScope>;
+  defaultScopes: Set<AnyMoleculeScope>;
+  mountedCallbacks: Set<MountedCallback>;
+  // Dependencies
+  buddies: MoleculeCacheValue[];
+};
 
 export * from "../types";
 

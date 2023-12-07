@@ -1,4 +1,4 @@
-import { createInjector } from "./injector";
+import { CreateInjectorProps, createInjector } from "./injector";
 import { ErrorInvalidGlobalInjector } from "./internal/errors";
 import { DefaultInjector } from "./internal/symbols";
 import { isInjector } from "./internal/utils";
@@ -30,6 +30,6 @@ export const getDefaultInjector = () => {
  *
  * Useful for tests
  */
-export const resetDefaultInjector = () => {
-  (globalThis as any)[DefaultInjector] = createInjector();
+export const resetDefaultInjector = (injectorProps?: CreateInjectorProps) => {
+  (globalThis as any)[DefaultInjector] = createInjector(injectorProps);
 };

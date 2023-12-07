@@ -1,13 +1,20 @@
 import { act, renderHook } from "@testing-library/react";
-import { atom, useAtom } from "jotai";
-import React, { ReactNode, useContext, useRef, useState } from "react";
+import {
+  Atom,
+  PrimitiveAtom,
+  atom,
+  getDefaultStore,
+  useAtom,
+  useAtomValue,
+  useSetAtom,
+} from "jotai";
+import React, { ReactNode, useContext, useEffect } from "react";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
-import { ComponentScope, createScope, molecule, use } from "../vanilla";
+import { createScope, molecule, resetDefaultInjector, use } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
-import { useScopes } from "./useScopes";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -149,41 +156,63 @@ strictModeSuite(({ wrapper: Outer }) => {
   });
 
   describe("Separate ScopeProviders", () => {
+    beforeEach(() => {
+      // Turn on logging for this test
+      resetDefaultInjector({});
+    });
     test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
       const TestHookContext = React.createContext<
         ReturnType<typeof useTestHook>
       >(undefined as any);
 
+      const mountA = atom(true);
+      const valueA = atom(undefined as unknown);
+      const mountB = atom(true);
+      const valueB = atom(undefined as unknown);
+
       const useTestHook = () => {
-        const [mountA, setMountA] = useState(true);
-        const [mountB, setMountB] = useState(true);
-        const insideValue = useRef(null as any);
-        const props = { mountA, mountB, setMountA, setMountB, insideValue };
-        return props;
+        const setMountA = useSetAtom(mountA);
+        const setMountB = useSetAtom(mountB);
+        return { setMountA, setMountB };
       };
 
       const sharedAtExample = "shared@example.com";
 
-      const Child = () => {
-        // const scopes = useScopes().filter(
-        //   ([scope]) => scope !== ComponentScope,
-        // );
+      const Child = (props: {
+        name: string;
+        value: PrimitiveAtom<unknown>;
+      }) => {
         const context = useContext(TestHookContext);
         const value = useMolecule(UserMolecule);
-        context.insideValue.current = useContext(ScopeContext);
+        const setValue = useSetAtom(props.value);
+
+        useEffect(() => {
+          return () => {
+            setValue(undefined);
+          };
+        });
+
+        setValue(value);
         return <div>Bad</div>;
       };
-      const ProviderWithChild = () => (
-        <ScopeProvider scope={UserScope} value={sharedAtExample}>
-          <Child />
-        </ScopeProvider>
-      );
+      const ProviderWithChild = (props: {
+        show: Atom<boolean>;
+        value: PrimitiveAtom<unknown>;
+        name: string;
+      }) => {
+        const isShown = useAtomValue(props.show);
+        return (
+          <ScopeProvider scope={UserScope} value={sharedAtExample}>
+            {isShown && <Child name={props.name} value={props.value} />}
+          </ScopeProvider>
+        );
+      };
 
-      const Controller = (props: any) => {
+      const Controller = (props: ReturnType<typeof useTestHook>) => {
         return (
           <>
-            {props.mountA && <ProviderWithChild />}
-            {props.mountB && <ProviderWithChild />}
+            <ProviderWithChild key="a" name="a" show={mountA} value={valueA} />
+            <ProviderWithChild key="b" name="b" show={mountB} value={valueB} />
           </>
         );
       };
@@ -212,57 +241,63 @@ strictModeSuite(({ wrapper: Outer }) => {
         },
       );
 
-      const { insideValue } = result.current;
+      const initialValue = getDefaultStore().get(valueA);
+      let aValue = getDefaultStore().get(valueA);
+      let bValue = getDefaultStore().get(valueB);
+
       // Then the molecule is mounted
       userLifecycle.expectActivelyMounted();
       // And the lifecycle events are called
       expect(userLifecycle.mounts).toHaveBeenCalledWith(sharedAtExample);
-      // And the scopes matches the initial value
-      expect(insideValue.current).toStrictEqual([[UserScope, sharedAtExample]]);
-
-      const userScopeTuple = insideValue.current[0];
+      // And both trees have the same value
+      expect(aValue).toBe(bValue);
 
       act(() => {
         // When A is unmounted
         result.current.setMountA(false);
       });
+
       // Then the molecule is still mounted
       // Because it's still being used by B
       userLifecycle.expectActivelyMounted();
 
-      const afterUnmountCache = insideValue.current;
+      aValue = getDefaultStore().get(valueA);
+      bValue = getDefaultStore().get(valueB);
 
-      // Then the scope tuple is unchanged
-      expect(afterUnmountCache[0]).toBe(userScopeTuple);
+      // Then A has been unmounted
+      expect(aValue).toBe(undefined);
+      // Then B still has the original value
+      expect(bValue).toBe(initialValue);
 
       // When B is unmounted
       act(() => {
+        // When A is unmounted
         result.current.setMountB(false);
       });
 
       // Then the molecule is unmounted
       userLifecycle.expectToMatchCalls([sharedAtExample]);
 
-      // Then the scope tuple is unchanged
-      const finalTuples = insideValue.current;
-      expect(finalTuples[0]).toBe(userScopeTuple);
+      aValue = getDefaultStore().get(valueA);
+      bValue = getDefaultStore().get(valueB);
+
+      // Then both values are cleaned up
+      expect(aValue).not.toBe(initialValue);
+      expect(bValue).not.toBe(initialValue);
+      expect(aValue).toBeUndefined();
+      expect(bValue).toBeUndefined();
 
       // When B is re-mounted
       act(() => {
         result.current.setMountB(true);
       });
 
-      // Then a fresh tuple is created
-      const freshTuples = insideValue.current;
-      const [freshTuple] = freshTuples;
-
-      // And it does not match the original
-      expect(freshTuple).not.toBe(userScopeTuple);
-      if (true) {
-        const [scopeKey, scopeValue] = freshTuple;
-        expect(scopeKey).toBe(UserScope);
-        expect(scopeValue).toBe(sharedAtExample);
-      }
+      bValue = getDefaultStore().get(valueB);
+      // Then a new molecule value is created
+      expect(bValue).not.toBeUndefined();
+      // And it doesn't match the original value
+      expect(bValue).not.toBe(initialValue);
+      expect(bValue).not.toStrictEqual(initialValue);
 
       // When the component is unmounted
       rest.unmount();
