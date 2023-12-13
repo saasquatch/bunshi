@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { MoleculeOrInterface } from "../vanilla";
 import type { ScopeProvider } from "./ScopeProvider";
@@ -27,19 +27,36 @@ export function useMolecule<T>(
 ): T {
   const injector = useInjector();
 
-  // FIXME: Memoize these so a new handle is only created when the tuples change
   const inputTuples = useScopeTuplesRaw(options);
-  const [value, handle] = useMemo(
-    () => injector.useLazily(mol, ...inputTuples),
-    [mol, injector, flattenTuples(inputTuples)],
-  );
+  const [value, handle] = useMemo(() => {
+    // console.log("==== fresh Memo! =====");
+
+    return injector.useLazily(mol, ...inputTuples);
+  }, [
+    mol,
+    injector,
+    /**
+     * Tuple flattening prevents re-renders unless the number of
+     */
+    /**
+     *  FIXME: Write some tests that confirm that input tuples can be reactive, but not TOO reative.
+     *
+     *  This was commented out because it made the ComponentScope test fail and cause too many memoized renders
+     */
+    // flattenTuples(inputTuples),
+  ]);
+
+  const [multableValue, setMutableValue] = useState(value);
 
   useEffect(() => {
-    handle.start();
+    // console.log("==== useEffect! =====");
+    const subbedValue = handle.start();
+    setMutableValue(subbedValue);
     return () => {
+      // console.log("==== CLEANUP useEffect! =====");
       handle.stop();
     };
   }, [handle]);
 
-  return value;
+  return multableValue;
 }

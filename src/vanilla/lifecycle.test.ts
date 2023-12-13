@@ -26,11 +26,13 @@ const SecondOrderTransientMolecule = molecule(() =>
   use(TransientScopeMolecule),
 );
 
-let injector = createInjector();
+let injector = createInjector({});
 
 beforeEach(() => {
   // Reset injector state
-  injector = createInjector();
+  injector = createInjector({
+    // instrumentation: new LoggingInstrumentation(),
+  });
   defaultFn.mockReset();
 });
 
@@ -920,20 +922,41 @@ describe("Repeated lazy leases work", () => {
   ])("Case: $case", ({ run, lifecycle }) => {
     // Loop a bunch of times
     for (let iteration = 0; iteration < 10; iteration++) {
+      lifecycle.reset();
+
       lifecycle.expectUncalled();
       const [value, handle] = run();
       lifecycle.expectRunButUnmounted();
-      handle.start();
+
+      const value1 = handle.start();
       lifecycle.expectActivelyMounted();
+
+      // Then it uses the original value from the subscription
+      expect(value1).toBe(value);
+
       handle.stop();
       lifecycle.expectToMatchCalls([value]);
       lifecycle.reset();
 
-      lifecycle.expectRunButUnmounted();
-      handle.start();
-      lifecycle.expectActivelyMounted();
+      // When the subscription is restarted
+      const value2 = handle.start();
+      // Then the first value is re-used instead of a new one being used
+      expect(value2).toBe(value);
+
+      // And the molecule is not executed
+      // because the value was re-used
+      expect(lifecycle.executions).not.toHaveBeenCalled();
+      // And the mount lifecycle is called
+      // because it needs to know that the subscription is active
+      expect(lifecycle.mounts).toHaveBeenCalled();
+      // And the unmount lifecycle is called
+      expect(lifecycle.unmounts).not.toHaveBeenCalled();
+
       handle.stop();
-      lifecycle.expectToMatchCalls([value]);
+
+      expect(lifecycle.executions).not.toHaveBeenCalled();
+      expect(lifecycle.mounts.mock.calls).toStrictEqual([[value]]);
+      expect(lifecycle.unmounts.mock.calls).toStrictEqual([[value]]);
     }
   });
 });

@@ -1,5 +1,6 @@
 import type { MoleculeInjector } from ".";
 import { createSubId } from "./createSubId";
+import { Instrumentation } from "./internal/instrumentation";
 import type {
   AnyMoleculeScope,
   AnyScopeTuple,
@@ -21,7 +22,7 @@ type MaybeWeakMap<K, V> = K extends {} ? WeakMap<K, V> : Map<K, V>;
  * released.
  *
  */
-export function createScoper() {
+export function createScoper(instrumentation?: Instrumentation) {
   /**
    * This scope cache is the key state of this scoper.
    *
@@ -61,43 +62,23 @@ export function createScoper() {
        */
       {
         /**
-         * The set of subscription IDs that are using this scope value
-         */
-        references: Set<Symbol>;
-        /**
          * A referentially-stable array (i.e. Tuple) for the scope value.
          *
          * This is used as a key in other places in WeakMap and WeakSet
          */
         tuple: AnyScopeTuple;
+
+        /**
+         * The set of subscription IDs that are using this scope value
+         */
+        references: Set<Symbol>;
+
         /**
          * These callbacks should be called when there are no more subscriptions
          */
         cleanups: Set<CleanupCallback>;
       }
     >
-  >();
-
-  /**
-   * The ideally structure that we want is actualy a "multimap" between
-   * scopes and subscription.
-   *
-   *  - from a scope, find it's subscriptions
-   *  - from a subscription, find it's scopes
-   *
-   */
-  const subscriptionIdToTuples = new WeakMap<
-    /**
-     * A subscription ID
-     */
-    Symbol,
-    /**
-     * The set of scopes that are leased by this subscription
-     *
-     * Ideally we'd like to use a WeakSet here, but weaksets are not iterable,
-     * so we must use a Set.
-     */
-    Set<AnyScopeTuple>
   >();
 
   /**
@@ -125,11 +106,8 @@ export function createScoper() {
 
   const releasedSubscriptions = new WeakSet<Symbol>();
 
-  function getScopes<T>(
-    tuples: ScopeTuple<T>[],
-    subscriptionId: Symbol,
-  ): ScopeTuple<T>[] {
-    return tuples.map((t) => getScope(t, subscriptionId));
+  function getScopes<T>(tuples: ScopeTuple<T>[]): ScopeTuple<T>[] {
+    return tuples.map((t) => getScope(t));
   }
 
   /**
@@ -139,20 +117,8 @@ export function createScoper() {
    * and needs to be cleaned up with `deregisterScopeTuple`
    *
    */
-  function getScope<T>(
-    tuple: ScopeTuple<T>,
-    subscriptionId: Symbol,
-  ): ScopeTuple<T> {
-    if (releasedSubscriptions.has(subscriptionId)) {
-      throw new Error(
-        "Can't extend a subscription has already been released. Use a new subscription ID instead.",
-      );
-    }
+  function getScope<T>(tuple: ScopeTuple<T>): ScopeTuple<T> {
     const [scope, value] = tuple;
-
-    // Timing issue. What happens if the cache is empty between
-    // when this function was created and when it was run?
-    // const start = () => startSubscription<T>(subscriptionId, tuple);
 
     const cached = scopeCache.get(scope)?.get(value);
     if (cached) {
@@ -176,7 +142,6 @@ export function createScoper() {
     if (innerCached) {
       // Increment references
       innerCached.references.add(subscriptionId);
-      trackSubcription(subscriptionId, innerCached.tuple as ScopeTuple<T>);
       return innerCached.tuple as ScopeTuple<T>;
     } else {
       // Get or create initial map
@@ -190,7 +155,6 @@ export function createScoper() {
         cleanups: new Set(),
       });
 
-      trackSubcription(subscriptionId, tuple);
       return tuple;
     }
   }
@@ -202,21 +166,15 @@ export function createScoper() {
     return tuples.map((t) => startSubscription(subscriptionId, t));
   }
 
-  function trackSubcription(subscriptionId: Symbol, tuple: AnyScopeTuple) {
-    let subscriptionSet = subscriptionIdToTuples.get(subscriptionId);
-    if (!subscriptionSet) {
-      subscriptionSet = new Set();
-      subscriptionIdToTuples.set(subscriptionId, subscriptionSet);
-    }
-    subscriptionSet.add(tuple);
-  }
-
   /**
    * For values that are "primitive" (not an object),
    * deregisters them from the primitive scope
    * cache to ensure no memory leaks
    */
-  function stopSubscription(subscriptionId: Symbol) {
+  function stopSubscription(
+    tuples: Set<AnyScopeTuple>,
+    subscriptionId: Symbol,
+  ) {
     if (releasedSubscriptions.has(subscriptionId)) {
       // throw new Error(
       //   "Can't release a subscription that has already been released. Don't call unsub twice.",
@@ -225,9 +183,23 @@ export function createScoper() {
     } else {
       releasedSubscriptions.add(subscriptionId);
     }
-    const tuples = subscriptionIdToTuples.get(subscriptionId);
     if (!tuples) return;
 
+    const cleanupsToRun = releaseTuples(tuples, subscriptionId);
+
+    Array.from(cleanupsToRun.values())
+      .reverse()
+      .forEach((cb) => {
+        if (!cleanupsRun.has(cb)) {
+          instrumentation?.scopeRunCleanup(cb);
+          // Only runs cleanups that haven't already been run
+          cb();
+          cleanupsRun.add(cb);
+        }
+      });
+  }
+
+  function releaseTuples(tuples: Set<AnyScopeTuple>, subscriptionId: Symbol) {
     const cleanupsToRun = new Set<CleanupCallback>();
     tuples.forEach(([scope, value]) => {
       const scopeMap = scopeCache.get(scope);
@@ -237,6 +209,7 @@ export function createScoper() {
       references?.delete(subscriptionId);
 
       if (references && references.size <= 0) {
+        instrumentation?.scopeStopWithCleanup(subscriptionId, cached);
         scopeMap?.delete(value);
 
         // Run all cleanups
@@ -244,19 +217,11 @@ export function createScoper() {
           cleanupsToRun.add(cb);
         });
       } else {
+        instrumentation?.scopeStopWithCleanup(subscriptionId, cached);
         // Not empty yet, do not run cleanups
       }
     });
-
-    Array.from(cleanupsToRun.values())
-      .reverse()
-      .forEach((cb) => {
-        if (!cleanupsRun.has(cb)) {
-          // Only runs cleanups that haven't already been run
-          cb();
-          cleanupsRun.add(cb);
-        }
-      });
+    return cleanupsToRun;
   }
 
   function registerCleanups(
@@ -265,7 +230,11 @@ export function createScoper() {
   ) {
     scopeKeys.forEach(([scopeKey, scopeValue]) => {
       cleanupSet.forEach((cleanup) => {
-        scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups.add(cleanup);
+        const cleanups = scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups;
+        if (!cleanups) {
+          throw new Error("Can't register cleanups for uncached values");
+        }
+        cleanups.add(cleanup);
       });
     });
   }
@@ -273,86 +242,84 @@ export function createScoper() {
   function useScopes(
     ...scopes: AnyScopeTuple[]
   ): ReturnType<MoleculeInjector["useScopes"]> {
-    const subscriptionId = createSubId();
-    return startOrExpandSubscription(subscriptionId, ...scopes);
-  }
-
-  function startOrExpandSubscription(
-    subscriptionId: Symbol,
-    ...scopes: AnyScopeTuple[]
-  ): ReturnType<MoleculeInjector["useScopes"]> {
-    const tuples = getScopes(scopes, subscriptionId);
-    const leased = startSubscriptions(subscriptionId, scopes);
-
-    if (!shallowEqual(tuples, leased)) {
-      throw new Error("Leased scopes don't match actual scopes");
-    }
-
-    const unsub = () => {
-      stopSubscription(subscriptionId);
-    };
-
-    return [tuples, unsub];
+    const subscription = createSubscription();
+    subscription.expand(scopes);
+    subscription.start();
+    return [subscription.tuples, () => subscription.stop()];
   }
 
   function createSubscription(): ScopeSubscription {
-    let subId: symbol | undefined = createSubId();
-    const tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
+    let internal = new ScopeSubscriptionImpl();
+    let stopped = false;
 
     function restart() {
-      subId = createSubId();
-      getScopes(Array.from(tupleMap.values()), subId);
-      return startSubscriptions(subId, Array.from(tupleMap.values()));
+      const previousTuples = internal.tuples;
+      internal = new ScopeSubscriptionImpl();
+      internal.expand(previousTuples);
+      return internal.start();
     }
     return {
-      tuples() {
-        return Array.from(tupleMap.values());
+      addCleanups(cleanups: Set<CleanupCallback>) {
+        registerCleanups(this.tuples, cleanups);
+      },
+      get tuples() {
+        return internal.tuples;
       },
       expand(next: AnyScopeTuple[]) {
-        if (!subId)
-          throw new Error(
-            "Can't expand a subscription that is already stopped",
-          );
-        const tuples = getScopes(next, subId);
-        tuples.forEach((t) => {
-          tupleMap.set(t[0], t);
-        });
-        return tuples;
+        return internal.expand(next);
       },
       start() {
-        if (!subId) {
+        if (stopped) {
+          stopped = false;
           return restart();
         }
-        return startSubscriptions(subId, Array.from(tupleMap.values()));
+        return internal.start();
       },
       stop() {
-        if (!subId)
-          throw new Error("Can't stop a subscription that is already stopped");
-        stopSubscription(subId);
-        subId = undefined;
+        internal.stop();
+        stopped = true;
       },
     };
+  }
+
+  class ScopeSubscriptionImpl implements ScopeSubscription {
+    addCleanups(cleanups: Set<CleanupCallback>): void {
+      registerCleanups(this.tuples, cleanups);
+    }
+    __tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
+    __subId = createSubId();
+    get tuples(): AnyScopeTuple[] {
+      return Array.from(this.__tupleMap.values());
+    }
+    expand(next: AnyScopeTuple[]) {
+      const tuples = getScopes(next);
+      tuples.forEach((t) => {
+        this.__tupleMap.set(t[0], t);
+      });
+      return tuples;
+    }
+    start() {
+      return startSubscriptions(
+        this.__subId,
+        Array.from(this.__tupleMap.values()),
+      );
+    }
+    stop() {
+      stopSubscription(new Set(this.tuples), this.__subId);
+    }
   }
 
   return {
     useScopes,
     registerCleanups,
-    startOrExpandSubscription,
-    stopSubscription,
     createSubscription,
   };
 }
 
 export type ScopeSubscription = {
-  tuples(): AnyScopeTuple[];
+  tuples: AnyScopeTuple[];
   expand(next: AnyScopeTuple[]): AnyScopeTuple[];
+  addCleanups(cleanups: Set<CleanupCallback>): void;
   start(): AnyScopeTuple[];
   stop(): void;
 };
-
-function shallowEqual(first: unknown[], second: unknown[]): boolean {
-  if (first.length !== second.length) {
-    return false;
-  }
-  return first.every((item, index) => item === second[index]);
-}

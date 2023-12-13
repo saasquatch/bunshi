@@ -1,3 +1,4 @@
+import { LoggingInstrumentation } from "./internal/instrumentation";
 import { createScoper } from "./scoper";
 import { UserScope } from "./testing/test-molecules";
 
@@ -55,4 +56,66 @@ test("Caches as long as subscriptions overlap", () => {
   expect(tuple1).toBe(tuple2);
   expect(tuple1).toBe(tuple3);
   expect(tuple1).toBe(tuple4);
+});
+
+test("Scope tuples match during creation and expansion", () => {
+  const scoper = createScoper();
+
+  const sub1 = scoper.createSubscription();
+
+  const [tuple1] = sub1.expand([[UserScope, "one@example.com"]]);
+
+  const [tuple2] = sub1.start();
+
+  expect(tuple1).toBe(tuple2);
+});
+
+test("Can't register cleanups for unused scopes", () => {
+  const scoper = createScoper();
+
+  const sub1 = scoper.createSubscription();
+  const [tuple1] = sub1.expand([[UserScope, "one@example.com"]]);
+
+  const cleanupFn = vi.fn();
+
+  expect(() =>
+    scoper.registerCleanups(
+      [[UserScope, "one@example.com"]],
+      new Set([cleanupFn]),
+    ),
+  ).toThrowError();
+});
+
+test("Scope subscriptions can be re-used", () => {
+  const scoper = createScoper();
+
+  const sub1 = scoper.createSubscription();
+  const [tuple1] = sub1.expand([[UserScope, "one@example.com"]]);
+
+  const [tuple2] = sub1.start();
+  const cleanupFn = vi.fn();
+
+  scoper.registerCleanups(
+    [[UserScope, "one@example.com"]],
+    new Set([cleanupFn]),
+  );
+
+  expect(tuple1).toBe(tuple2);
+  sub1.stop();
+
+  expect(cleanupFn).toHaveBeenCalled();
+
+  for (let iteration = 0; iteration < 10; iteration++) {
+    const cleanupFnInner = vi.fn();
+
+    const [tuple3] = sub1.start();
+    scoper.registerCleanups(
+      [[UserScope, "one@example.com"]],
+      new Set([cleanupFnInner]),
+    );
+    expect(tuple1).toBe(tuple3);
+    sub1.stop();
+    expect(cleanupFnInner).toHaveBeenCalled();
+    cleanupFnInner.mockReset();
+  }
 });

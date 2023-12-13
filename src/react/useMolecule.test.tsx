@@ -1,19 +1,11 @@
 import { renderHook } from "@testing-library/react";
 import React, { StrictMode, useContext } from "react";
-import {
-  createScope,
-  molecule,
-  onMount,
-  onUnmount,
-  resetDefaultInjector,
-  use,
-} from ".";
+import { createScope, molecule, onMount, onUnmount, use } from ".";
+import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
-import { createLifecycleUtils } from "../shared/testing/lifecycle";
-import { LoggingInstrumentation } from "../vanilla/internal/instrumentation";
 
 export const UserScope = createScope("user@example.com", {
   debugLabel: "User Scope",
@@ -220,8 +212,7 @@ strictModeSuite(({ wrapper }) => {
   });
 });
 
-test.only("Strict mode", () => {
-  resetDefaultInjector({ instrumentation: new LoggingInstrumentation() });
+test("Strict mode", () => {
   const expectedUser = "strict@example.com";
 
   const lifecycle = createLifecycleUtils();
@@ -240,44 +231,47 @@ test.only("Strict mode", () => {
 
   lifecycle.expectUncalled();
 
-  console.log("Render 1");
   const run1 = renderHook(testHook, {
     wrapper: StrictMode,
   });
-  console.log("==========Render 1 done");
 
-  expect(lifecycle.executions).toBeCalledTimes(2);
-  expect(lifecycle.mounts).toBeCalledTimes(1);
-  expect(lifecycle.unmounts).toBeCalledTimes(1);
+  function expectActiveMounted() {
+    // Then execution are called twice
+    // Because once for each render in strict mode
+    expect(lifecycle.executions).toBeCalledTimes(2);
+    // Then mounts are called twice
+    // Because of useEffects called twice in strict mode
+    expect(lifecycle.mounts).toBeCalledTimes(2);
+    // The unount is called once
+    // To cleanup from the original useEffect
+    expect(lifecycle.unmounts).toBeCalledTimes(1);
+  }
+  expectActiveMounted();
   expect(run1.result.current.molecule).toBe(expectedUser);
 
-  console.log("==========Render 2");
   const run2 = renderHook(testHook, {
     wrapper: StrictMode,
   });
-  console.log("Render 2 done");
 
-  expect(lifecycle.executions).toBeCalledTimes(3);
-  expect(lifecycle.mounts).toBeCalledTimes(2);
-  expect(lifecycle.unmounts).toBeCalledTimes(1);
+  /**
+   * Then nothing has changed in the molecule lifecycle
+   * Because a subscription was active at render time
+   * And it re-uses the cached value
+   */
+  expectActiveMounted();
   expect(run2.result.current.molecule).toBe(expectedUser);
 
-  console.log("Unmount 1");
   run1.unmount();
-  console.log("Unmount 1 done");
 
-  expect(lifecycle.executions).toBeCalledWith(expectedUser);
-  expect(lifecycle.mounts).toBeCalledWith(expectedUser);
-  expect(lifecycle.executions).toBeCalledTimes(3);
-  expect(lifecycle.mounts).toBeCalledTimes(2);
-  expect(lifecycle.unmounts).toBeCalledTimes(1);
-  expect(run1.result.current.molecule).toBe(expectedUser);
+  /**
+   * Then nothing has changed in the molecule lifecycle
+   * Because a subscription is still active
+   */
+  expectActiveMounted();
 
-  console.log("Unmount 2");
   run2.unmount();
-  console.log("Unmount 2 done");
 
-  expect(lifecycle.executions).toBeCalledTimes(3);
+  expect(lifecycle.executions).toBeCalledTimes(2);
   expect(lifecycle.mounts).toBeCalledTimes(2);
   // Unmounts are called
   expect(lifecycle.unmounts).toBeCalledTimes(2);

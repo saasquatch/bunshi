@@ -11,9 +11,23 @@ export interface Instrumentation {
   stage1CacheMiss(...args: unknown[]): void;
   stage2CacheHit(m: AnyMolecule, next: MoleculeCacheValue): void;
   stage2CacheMiss(...args: unknown[]): void;
+
+  scopeStopWithCleanup(...args: unknown[]): void;
+  scopeStopWithoutCleanup(...args: unknown[]): void;
+
+  scopeRunCleanup(...args: unknown[]): void;
 }
 
 export class LoggingInstrumentation implements Instrumentation {
+  scopeRunCleanup(...args: unknown[]): void {
+    console.log("scopeRunCleanup", ...args);
+  }
+  scopeStopWithCleanup(...args: unknown[]): void {
+    console.log("scopeStopWithCleanup", ...args);
+  }
+  scopeStopWithoutCleanup(...args: unknown[]): void {
+    console.log("scopeStopWithoutCleanup", ...args);
+  }
   subscribe(m: AnyMolecule, next: MoleculeCacheValue) {
     console.log("subscribe", next.value);
   }
@@ -27,7 +41,7 @@ export class LoggingInstrumentation implements Instrumentation {
     console.log("mounted", ...args);
   }
   cleanup(...args: unknown[]): void {
-    console.log("executed");
+    console.log("cleanup");
   }
   executed(...args: unknown[]): void {
     console.log("executed");

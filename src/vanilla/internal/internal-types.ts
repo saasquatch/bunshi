@@ -6,7 +6,6 @@ import type {
 } from "../molecule";
 import type { MoleculeScope } from "../scope";
 import type { ScopeTuple } from "../types";
-import { AnyScopeTuple, AnyMolecule, AnyMoleculeScope } from "./internal-types";
 import {
   GetterSymbol,
   MoleculeInterfaceSymbol,
@@ -24,6 +23,7 @@ export type MoleculeCacheValue = {
   path: (AnyScopeTuple | AnyMolecule)[];
   instanceId: symbol;
 };
+
 type Deps = {
   allScopes: Set<AnyMoleculeScope>;
   defaultScopes: Set<AnyMoleculeScope>;

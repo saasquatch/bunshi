@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { ComponentScope, MoleculeScope } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
@@ -39,9 +39,13 @@ export function ScopeProvider<T>(
     };
   }
 
-  // FIXME: This sends a new array downstream to the ScopeContext on every render
-  const downstreamScopes = useScopes(options).filter(
-    ([scope]) => scope !== ComponentScope,
+  const simpleDownstreamScopes = useScopes(options);
+
+  // This prevents a new array from being passed downstream on every render
+  // in theory this should reduce context re-renders
+  const downstreamScopes = useMemo(
+    () => simpleDownstreamScopes.filter(([scope]) => scope !== ComponentScope),
+    [simpleDownstreamScopes],
   );
 
   return React.createElement(

@@ -17,12 +17,7 @@ import type {
 } from "./internal/internal-types";
 import { MoleculeCacheValue } from "./internal/internal-types";
 import { scopeTupleSort } from "./internal/scopeTupleSort";
-import {
-  GetterSymbol,
-  Injector,
-  MoleculeSymbol,
-  TypeSymbol,
-} from "./internal/symbols";
+import { GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
 import {
   isMolecule,
   isMoleculeInterface,
@@ -110,7 +105,7 @@ export type MoleculeInjector = {
   useLazily<T>(
     molecule: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
-  ): [T, { start: Unsub; stop: Unsub }];
+  ): [T, { start: () => T; stop: Unsub }];
 
   /**
    * Use and memoize scopes.
@@ -230,7 +225,7 @@ export function createInjector(
    *  - The scoper keeps track of "how long should this thing be alive"?
    *  - The injector keeps track of the instances of the things, and all dependency magic
    */
-  const scoper = createScoper();
+  const scoper = createScoper(injectorProps.instrumentation);
 
   /**
    * Lookup bindings to override a molecule, or throw an error for unbound interfaces
@@ -292,6 +287,20 @@ export function createInjector(
       }
     }
     injectorProps.instrumentation?.stage1CacheMiss();
+    const { previous } = props;
+    if (previous !== false) {
+      /**
+       * FIXME: Do we need to set mounted to false?
+       *
+       * In theory that should already have happened
+       *
+       */
+      return moleculeCache.deepCache(
+        () => previous,
+        () => {},
+        previous.path,
+      );
+    }
     return runAndCache<T>(m, props);
   }
 
@@ -319,7 +328,10 @@ export function createInjector(
     return cached;
   }
 
-  function runAndCache<T>(m: Molecule<T>, props: CreationProps) {
+  function runAndCache<T>(
+    m: Molecule<T>,
+    props: CreationProps,
+  ): MoleculeCacheValue {
     const getScopeValue = (scope: AnyMoleculeScope): UseScopeDetails => {
       const defaultScopes = new Set<AnyMoleculeScope>();
 
@@ -455,6 +467,7 @@ export function createInjector(
        * new values, and would not run lifecycle hooks (mount, unmount).
        */
       moleculeCache.remove(...mol.path);
+      mol.isMounted = false;
     });
 
     /**
@@ -506,29 +519,42 @@ export function createInjector(
       throw new Error(ErrorInvalidMolecule);
 
     const sub = scoper.createSubscription();
-
     const tuples = sub.expand(scopes);
-
     const bound = getTrueMolecule(m);
 
+    let state = MoleculeSubscriptionState.INITIAL;
     const lease = (tuple: AnyScopeTuple) => {
       const [memoized] = sub.expand([tuple]);
       return memoized;
     };
 
-    const cacheValue = getInternal<T>(bound, {
+    let cacheValue = getInternal<T>(bound, {
       scopes: tuples,
       lease,
+      previous: false,
     });
 
     const start = () => {
+      if (state === MoleculeSubscriptionState.ACTIVE) {
+        throw new Error("Don't start a subscription that is already started.");
+      }
       injectorProps?.instrumentation?.subscribe(bound, cacheValue);
-      sub.start();
+
+      cacheValue = getInternal<T>(bound, {
+        scopes: sub.start(),
+        lease,
+        previous: cacheValue,
+      });
+
       // Runs mounts
       runMount(cacheValue);
+      state = MoleculeSubscriptionState.ACTIVE;
       return cacheValue.value as T;
     };
     const stop = () => {
+      if (state === MoleculeSubscriptionState.STOPPED) {
+        throw new Error("Don't start a subscription that is already started.");
+      }
       injectorProps?.instrumentation?.unsubscribe(bound, cacheValue);
       sub.stop();
       /**
@@ -538,6 +564,7 @@ export function createInjector(
        * a) We either need to accept that molecule values are re-usable (could be mounted and unmounted multiple times)
        * b) We need to return a new molecule value from start and connect that into a useState in react strict mode
        */
+      state = MoleculeSubscriptionState.STOPPED;
     };
 
     return [cacheValue.value as T, { start, stop }];
@@ -551,6 +578,12 @@ export function createInjector(
     useScopes: scoper.useScopes,
     createSubscription: scoper.createSubscription,
   };
+}
+
+enum MoleculeSubscriptionState {
+  INITIAL,
+  ACTIVE,
+  STOPPED,
 }
 
 /**
@@ -663,4 +696,5 @@ function runMolecule(
 type CreationProps = {
   lease: (tuple: AnyScopeTuple) => AnyScopeTuple;
   scopes: AnyScopeTuple[];
+  previous: MoleculeCacheValue | false;
 };

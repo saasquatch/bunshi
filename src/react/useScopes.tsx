@@ -61,6 +61,7 @@ export function useScopeTuplesRaw(options?: MoleculeScopeOptions) {
   const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
     .current as ScopeTuple<unknown>;
 
+  // FIXME: Memoize these so a new handle is only created when the tuples change
   const inputTuples: AnyScopeTuple[] = (() => {
     if (!options) return [...parentScopes, componentScopeTuple];
     if (options.withUniqueScope) {
