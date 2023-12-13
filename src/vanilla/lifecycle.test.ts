@@ -137,9 +137,8 @@ describe("Single scope dependencies", () => {
     });
 
     const DerivedMolecule = molecule(() => {
-      // FIXME: Type error here
       // Molecule return type is not inferred
-      const testFn = use<Function>(BaseMolecule);
+      const testFn = use(BaseMolecule);
 
       onMount(() => {
         testFn("derived", "mounted");

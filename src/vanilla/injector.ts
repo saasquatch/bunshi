@@ -289,12 +289,6 @@ export function createInjector(
     injectorProps.instrumentation?.stage1CacheMiss();
     const { previous } = props;
     if (previous !== false) {
-      /**
-       * FIXME: Do we need to set mounted to false?
-       *
-       * In theory that should already have happened
-       *
-       */
       return moleculeCache.deepCache(
         () => previous,
         () => {},
@@ -421,13 +415,6 @@ export function createInjector(
   }
 
   function runMount(mol: MoleculeCacheValue) {
-    /**
-     * FIXME: In react strict mode this case is hit `isMounted` is true even though
-     * it has already been umounted.
-     *
-     * To solve this, we need to make sure that the cache is cleanup at the right time.
-     *
-     */
     if (mol.isMounted) {
       // Don't re-run a molecule
       return mol;
@@ -557,13 +544,6 @@ export function createInjector(
       }
       injectorProps?.instrumentation?.unsubscribe(bound, cacheValue);
       sub.stop();
-      /**
-       * FIXME: The next run to `start` needs to create a new molecule value
-       * otherwise lifecycle hooks won't be called.
-       *
-       * a) We either need to accept that molecule values are re-usable (could be mounted and unmounted multiple times)
-       * b) We need to return a new molecule value from start and connect that into a useState in react strict mode
-       */
       state = MoleculeSubscriptionState.STOPPED;
     };
 
