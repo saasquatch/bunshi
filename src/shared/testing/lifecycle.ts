@@ -26,35 +26,29 @@ export function createLifecycleUtils() {
   beforeEach(() => reset());
   afterEach(() => reset());
 
-  const expectUncalled = () => {
-    expect.soft(executions).not.toHaveBeenCalled();
-    expect.soft(mounts).not.toHaveBeenCalled();
-    expect(unmounts).not.toHaveBeenCalled();
-  };
-
   const expectToMatchCalls = (...args: unknown[]) => {
     expect.soft(executions.mock.calls).toStrictEqual(args);
     expect.soft(mounts.mock.calls).toStrictEqual(args);
     expect(unmounts.mock.calls).toStrictEqual(args);
   };
 
+  const expectCalledTimesEach = (
+    timesExecuted: number,
+    timesMounted: number,
+    timesUnmounted: number,
+  ) => {
+    expect.soft(executions).toHaveBeenCalledTimes(timesExecuted);
+    expect.soft(mounts).toHaveBeenCalledTimes(timesMounted);
+    expect(unmounts).toHaveBeenCalledTimes(timesUnmounted);
+  };
+
   const expectToHaveBeenCalledTimes = (num: number) => {
-    expect.soft(executions).toHaveBeenCalledTimes(num);
-    expect.soft(mounts).toHaveBeenCalledTimes(num);
-    expect(unmounts).toHaveBeenCalledTimes(num);
+    expectCalledTimesEach(num, num, num);
   };
 
-  const expectActivelyMounted = () => {
-    expect.soft(executions).toHaveBeenCalledTimes(1);
-    expect.soft(mounts).toHaveBeenCalledTimes(1);
-    expect(unmounts).toHaveBeenCalledTimes(0);
-  };
-
-  const expectRunButUnmounted = () => {
-    expect.soft(executions).toHaveBeenCalledTimes(1);
-    expect.soft(mounts).not.toHaveBeenCalled();
-    expect(unmounts).not.toHaveBeenCalled();
-  };
+  const expectUncalled = () => expectCalledTimesEach(0, 0, 0);
+  const expectRunButUnmounted = () => expectCalledTimesEach(1, 0, 0);
+  const expectActivelyMounted = () => expectCalledTimesEach(1, 1, 0);
 
   return {
     expectActivelyMounted,
@@ -62,6 +56,7 @@ export function createLifecycleUtils() {
     expectToMatchCalls,
     expectToHaveBeenCalledTimes,
     expectRunButUnmounted,
+    expectCalledTimesEach,
     mounts,
     unmounts,
     executions,

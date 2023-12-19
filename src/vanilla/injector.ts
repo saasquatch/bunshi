@@ -124,7 +124,6 @@ export type MoleculeInjector = {
    * @param scopes
    */
   createSubscription(): ScopeSubscription;
-  // useScopesLazily(...scopes: AnyScopeTuple[]): [AnyScopeTuple[], {start: Unsub; stop: Unsub}];
 } & Record<symbol, unknown>;
 
 /**

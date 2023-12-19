@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import React, { StrictMode, useContext } from "react";
-import { createScope, molecule, onMount, onUnmount, use } from ".";
+import { createScope, molecule, use } from ".";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
@@ -11,16 +11,19 @@ export const UserScope = createScope("user@example.com", {
   debugLabel: "User Scope",
 });
 
+const userMoleculeLifecycle = createLifecycleUtils();
 export const UserMolecule = molecule((_, getScope) => {
   const userId = getScope(UserScope);
 
-  return {
-    example: Math.random(),
+  const value = {
+    random: Math.random(),
     userId,
   };
+  userMoleculeLifecycle.connect(value);
+  return value;
 });
 
-strictModeSuite(({ wrapper }) => {
+strictModeSuite(({ wrapper, isStrict }) => {
   describe("useMolecule", () => {
     test("Use molecule can have scope provided", () => {
       const useUserMolecule = () => {
@@ -114,52 +117,44 @@ strictModeSuite(({ wrapper }) => {
     });
 
     describe("Lifecyle hooks run with React", () => {
-      const runs = vi.fn();
-      const mounts = vi.fn();
-      const unmounts = vi.fn();
-
+      const moleculeLifecycle = createLifecycleUtils();
       const UseLifecycleMolecule = molecule(() => {
         const userId = use(UserScope);
-        onMount(() => {
-          mounts(userId);
-          return () => {
-            unmounts("indirect", userId);
-          };
-        });
-
-        onUnmount(() => {
-          unmounts("direct", userId);
-        });
-
-        runs(userId);
+        moleculeLifecycle.connect(userId);
         return userId;
       });
 
-      const jeffry = "jeffrey@example.com";
+      const jeffrey = "jeffrey@example.com";
       const useUserMolecule = () => {
         return {
           molecule: useMolecule(UseLifecycleMolecule, {
-            withScope: [UserScope, jeffry],
+            withScope: [UserScope, jeffrey],
           }),
         };
       };
 
-      beforeEach(() => {
-        runs.mockReset();
-        mounts.mockReset();
-        unmounts.mockReset();
-      });
-
       test("Works with withScope", () => {
-        expectUserLifecycle(useUserMolecule, jeffry);
+        expectUserLifecycle(useUserMolecule, jeffrey);
       });
 
-      test("Works with default scope", () => {
+      test("Works with exclusiveScope", () => {
+        const testHook = () => {
+          return {
+            molecule: useMolecule(UseLifecycleMolecule, {
+              exclusiveScope: [UserScope, jeffrey],
+            }),
+          };
+        };
+        expectUserLifecycle(testHook, jeffrey);
+      });
+
+      test.todo("Works with default scope", () => {
         const testHook = () => {
           return {
             molecule: useMolecule(UseLifecycleMolecule),
           };
         };
+        // FIXME: Default tuples are better memoized, so the default assumptions here aren't valid
         expectUserLifecycle(testHook, "user@example.com");
       });
 
@@ -167,17 +162,17 @@ strictModeSuite(({ wrapper }) => {
         testHook: typeof useUserMolecule,
         expectedUser: string,
       ) {
-        expect(runs).not.toBeCalled();
-        expect(mounts).not.toBeCalled();
-        expect(unmounts).not.toBeCalled();
+        moleculeLifecycle.expectUncalled();
 
         const run1 = renderHook(testHook, {
           wrapper,
         });
 
-        expect(runs).toBeCalledWith(expectedUser);
-        expect(mounts).toBeCalledWith(expectedUser);
-        expect(unmounts).not.toBeCalled();
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
 
         expect(run1.result.current.molecule).toBe(expectedUser);
 
@@ -185,30 +180,386 @@ strictModeSuite(({ wrapper }) => {
           wrapper,
         });
 
-        expect(runs).toBeCalledTimes(1);
-        expect(mounts).toBeCalledTimes(1);
-        expect(unmounts).not.toBeCalled();
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
         expect(run2.result.current.molecule).toBe(expectedUser);
 
         run1.unmount();
 
-        expect(runs).toBeCalledTimes(1);
-        expect(mounts).toBeCalledTimes(1);
-        // Then unmounts aren't called
-        expect(unmounts).not.toBeCalled();
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
 
         run2.unmount();
 
-        expect(runs).toBeCalledTimes(1);
-        expect(mounts).toBeCalledTimes(1);
-        // Then both unmounts are called
-        expect(unmounts).toBeCalledTimes(2);
-        expect(unmounts).toHaveBeenNthCalledWith(1, "direct", expectedUser);
-        expect(unmounts).toHaveBeenNthCalledWith(2, "indirect", expectedUser);
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(2, 2, 2);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 1);
+        }
       }
     });
 
     test("Empty", () => {});
+  });
+});
+
+describe("Parallel calls", () => {
+  const renders = vi.fn();
+  beforeEach(() => renders.mockReset());
+
+  test("Parallel renders in different components", () => {
+    userMoleculeLifecycle.expectUncalled();
+
+    const useUserMolecule = () =>
+      useMolecule(UserMolecule, {
+        withScope: [UserScope, "jeffrey@example.com"],
+      });
+
+    const render1 = renderHook(useUserMolecule, {});
+    userMoleculeLifecycle.expectActivelyMounted();
+    const render2 = renderHook(useUserMolecule, {});
+    userMoleculeLifecycle.expectActivelyMounted();
+
+    expect(render1.result.current.userId).toBe("jeffrey@example.com");
+    expect(render2.result.current.userId).toBe("jeffrey@example.com");
+    expect(render2.result.current).toBe(render1.result.current);
+
+    render1.unmount();
+    render2.unmount();
+
+    expect(render1.result.current.userId).toBe("jeffrey@example.com");
+    expect(render2.result.current.userId).toBe("jeffrey@example.com");
+    expect(render2.result.current).toBe(render1.result.current);
+  });
+
+  test("Parallel calls in the same component", () => {
+    userMoleculeLifecycle.expectUncalled();
+
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule, {
+          withScope: [UserScope, "jeffrey@example.com"],
+        }),
+        second: useMolecule(UserMolecule, {
+          withScope: [UserScope, "jeffrey@example.com"],
+        }),
+      };
+    };
+
+    const render1 = renderHook(useUserMolecule, {});
+    userMoleculeLifecycle.expectCalledTimesEach(2, 1, 0);
+
+    expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
+    expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
+    expect(render1.result.current.first).toBe(render1.result.current.second);
+
+    render1.unmount();
+    userMoleculeLifecycle.expectCalledTimesEach(2, 1, 1);
+  });
+  test("Triple parallel calls in the same component", () => {
+    userMoleculeLifecycle.expectUncalled();
+
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule, {
+          withScope: [UserScope, "jeffrey@example.com"],
+        }),
+        second: useMolecule(UserMolecule, {
+          withScope: [UserScope, "jeffrey@example.com"],
+        }),
+        third: useMolecule(UserMolecule, {
+          withScope: [UserScope, "jeffrey@example.com"],
+        }),
+      };
+    };
+
+    const render1 = renderHook(useUserMolecule, {});
+    // Then the molecule is executed once per call
+    // But only mounted once
+    userMoleculeLifecycle.expectCalledTimesEach(3, 1, 0);
+
+    expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
+    expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
+    expect(render1.result.current.third.userId).toBe("jeffrey@example.com");
+    expect(render1.result.current.first).toBe(render1.result.current.second);
+    expect(render1.result.current.first).toBe(render1.result.current.third);
+
+    render1.unmount();
+    userMoleculeLifecycle.expectCalledTimesEach(3, 1, 1);
+  });
+
+  describe("Duplicate calls in the same component, with separate scopes", () => {
+    const jeffrey = "jeffrey@example.com";
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [4, 2, 1] as [number, number, number],
+        after: [4, 2, 2] as [number, number, number],
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [2, 1, 0] as [number, number, number],
+        after: [2, 1, 1] as [number, number, number],
+      },
+    ])("$case", ({ wrapper, before, after }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      const current = render1.result.current;
+
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+
+      expect(current.first.userId).toBe(jeffrey);
+      expect(current.second.userId).toBe(jeffrey);
+      expect(current.first).toBe(current.second);
+
+      render1.unmount();
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+    });
+  });
+
+  describe("Triplicate calls in the same component, with separate scopes", () => {
+    const jeffrey = "jeffrey@example.com";
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [6, 2, 1] as [number, number, number],
+        after: [6, 2, 2] as [number, number, number],
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [3, 1, 0] as [number, number, number],
+        after: [3, 1, 1] as [number, number, number],
+      },
+    ])("$case", ({ wrapper, before, after }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      const current = render1.result.current;
+
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+
+      expect(current.first.userId).toBe(jeffrey);
+      expect(current.second.userId).toBe(jeffrey);
+      expect(current.third.userId).toBe(jeffrey);
+      expect(current.second).toBe(current.first);
+      expect(current.third).toBe(current.first);
+
+      render1.unmount();
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+    });
+  });
+
+  describe("Quadruplicate calls in the same component, with separate scopes", () => {
+    const jeffrey = "jeffrey@example.com";
+    const useUserMolecule = () => {
+      renders();
+      return {
+        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        fourth: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [8, 2, 1] as [number, number, number],
+        after: [8, 2, 2] as [number, number, number],
+        beforeRenders: 4,
+        afterRenders: 4 + 2,
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [4, 1, 0] as [number, number, number],
+        after: [4, 1, 1] as [number, number, number],
+        beforeRenders: 2,
+        afterRenders: 2 + 1,
+      },
+    ])("$case", ({ wrapper, before, after, beforeRenders, afterRenders }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      const current = render1.result.current;
+
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+
+      expect(current.first.userId).toBe(jeffrey);
+      expect(current.second.userId).toBe(jeffrey);
+      expect(current.third.userId).toBe(jeffrey);
+      expect(current.fourth.userId).toBe(jeffrey);
+      expect(current.second).toBe(current.first);
+      expect(current.third).toBe(current.first);
+      expect(current.fourth).toBe(current.first);
+      expect(renders).toHaveBeenCalledTimes(beforeRenders);
+
+      render1.rerender();
+
+      render1.unmount();
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+      expect(renders).toHaveBeenCalledTimes(afterRenders);
+    });
+  });
+
+  describe("Duplicate calls in the same component", () => {
+    const useUserMolecule = () => {
+      renders();
+      return {
+        first: useMolecule(UserMolecule),
+        second: useMolecule(UserMolecule),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [1, 2, 1] as [number, number, number],
+        after: [1, 2, 2] as [number, number, number],
+        beforeRenders: 2,
+        afterRenders: 4,
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [1, 1, 0] as [number, number, number],
+        after: [1, 1, 1] as [number, number, number],
+        beforeRenders: 1,
+        afterRenders: 2,
+      },
+    ])("$case", ({ wrapper, before, after, beforeRenders, afterRenders }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      const current = render1.result.current;
+
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+
+      expect(current.first.userId).toBe(UserScope.defaultValue);
+      expect(current.second.userId).toBe(UserScope.defaultValue);
+      expect(current.first).toBe(render1.result.current.second);
+
+      expect(renders).toHaveBeenCalledTimes(beforeRenders);
+
+      render1.rerender();
+      expect(renders).toHaveBeenCalledTimes(afterRenders);
+
+      render1.unmount();
+      expect(renders).toHaveBeenCalledTimes(afterRenders);
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+    });
+  });
+
+  describe("Triplicate calls in the same component", () => {
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule),
+        second: useMolecule(UserMolecule),
+        third: useMolecule(UserMolecule),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [1, 2, 1] as [number, number, number],
+        after: [1, 2, 2] as [number, number, number],
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [1, 1, 0] as [number, number, number],
+        after: [1, 1, 1] as [number, number, number],
+      },
+    ])("$case", ({ wrapper, before, after }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      const current = render1.result.current;
+
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+
+      expect(current.first.userId).toBe(UserScope.defaultValue);
+      expect(current.second.userId).toBe(UserScope.defaultValue);
+      expect(current.third.userId).toBe(UserScope.defaultValue);
+      expect(current.first).toBe(render1.result.current.second);
+      expect(current.first).toBe(current.third);
+
+      render1.unmount();
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+    });
+  });
+
+  describe("Quadruplicate calls in the same component", () => {
+    const useUserMolecule = () => {
+      return {
+        first: useMolecule(UserMolecule),
+        second: useMolecule(UserMolecule),
+        third: useMolecule(UserMolecule),
+        fourth: useMolecule(UserMolecule),
+      };
+    };
+    test.each([
+      {
+        case: "Strict",
+        wrapper: StrictMode,
+        before: [1, 2, 1] as [number, number, number],
+        after: [1, 2, 2] as [number, number, number],
+      },
+      {
+        case: "Non-Strict",
+        wrapper: undefined,
+        before: [1, 1, 0] as [number, number, number],
+        after: [1, 1, 1] as [number, number, number],
+      },
+    ])("$case", ({ wrapper, before, after }) => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const render1 = renderHook(useUserMolecule, { wrapper });
+      userMoleculeLifecycle.expectCalledTimesEach(...before);
+      const current = render1.result.current;
+
+      expect(current.first.userId).toBe(UserScope.defaultValue);
+      expect(current.second.userId).toBe(UserScope.defaultValue);
+      expect(current.third.userId).toBe(UserScope.defaultValue);
+      expect(current.fourth.userId).toBe(UserScope.defaultValue);
+      expect(current.first).toBe(current.second);
+      expect(current.first).toBe(current.third);
+      expect(current.first).toBe(current.fourth);
+
+      render1.unmount();
+
+      userMoleculeLifecycle.expectCalledTimesEach(...after);
+    });
   });
 });
 

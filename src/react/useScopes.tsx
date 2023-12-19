@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { dstream } from "../shared/getDownstreamScopes";
 import { ComponentScope, ScopeTuple } from "../vanilla";
@@ -18,26 +18,29 @@ import { useInjector } from "./useInjector";
 export function useScopes(
   options?: MoleculeScopeOptions,
 ): ScopeTuple<unknown>[] {
-  return useScopeSubscription(options)[0];
-}
-
-export function useScopeSubscription(options?: MoleculeScopeOptions) {
   const inputTuples: AnyScopeTuple[] = useScopeTuplesRaw(options);
 
   const injector = useInjector();
 
-  const result = useMemo(
-    () => injector.useScopes(...inputTuples),
-    [injector, ...flattenTuples(inputTuples)],
-  );
+  const flattened = flattenTuples(inputTuples);
 
-  // FIXME: Needs to be updated for strict mode
+  const sub = useMemo(() => {
+    const innerSub = injector.createSubscription();
+    innerSub.expand(inputTuples);
+    return innerSub;
+  }, [injector, ...flattened]);
+
+  const [tuples, setTuples] = useState(sub.tuples);
+
   useEffect(() => {
+    const subbedTuples = sub.start();
+    setTuples(subbedTuples);
     return () => {
-      result[1]();
+      sub.stop();
     };
-  }, [result]);
-  return result;
+  }, [sub, setTuples]);
+
+  return useMemo(() => tuples, flattened);
 }
 
 /**
@@ -61,7 +64,6 @@ export function useScopeTuplesRaw(options?: MoleculeScopeOptions) {
   const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
     .current as ScopeTuple<unknown>;
 
-  // FIXME: Memoize these so a new handle is only created when the tuples change
   const inputTuples: AnyScopeTuple[] = (() => {
     if (!options) return [...parentScopes, componentScopeTuple];
     if (options.withUniqueScope) {
@@ -84,5 +86,6 @@ export function useScopeTuplesRaw(options?: MoleculeScopeOptions) {
     }
     return [...parentScopes, componentScopeTuple];
   })();
+
   return inputTuples;
 }

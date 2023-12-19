@@ -14,10 +14,13 @@ export function NoOpWrapper({ children }: { children: React.ReactNode }) {
  * @param cb - test suite (passed to `describe` from Vitest)
  */
 export function strictModeSuite(
-  cb: (props: { wrapper: React.FC<{ children: React.ReactNode }> }) => void,
+  cb: (props: {
+    wrapper: React.FC<{ children: React.ReactNode }>;
+    isStrict: boolean;
+  }) => void,
 ) {
   describe.each([
-    { wrapper: NoOpWrapper, case: "Non-Strict Mode" },
-    // { wrapper: StrictMode, case: "Strict Mode" },
+    { wrapper: NoOpWrapper, case: "Non-Strict Mode", isStrict: false },
+    { wrapper: StrictMode, case: "Strict Mode", isStrict: true },
   ])("React $case", cb);
 }

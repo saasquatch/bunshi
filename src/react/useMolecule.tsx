@@ -30,7 +30,6 @@ export function useMolecule<T>(
   const inputTuples = useScopeTuplesRaw(options);
   const [value, handle] = useMemo(() => {
     // console.log("==== fresh Memo! =====");
-
     return injector.useLazily(mol, ...inputTuples);
   }, [
     mol,
@@ -38,15 +37,10 @@ export function useMolecule<T>(
     /**
      * Tuple flattening prevents re-renders unless the number of
      */
-    /**
-     *  FIXME: Write some tests that confirm that input tuples can be reactive, but not TOO reative.
-     *
-     *  This was commented out because it made the ComponentScope test fail and cause too many memoized renders
-     */
-    // flattenTuples(inputTuples),
+    ...flattenTuples(inputTuples),
   ]);
 
-  const [multableValue, setMutableValue] = useState(value);
+  const [mutableValue, setMutableValue] = useState(value);
 
   useEffect(() => {
     // console.log("==== useEffect! =====");
@@ -58,5 +52,5 @@ export function useMolecule<T>(
     };
   }, [handle]);
 
-  return multableValue;
+  return mutableValue;
 }

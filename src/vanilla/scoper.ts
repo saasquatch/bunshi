@@ -287,22 +287,21 @@ export function createScoper(instrumentation?: Instrumentation) {
       registerCleanups(this.tuples, cleanups);
     }
     __tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
+    __stableArray: AnyScopeTuple[] = [];
     __subId = createSubId();
     get tuples(): AnyScopeTuple[] {
-      return Array.from(this.__tupleMap.values());
+      return this.__stableArray;
     }
     expand(next: AnyScopeTuple[]) {
       const tuples = getScopes(next);
       tuples.forEach((t) => {
         this.__tupleMap.set(t[0], t);
       });
+      this.__stableArray = Array.from(this.__tupleMap.values());
       return tuples;
     }
     start() {
-      return startSubscriptions(
-        this.__subId,
-        Array.from(this.__tupleMap.values()),
-      );
+      return startSubscriptions(this.__subId, this.__stableArray);
     }
     stop() {
       stopSubscription(new Set(this.tuples), this.__subId);
