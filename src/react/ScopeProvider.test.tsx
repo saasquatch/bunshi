@@ -262,8 +262,6 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       } else {
         userLifecycle.expectCalledTimesEach(2, 1, 0);
       }
-      // FIXME: This is a jotai strict mode problem. The unmounts are blowing away state
-      // And both trees have the same value
       expect(aValue).toBe(bValue);
 
       act(() => {

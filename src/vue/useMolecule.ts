@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from "vue";
+import { onUnmounted } from "vue";
 import type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import type { MoleculeOrInterface } from "../vanilla";
 import { useInjector } from "./useInjector";
@@ -18,13 +18,10 @@ export const useMolecule = <T>(
   const tuples = getTuples(options);
   const injector = useInjector();
 
-  const [value, handle] = injector.useLazily(mol, ...tuples);
+  const [, handle] = injector.useLazily(mol, ...tuples);
 
-  onMounted(() => {
-    handle.start();
-  });
   onUnmounted(() => {
     handle.stop();
   });
-  return value;
+  return handle.start();
 };

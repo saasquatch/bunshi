@@ -148,14 +148,63 @@ strictModeSuite(({ wrapper, isStrict }) => {
         expectUserLifecycle(testHook, jeffrey);
       });
 
-      test.todo("Works with default scope", () => {
+      test("Works with default scope", () => {
+        /**
+         * Default tuples are better memoized, so the default assumptions for number of execution in `expectUserLifecycle` aren't valid
+         *
+         * Default tuples can a molecule to only be executed once in strict mode instead of twice.
+         *
+         * This is because the tuple itself is a global constant, so it is shared between strict mode renders.
+         *
+         * Non-default scope tuples are not global constants, so they are not shared between strict mode renders.
+         */
         const testHook = () => {
           return {
             molecule: useMolecule(UseLifecycleMolecule),
           };
         };
-        // FIXME: Default tuples are better memoized, so the default assumptions here aren't valid
-        expectUserLifecycle(testHook, "user@example.com");
+        const expectedUser = UserScope.defaultValue;
+
+        moleculeLifecycle.expectUncalled();
+
+        const run1 = renderHook(testHook, {
+          wrapper,
+        });
+
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
+
+        expect(run1.result.current.molecule).toBe(expectedUser);
+
+        const run2 = renderHook(testHook, {
+          wrapper,
+        });
+
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
+        expect(run2.result.current.molecule).toBe(expectedUser);
+
+        run1.unmount();
+
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
+        }
+
+        run2.unmount();
+
+        if (isStrict) {
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 2);
+        } else {
+          moleculeLifecycle.expectCalledTimesEach(1, 1, 1);
+        }
       });
 
       function expectUserLifecycle(
