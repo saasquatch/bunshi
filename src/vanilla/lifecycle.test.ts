@@ -306,7 +306,7 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
   lifecycle.expectToMatchCalls([value]);
 });
 
-describe.skip("Conditional dependencies", () => {
+describe("Conditional dependencies", () => {
   /**
    * Types of conditional dependency checks
    *
@@ -339,7 +339,7 @@ describe.skip("Conditional dependencies", () => {
     return [enabled, comp];
   });
   const componentA = Symbol("component-a");
-  const componentB = Symbol("component-b");
+  // const componentB = Symbol("component-b");
 
   test("From 2 to 1 dependency", () => {
     const injector = createInjector();
@@ -358,40 +358,9 @@ describe.skip("Conditional dependencies", () => {
     expect(lifecycle.executions).toBeCalledTimes(1);
 
     // 2nd iteration should only have 1 scope dependency
-    const case2 = injector.use(ConditionalMolecule, [IsEnabled, false]);
-    expect(case2[0]).toStrictEqual([false, undefined]);
-    expect(lifecycle.executions).toBeCalledTimes(2);
-    expect(lifecycle.mounts).toHaveBeenLastCalledWith(false, undefined);
-    expect(lifecycle.mounts).toBeCalledTimes(2);
-
-    // 3rd iteration should have 2 scope dependencies
-    const case3 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(case3[0]).toStrictEqual([true, componentA]);
-
-    // this should be cached, so no more molecule creations
-    expect(lifecycle.executions).toBeCalledTimes(2);
-
-    // 4th iteration should use only 1 scope dependency
-    const case4 = injector.use(ConditionalMolecule, [IsEnabled, false]);
-    expect(case4[0]).toStrictEqual([false, undefined]);
-
-    // this should be cached, so no more molecule creations
-    expect(lifecycle.executions).toBeCalledTimes(2);
-
-    case1[1]();
-    case3[1]();
-
-    case2[1]();
-    case4[1]();
-
-    expect(lifecycle.unmounts.mock.calls).toStrictEqual([
-      [true, componentA],
-      [false, undefined],
-    ]);
+    expect(() =>
+      injector.use(ConditionalMolecule, [IsEnabled, false]),
+    ).toThrow();
   });
 
   test("From 1 to 2 dependencies", () => {
@@ -406,242 +375,31 @@ describe.skip("Conditional dependencies", () => {
     expect(lifecycle.executions).toHaveBeenCalledTimes(1);
 
     // 2nd iteration should have 2 scope dependencies
-    const case1 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(case1[0]).toStrictEqual([true, componentA]);
-    expect(lifecycle.executions).toBeCalledTimes(2);
-    expect(lifecycle.mounts).toHaveBeenLastCalledWith(true, componentA);
-    expect(lifecycle.mounts).toBeCalledTimes(2);
-
-    // 3rd iteration should have 2 scope dependencies
-    const case3 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(case3[0]).toStrictEqual([true, componentA]);
-
-    // this should be cached, so no more molecule creations
-    expect(lifecycle.executions).toBeCalledTimes(2);
-    expect(lifecycle.mounts).toBeCalledTimes(2);
-
-    // 4th iteration should use only 1 scope dependency
-    const case4 = injector.use(ConditionalMolecule, [IsEnabled, false]);
-    expect(case4[0]).toStrictEqual([false, undefined]);
-
-    // this should be cached, so no more molecule creations
-    expect(lifecycle.executions).toBeCalledTimes(2);
-    expect(lifecycle.mounts).toBeCalledTimes(2);
-
-    // No unmounts yet
-    expect(lifecycle.unmounts).toHaveBeenCalledTimes(0);
-
-    // Unsub from both subscribers
-    case2[1]();
-    case4[1]();
-
-    // Expect the scope to be cleaned up
-    expect(lifecycle.unmounts).toHaveBeenLastCalledWith(false, undefined);
-
-    // Unsub from both subscribers
-    case1[1]();
-    case3[1]();
-
-    // Expect the scope to be cleaned up
-    expect(lifecycle.unmounts).toHaveBeenLastCalledWith(true, componentA);
-
-    // Only two umounts called, so we aren't doing unrelated unmounts
-    expect(lifecycle.unmounts).toHaveBeenCalledTimes(2);
-  });
-
-  test("Cache hit when unrelated dependencies are used", () => {
-    const injector = createInjector();
-
-    lifecycle.expectUncalled();
-    const case0 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(lifecycle.executions).toHaveBeenCalledTimes(1);
-
-    /**
-     * Since the stage 1 dependency cache has been expanded at this point
-     * there is no way to know that the component scope should be ignored
-     * as part of the lookup.
-     *
-     * Possible fixes:
-     *  - Complicate the stage 2 cache by included superflous unrelated dependencies. This seems rife with ordering problems
-     *  - Change the stage 1 cache to keep a few sets of dependencies, instead of just 1 growing set of dependencies
-     */
-    for (let iteration = 0; iteration < 10; iteration++) {
-      // When the molecule is used with a component scope
-      const case1 = injector.use(
+    expect(() =>
+      injector.use(
         ConditionalMolecule,
-        [IsEnabled, false],
+        [IsEnabled, true],
         [ComponentScope, componentA],
-      );
-
-      // Then it is executed
-      expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-      // Note that we don't unsubcribe here
-      case1;
-    }
-  });
-
-  test("More specific value", () => {
-    const injector = createInjector();
-
-    lifecycle.expectUncalled();
-
-    // When the molecule is used with a different scope value
-    const case1 = injector.use(ConditionalMolecule, [IsEnabled, true]);
-    // Then it is executed
-    expect(lifecycle.executions).toHaveBeenCalledTimes(1);
-
-    // FIXME: This isn't called because it caches the less specific (isEnabled, but no component) case
-    const case2 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(lifecycle.executions).toHaveBeenCalledTimes(2);
+      ),
+    ).toThrow();
   });
 
   test("Kitchen sink", () => {
     const injector = createInjector();
 
     // When the molecule is used without scopes
-    const case0 = injector.use(ConditionalMolecule);
+    injector.use(ConditionalMolecule);
     // Then it is executed
     expect(lifecycle.executions).toHaveBeenCalledTimes(1);
     // When the molecule is used with the default scope value (passed explicitly)
-    const case1 = injector.use(ConditionalMolecule, [IsEnabled, false]);
+    injector.use(ConditionalMolecule, [IsEnabled, false]);
     // Then it is NOT executed again
     expect(lifecycle.executions).toHaveBeenCalledTimes(1);
 
     // When the molecule is used with a different scope value
-    const case2 = injector.use(ConditionalMolecule, [IsEnabled, true]);
-    // Then it is executed
-    expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-    // When the molecule is used with a component scope
-    const case3 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, false],
-      [ComponentScope, componentA],
-    );
-
-    // Then it is NOT executed because it doesn't really on component A
-    // And there is a value for [IsEnabled,false] already in the cache
-    expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-    // When the molecule is called again with default scope
-    const case3b = injector.use(ConditionalMolecule, [
-      ComponentScope,
-      componentA,
-    ]);
-
-    // Then it is NOT executed because it doesn't really on component A
-    // And there is a value for [IsEnabled,false] already in the cache
-    expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-    const case4 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, false],
-      [ComponentScope, componentB],
-    );
-    // Then it is NOT executed because it doesn't really on component B
-    // And there is a value for [IsEnabled,false] already in the cache
-    expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-    // FIXME: This isn't called because it caches the less specific (isEnabled, but no component) case
-    const case5 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentA],
-    );
-    expect(lifecycle.executions).toHaveBeenCalledTimes(3);
-    const case6 = injector.use(
-      ConditionalMolecule,
-      [IsEnabled, true],
-      [ComponentScope, componentB],
-    );
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-
-    expect(case0[0]).toStrictEqual([false, undefined]);
-    expect(case1[0]).toStrictEqual([false, undefined]);
-    expect(case2[0]).toStrictEqual([true, undefined]);
-    expect(case3[0]).toStrictEqual([false, undefined]);
-    expect(case4[0]).toStrictEqual([false, undefined]);
-    expect(case5[0]).toStrictEqual([true, componentA]);
-    expect(case6[0]).toStrictEqual([true, componentB]);
-
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-    /**
-     * When the molecules are re-used after this point
-     * Then they return the memoized values
-     * And the molecule callbacks are not called
-     * Because everything should be in the Stage 1 internal cache
-     */
-
-    // When the molecules are re-used
-    expect(injector.use(ConditionalMolecule)[0]).toStrictEqual([
-      false,
-      undefined,
-    ]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-
-    expect(
-      injector.use(ConditionalMolecule, [IsEnabled, false])[0],
-    ).toStrictEqual([false, undefined]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-
-    expect(
-      injector.use(ConditionalMolecule, [IsEnabled, true])[0],
-    ).toStrictEqual([true, undefined]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-
-    expect(
-      injector.use(
-        ConditionalMolecule,
-        [IsEnabled, false],
-        [ComponentScope, componentA],
-      )[0],
-    ).toStrictEqual([false, undefined]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-
-    expect(
-      injector.use(
-        ConditionalMolecule,
-        [IsEnabled, false],
-        [ComponentScope, componentB],
-      )[0],
-    ).toStrictEqual([false, undefined]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-    expect(
-      injector.use(
-        ConditionalMolecule,
-        [IsEnabled, true],
-        [ComponentScope, componentA],
-      )[0],
-    ).toStrictEqual([true, componentA]);
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
-    expect(
-      injector.use(
-        ConditionalMolecule,
-        [IsEnabled, true],
-        [ComponentScope, componentB],
-      )[0],
-    ).toStrictEqual([true, componentB]);
-
-    // Then no more executions are used
-    // Because they should all be cached
-    expect(lifecycle.executions).toHaveBeenCalledTimes(4);
+    expect(() =>
+      injector.use(ConditionalMolecule, [IsEnabled, true]),
+    ).toThrow();
   });
 
   /**
@@ -673,20 +431,7 @@ describe.skip("Conditional dependencies", () => {
       const injector = createInjector();
 
       expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
-        true,
-        "a1",
-      ]);
-
-      expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
-        true,
-        "a1",
-      ]);
-
-      expect(lifecycle.executions).toHaveBeenCalledTimes(2);
+      expect(() => injector.use(TwoForks, [IsEnabled, true])).toThrow();
     });
 
     test("From A to B", () => {
@@ -696,17 +441,7 @@ describe.skip("Conditional dependencies", () => {
         true,
         "a1",
       ]);
-      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-
-      expect(lifecycle.executions).toHaveBeenCalledTimes(2);
-
-      expect(injector.use(TwoForks)[0]).toStrictEqual([false, "b1"]);
-      expect(injector.use(TwoForks, [IsEnabled, true])[0]).toStrictEqual([
-        true,
-        "a1",
-      ]);
-
-      expect(lifecycle.executions).toHaveBeenCalledTimes(2);
+      expect(() => injector.use(TwoForks)).toThrow();
     });
   });
 });
