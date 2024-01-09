@@ -1,7 +1,7 @@
 {
   "name": "bunshi",
   "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
-  "version": "2.1.0-rc.1",
+  "version": "2.1.0-rc.2",
   "license": "MIT",
   "author": "ReferralSaaSquatch.com, Inc.",
   "homepage": "https://bunshi.org",
@@ -94,19 +94,19 @@
   "size-limit": [
     {
       "path": "dist/vanilla.js",
-      "limit": "2.6 KB"
+      "limit": "3.5 KB"
     },
     {
       "path": "dist/react.js",
-      "limit": "3.3 KB"
+      "limit": "4.2 KB"
     },
     {
       "path": "dist/vue.js",
-      "limit": "3.1 KB"
+      "limit": "4.0 KB"
     },
     {
       "path": "dist/vanilla.mjs",
-      "limit": "2.2 KB"
+      "limit": "3.2 KB"
     }
   ],
   "devDependencies": {

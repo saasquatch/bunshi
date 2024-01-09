@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0-rc.2] - 2024-01-08
+
+### Added
+
+- Add methods to injector and scope for using lazily to support React strict mode
+
+### Removed
+
+- Removed support for conditional dependencies. When detected, conditional dependencies will now throw an error.
+- Removed `subscriptionId` from all calls (introduced in 2.1.0-rc.1)
+
 ## [2.1.0-rc.1] - 2023-11-23
 
 ### Changed
@@ -108,6 +119,8 @@ Initial release of `jotai-molecules`
 - `ScopeProvider` a React component for providing scope to the tree
 
 [unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.2...HEAD
+[2.1.0-rc.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.2
+[2.1.0-rc.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.1
 [2.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.2
 [2.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.1
 [2.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.0
