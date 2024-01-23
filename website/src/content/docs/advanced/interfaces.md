@@ -1,5 +1,5 @@
 ---
-title: "Interfaces"
+title: "moleculeInterface"
 sidebar:
   order: 1
 ---
@@ -11,7 +11,7 @@ An interface defines a dependency, but not the implementation for the dependency
 
 ## API
 
-In other programming languages interfaces can be referenced at build time or runtime, but Javascript doesn't have interfaces and 
+In other programming languages interfaces can be referenced at build time or runtime, but Javascript doesn't have interfaces and
 Typescript interfaces don't exist at runtime.
 
 Bunshi has `moleculeInterface` to create molecule interfaces that can be referenced and used at runtime.
@@ -50,7 +50,7 @@ export const RegistrationFormMolecule = molecule((mol) => {
 
 ## Tips
 
-* Interfaces don't specify if they are scoped or not. Write your molecules accordingly.
-* Bindings to interfaces have to be done in [injectors](/advanced/injectors).
-* If you have a default implementation for an interface, then just use a `molecule` instead.
-* [Scopes](/concepts/scopes) can act as a replacement for interfaces if you have a large number of implementations
+- Interfaces don't specify if they are scoped or not. Write your molecules accordingly.
+- Bindings to interfaces have to be done in [injectors](/advanced/injectors).
+- If you have a default implementation for an interface, then just use a `molecule` instead.
+- [Scopes](/concepts/scopes) can act as a replacement for interfaces if you have a large number of implementations

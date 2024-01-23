@@ -1,0 +1,45 @@
+---
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "../CodeEditor.astro";
+import { lifecycle as lifecycleCode } from "~/source-examples/sources";
+---
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": lifecycleCode.ReactApp,
+        "molecules.ts": lifecycleCode.molecules,
+        "index.tsx": lifecycleCode.nonStrictIndex,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="React (Strict)">
+    <CodeEditor
+      files={{
+        "App.tsx": lifecycleCode.ReactApp,
+        "molecules.ts": lifecycleCode.molecules,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": lifecycleCode.VueApp,
+        "src/Counter.vue": lifecycleCode.VueCounter,
+        "src/molecules.ts": lifecycleCode.molecules,
+      }}
+      dependencies={{
+        jotai: "^2.5",
+        "jotai-vue": "^0.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>

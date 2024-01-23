@@ -3,6 +3,8 @@ title: "Molecules"
 sidebar:
   order: 1
 ---
+import LifecycleExample from "~/components/examples/LifecycleExample.astro";
+
 
 Molecules are the core building block of bunshi. They are functions that return a value.
 
@@ -74,10 +76,10 @@ export const IDMolecule = molecule(() => `ID: ${use(userIdScope)}`);
 
 ## Molecule Lifecycle
 
-New in Bunshi 2.1 are the `onMount` and `onUnmount` lifecycle hooks. They allow state libraries to be shared and
+New in Bunshi 2.1 are the `onMounted` and `onUnmounted` lifecycle hooks. They allow state libraries to be shared and
 cleaned up at the right time.
 
-### onMount
+### onMounted
 
 Run some code only when a molecule is mounted.
 
@@ -96,7 +98,7 @@ molecule(() => {
 });
 ```
 
-### onUnmount
+### onUnmounted
 
 ```ts
 import { molecule, onUnmount } from "bunshi";
@@ -107,22 +109,14 @@ molecule(() => {
 });
 ```
 
-### Framework Recommendations
+### Example
 
-Some state frameworks come with built-in utilities to help with creating and cleaning up stateful connections. Others
-leave this up to you to figure out when you want to start or stop subscriptions.
+<LifecycleExample />
 
-Bunshi's goal is to be a thin layer on top of other libraries. We don't want to get in your way. So if your library
-has a built-in lifecycle or cleanup tool for easily using them in `React` and `Vue`, hen use those. Otherwise,
-use `onMount` and `onUnmount` from Bunshi.
+Lifecycle events are called differently in React Strict Mode.
 
-| Framework  | Recommendation                                        | Syntax                                         |
-| ---------- | ----------------------------------------------------- | ---------------------------------------------- |
-| Jotai      | Prefer Jotai's hooks to Bunshi                        | `profileAtom.onMount = (set)=> {/** hook **/}` |
-| Nanostores | Prefer Nanostores hooks to Bunshi                     | `onMount($profile, () => {/** hook **/}`       |
-| Valtio     | Use Bunshi's `onMount` to cleanup any shared state    |                                                |
-| XState     | Use Bunshi's `onMount` to `start` and `stop` machines |                                                |
-| Zustand    | Use Bunshi's `onMount` to cleanup any shared state    |                                                |
+See:
+ - [Lifecycle Events](/concepts/lifecycle)
 
 ## Best Practices
 

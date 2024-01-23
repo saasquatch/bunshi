@@ -1,4 +1,4 @@
-import { MountedCallback } from "../lifecycle";
+import type { MountedCallback } from "../lifecycle";
 import type {
   Molecule,
   MoleculeConstructor,

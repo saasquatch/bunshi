@@ -1,5 +1,5 @@
 import { Debug, ScopeSymbol, SortId, TypeSymbol } from "./internal/symbols";
-import { ScopeTuple } from "./types";
+import type { ScopeTuple } from "./types";
 
 /**
  * A scope that can be used to create scoped molecules.

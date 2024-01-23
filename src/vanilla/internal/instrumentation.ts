@@ -1,4 +1,4 @@
-import { AnyMolecule, MoleculeCacheValue } from "./internal-types";
+import type { AnyMolecule, MoleculeCacheValue } from "./internal-types";
 
 export interface Instrumentation {
   getInternal(m: AnyMolecule): void;

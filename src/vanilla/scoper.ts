@@ -1,6 +1,6 @@
 import type { MoleculeInjector } from ".";
 import { createSubId } from "./createSubId";
-import { Instrumentation } from "./internal/instrumentation";
+import type { Instrumentation } from "./internal/instrumentation";
 import type {
   AnyMoleculeScope,
   AnyScopeTuple,

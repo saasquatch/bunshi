@@ -7,7 +7,7 @@ import {
   ErrorInvalidScope,
   ErrorUnboundMolecule,
 } from "./internal/errors";
-import { Instrumentation } from "./internal/instrumentation";
+import type { Instrumentation } from "./internal/instrumentation";
 import type {
   AnyMolecule,
   AnyMoleculeInterface,
@@ -15,7 +15,7 @@ import type {
   AnyScopeTuple,
   MoleculeInternal,
 } from "./internal/internal-types";
-import { MoleculeCacheValue } from "./internal/internal-types";
+import type { MoleculeCacheValue } from "./internal/internal-types";
 import { scopeTupleSort } from "./internal/scopeTupleSort";
 import { GetterSymbol, Injector, TypeSymbol } from "./internal/symbols";
 import {
@@ -38,7 +38,7 @@ import type {
   ScopeGetter,
 } from "./molecule";
 import { createScope } from "./scope";
-import { ScopeSubscription, createScoper } from "./scoper";
+import { type ScopeSubscription, createScoper } from "./scoper";
 import type { BindingMap, Bindings, Injectable } from "./types";
 
 const InternalOnlyGlobalScope = createScope(

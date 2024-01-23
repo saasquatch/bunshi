@@ -1,4 +1,4 @@
-import { CreateInjectorProps, createInjector } from "./injector";
+import { type CreateInjectorProps, createInjector } from "./injector";
 import { ErrorInvalidGlobalInjector } from "./internal/errors";
 import { DefaultInjector } from "./internal/symbols";
 import { isInjector } from "./internal/utils";
