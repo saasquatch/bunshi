@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2024-01-22
 
 Version 2.1.0 is a big update to Bunshi. It fixes a few key efficiency issues in #35 and #39. It introduces
-the new `use` syntax for wiring up dependencies, and the new `onMounted` and `onUnmounted` lifecycle events
+the new `use` syntax for wiring up dependencies, and the new `onMount` and `onUnmount` lifecycle events
 for cleaning up dependencies, even when the state management libraries themselves don't have it.
 
 In the process of preparing this release, the number of test cases was expanded dramatically to
@@ -30,7 +30,7 @@ Big thank you to the community for the help.
 
 ### Added
 
-- `onMounted` and `onUnmounted` lifecycle hooks inside of molecules. Fixes #35. Thanks @asfktz
+- `onMount` and `onUnmount` lifecycle hooks inside of molecules. Fixes #35. Thanks @asfktz
 - Support for React strict mode (and tests). Fixes #35
 - New `use` syntax for depending on scopes or molecules,
 - Add methods to injector and scope for using lazily to support React strict mode
@@ -56,7 +56,7 @@ Big thank you to the community for the help.
 
 ### Added
 
-- `onMounted` and `onUnmounted` lifecycle hooks inside of molecules. Fixes #35
+- `onMount` and `onUnmount` lifecycle hooks inside of molecules. Fixes #35
 - New `use` syntax for depending on scopes or molecules
 
 ## [2.0.2] - 2023-11-01
