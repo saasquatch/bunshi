@@ -1,7 +1,7 @@
 export * from "../vanilla";
 
 export type { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
-export * from "./useMolecule"
-export * from "./provideScopes"
-export * from "./useScopes"
-export * from "./useInjector"
+export { provideScope } from "./provideScopes";
+export { provideInjector, useInjector } from "./useInjector";
+export { useMolecule } from "./useMolecule";
+export { useScopes } from "./useScopes";

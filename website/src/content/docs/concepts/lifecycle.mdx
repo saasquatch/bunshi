@@ -1,0 +1,105 @@
+---
+title: "Lifecycle"
+sidebar:
+  order: 3
+---
+import { Image } from 'astro:assets';
+import lifecycle from '~/assets/lifecycle/lifecycle.svg';
+import console from '~/assets/lifecycle/console-log.png';
+import consoleStrict from '~/assets/lifecycle/console-log-strict.png';
+import LifecycleExample from "~/components/examples/LifecycleExample.astro";
+
+
+Molecules are used to create values. Those values are created as needed depending on the application, scope, and injectors. They
+can be mounted to signal they are in use, unmounted when they are no longer in use, and then finally cleaned up in garbage collection.
+
+<Image src={lifecycle} alt="Molecule lifecycle from created, mounted, unmounted and garbage collected."/>
+
+## Example
+
+<LifecycleExample />
+
+In this example the lifecycle events are logged to the [Console](https://developer.mozilla.org/en-US/docs/Web/API/console). Try clicking to
+toggle the Counter component to be mounted and unmounted. You should notice a few things:
+
+* There are 2 counters, but lifecycle events are only fired once because the molecule is shared.
+* The lifecycle events always follow the same order.
+
+<Image src={console} alt="Console log output"/>
+
+In React Strict Mode there are additional calls to lifecycle events:
+
+* Molecules are mounted, unmounted and then immediately re-mounted.
+* The final unmount only happens once.
+* Only one value is created and shared across components. This isn't true for all molecules. Non-default scopes will have more than one value created and disposed of.
+
+<Image src={consoleStrict} alt="Console log output for React Strict Mode"/>
+
+
+
+## Created
+
+Bunshi tries to create molecule values as lazily as possible, and to make sure that any value it creates can be garbage collected.
+
+* If a value already exists for a molecule (and relevant scopes), then that value will be used instead of creating a new value.
+* If a value doesn't already exist, then a new one will be created.
+
+
+## Mounted
+
+Molecule values aren't fully cached until a subscription is started. This is handled automatically behind the scenes in `useMolecule` for
+both React and Vue. In Vanilla JS this is handled in `MoleculeInjector.use` and `MoleculeInjector.useLazily`.
+
+### use vs useLazily
+
+If you are using a MoleculeInjector directly, there are two keys methods:
+
+* `MoleculeInjector.use` will create a new value and mount it immediately. It also returns a value to clean up the subscription later.
+* `MoleculeInjector.useLazily` will create a new value, but won't mount it immediately. This can be done later, and a value can be mounted, unmounted, and then mounted again.
+
+To support React strict mode, `useLazily` is used internally.
+
+## Unmounted
+
+Molecule values will be unmounted when nothing is using them anymore. This happens automatically in `useMolecule` for
+both React and Vue. In Vanilla JS this is handled when the stop method is called on everything using a molecule.
+
+Note:
+* An unmounted value may be re-mounted, especially in React Strict Mode.
+* If a value has been mounted, it will always be unmounted when everything stops using it.
+* Vanilla JS users should be careful to avoid memory leaks by always stopping any subscription they start.
+
+## React Strict mode
+
+React strict mode re-runs your React hooks to make sure that they are following best practices. Bunshi makes working with React strict mode easier.
+It helps avoid some of the challenges of working with `useMemo` and `useEffect`, but the constraints of Strict Mode does still have an effect
+on your molecules.
+
+There are a couple things to be aware of:
+* Your molecule values may be re-mounted. `onMount` may be called again after `onUnmount` has been called.
+* Lifecycles methods will be called in order, so `onMount` then `onUnmount` then again `onMount`, and so on.
+* Your molecule values may NEVER be mounted. Strict mode may dispose of a value before calling `onMount`.
+* In strict mode your molecule may be called twice:
+  * one value thrown away (in the first render)
+  * the other value `onMount` then `onUnmount` then again `onMount` (in the second render)
+
+**The core premise of Bunshi still applies.** If a molecule is being used by another component then that value is used. These notes about strict mode only
+apply to newly created values. Existing values are shared without un-necessary lifecycle calls.
+
+
+### Framework Recommendations
+
+Some state frameworks come with built-in utilities to help with creating and cleaning up stateful connections. Others
+leave this up to you to figure out when you want to start or stop subscriptions.
+
+Bunshi's goal is to be a thin layer on top of other libraries. We don't want to get in your way. So if your library
+has a built-in lifecycle or cleanup tool for easily using them in `React` and `Vue`, hen use those. Otherwise,
+use `onMount` and `onUnmount` from Bunshi.
+
+| Framework  | Recommendation                                        | Syntax                                         |
+| ---------- | ----------------------------------------------------- | ---------------------------------------------- |
+| Jotai      | Prefer Jotai's hooks to Bunshi                        | `profileAtom.onMount = (set)=> {/** hook **/}` |
+| Nanostores | Prefer Nanostores hooks to Bunshi                     | `onMount($profile, () => {/** hook **/}`       |
+| Valtio     | Use Bunshi's `onMount` to cleanup any shared state    |                                                |
+| XState     | Use Bunshi's `onMount` to `start` and `stop` machines |                                                |
+| Zustand    | Use Bunshi's `onMount` to cleanup any shared state    |                                                |

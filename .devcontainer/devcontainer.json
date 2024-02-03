@@ -13,7 +13,8 @@
 				"GitHub.vscode-pull-request-github",
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
-				"ZixuanChen.vitest-explorer"
+				"ZixuanChen.vitest-explorer",
+				"Vue.vscode-typescript-vue-plugin"
 			]
 		}
 	}

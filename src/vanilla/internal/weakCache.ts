@@ -1,6 +1,6 @@
 /**
  * A weak, deep cache
- * 
+ *
  *
  * Copied direcly from: https://github.com/pmndrs/jotai/blob/main/src/utils/weakCache.ts
  *
@@ -9,15 +9,18 @@
  *
  *
  */
-export type WeakCache<T> = WeakMap<object, [WeakCache<T>] | [WeakCache<T>, T]>;
+export type WeakCache<TKey extends {}, TValue> = WeakMap<
+  TKey,
+  [WeakCache<TKey, TValue>] | [WeakCache<TKey, TValue>, TValue]
+>;
 
-const getWeakCacheItem = <T>(
-  cache: WeakCache<T>,
-  deps: Deps
-): T | undefined => {
+const getWeakCacheItem = <TKey extends {}, TValue>(
+  cache: WeakCache<TKey, TValue>,
+  deps: Deps<TKey>,
+): TValue | undefined => {
   while (true) {
     const [dep, ...rest] = deps;
-    const entry = cache.get(dep as object);
+    const entry = cache.get(dep);
     if (!entry) {
       return;
     }
@@ -29,17 +32,17 @@ const getWeakCacheItem = <T>(
   }
 };
 
-const setWeakCacheItem = <T>(
-  cache: WeakCache<T>,
-  deps: Deps,
-  item: T
+const setWeakCacheItem = <TKey extends {}, TValue>(
+  cache: WeakCache<TKey, TValue>,
+  deps: Deps<TKey>,
+  item: TValue,
 ): void => {
   while (true) {
     const [dep, ...rest] = deps;
-    let entry = cache.get(dep as object);
+    let entry = cache.get(dep);
     if (!entry) {
       entry = [new WeakMap()];
-      cache.set(dep as object, entry);
+      cache.set(dep, entry);
     }
     if (!rest.length) {
       entry[1] = item;
@@ -50,28 +53,120 @@ const setWeakCacheItem = <T>(
   }
 };
 
-type Deps = readonly object[];
+type Deps<T> = readonly T[];
 
+export type DeepCache<TKey extends {}, TValue> = {
+  remove(...deps: TKey[]): void;
 
-export type DeepCache = ReturnType<typeof createDeepCache>;
+  /**
+   * The raw deep cache
+   */
+  cache: WeakCache<TKey, TValue>;
 
-export const createDeepCache = () => {
-  let cache: WeakCache<{}> = new WeakMap();
-  const deepCache = <T extends {}>(
-    createFn: () => T,
-    deps: Deps
+  /**
+   * Get or create an item in the cache
+   *
+   * If an item is in the cache, then returns that item.
+   *
+   * If an item is not in the cache, then creates a new value from
+   * the provided callback.
+   *
+   * Uses the list of dependecies, in order, to cache the item.
+   *
+   * @param createFn
+   * @param deps
+   */
+  deepCache(
+    createFn: () => TValue,
+    foundFn: (found: TValue) => void,
+    deps: Deps<TKey>,
+  ): TValue;
+
+  get(deps: Deps<TKey>): TValue | undefined;
+
+  /**
+   * Create or update an item in the cache
+   *
+   * If the cache is empty, then a new item is created.
+   *
+   * If the cache has an item, then use the callback function to update it.
+   *
+   * @param createFn
+   * @param deps
+   */
+  upsert(
+    createFn: (previous: TValue | undefined) => TValue,
+    deps: Deps<TKey>,
+  ): void;
+};
+
+export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
+  TKey,
+  TValue
+> => {
+  let cache: WeakCache<TKey, TValue> = new WeakMap();
+  const deepCache = (
+    createFn: () => TValue,
+    foundFn: (found: TValue) => void,
+    deps: Deps<TKey>,
   ) => {
-    const cachedAtom = getWeakCacheItem(cache, deps);
-    if (cachedAtom) {
-      return cachedAtom as T;
+    if (!deps.length) throw new Error("Dependencies need to exist.");
+    const cachedValue = getWeakCacheItem(cache, deps);
+    if (cachedValue) {
+      foundFn(cachedValue);
+      return cachedValue!;
     }
     const newObject = createFn();
     setWeakCacheItem(cache, deps, newObject);
     return newObject;
   };
+  const upsert = (
+    createFn: (previous: TValue | undefined) => TValue,
+    deps: Deps<TKey>,
+  ) => {
+    if (!deps.length) throw new Error("Dependencies need to exist.");
+    const cachedValue = getWeakCacheItem(cache, deps);
+    const newObject = createFn(cachedValue);
+    setWeakCacheItem(cache, deps, newObject);
+  };
+
+  const remove = (...deps: Deps<TKey>) => {
+    removeWeakCacheItem(cache, deps);
+  };
+
+  const get = (deps: Deps<TKey>) => getWeakCacheItem(cache, deps);
 
   return {
+    get,
     cache,
-    deepCache
+    deepCache,
+    upsert,
+    remove,
   };
+};
+
+const removeWeakCacheItem = <TKey extends {}, TValue>(
+  cache: WeakCache<TKey, TValue>,
+  deps: Deps<TKey>,
+): void => {
+  while (true) {
+    const [dep, ...rest] = deps;
+    let entry = cache.get(dep);
+    if (!entry) {
+      // No base level value
+      // So nothing to remove
+      return;
+    }
+    // We have hit the bottom of the tree when there are no more deps
+    const isBottom = !rest.length;
+    if (isBottom) {
+      // We have hit the bottom of the tree
+      entry[1] = undefined;
+      return;
+    } else {
+      // Keep looping deeper
+      cache = entry[0];
+      deps = rest;
+    }
+  }
 };

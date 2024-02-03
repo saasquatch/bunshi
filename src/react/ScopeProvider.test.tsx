@@ -1,11 +1,21 @@
-import { act, renderHook } from "@testing-library/react-hooks";
-import { atom, useAtom } from "jotai";
-import React, { ReactNode, useContext, useRef, useState } from "react";
-import { ComponentScope, createScope, molecule } from "../vanilla";
+import { act, renderHook } from "@testing-library/react";
+import {
+  Atom,
+  PrimitiveAtom,
+  atom,
+  getDefaultStore,
+  useAtom,
+  useAtomValue,
+  useSetAtom,
+} from "jotai";
+import React, { ReactNode, useContext, useEffect } from "react";
+import { createLifecycleUtils } from "../shared/testing/lifecycle";
+import { createScope, molecule, resetDefaultInjector, use } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
+import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
-import { useScopes } from "./useScopes";
+import { I } from "vitest/dist/types-198fd1d9";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -17,19 +27,23 @@ export const UserScope = createScope("user@example.com");
 
 const AtomScope = createScope(atom("user@example.com"));
 
-export const UserMolecule = molecule((_, getScope) => {
-  const userId = getScope(UserScope);
+const userLifecycle = createLifecycleUtils();
+export const UserMolecule = molecule(() => {
+  const userId = use(UserScope);
 
+  userLifecycle.connect(userId);
   return {
     example: Math.random(),
     userId,
   };
 });
 
-const AtomMolecule = molecule((_, getScope) => {
-  const userAtom = getScope(AtomScope);
+const atomLifecycle = createLifecycleUtils();
+const AtomMolecule = molecule(() => {
+  const userAtom = use(AtomScope);
 
   const userNameAtom = atom((get) => get(userAtom) + " name");
+  atomLifecycle.connect(userAtom);
   return {
     example: Math.random(),
     userIdAtom: userAtom,
@@ -37,267 +51,429 @@ const AtomMolecule = molecule((_, getScope) => {
   };
 });
 
-test("Use molecule should produce a single value across multiple uses", () => {
-  const { result: result1 } = renderHook(() => useMolecule(ExampleMolecule));
-  const { result: result2 } = renderHook(() => useMolecule(ExampleMolecule));
+strictModeSuite(({ wrapper: Outer, isStrict }) => {
+  test("Use molecule should produce a single value across multiple uses", () => {
+    const { result: result1 } = renderHook(() => useMolecule(ExampleMolecule), {
+      wrapper: Outer,
+    });
+    const { result: result2 } = renderHook(() => useMolecule(ExampleMolecule), {
+      wrapper: Outer,
+    });
 
-  expect(result1.current).toBe(result2.current);
-});
+    expect(result1.current).toBe(result2.current);
+  });
 
-test("Alternating scopes", () => {
-  const ScopeA = createScope(undefined);
-  const ScopeB = createScope(undefined);
-  const ScopeC = createScope(undefined);
+  test("Alternating scopes", () => {
+    const ScopeA = createScope(undefined);
+    const ScopeB = createScope(undefined);
+    const ScopeC = createScope(undefined);
 
-  const ScopeAMolecule = molecule(
-    (mol, scope) =>
-      `${scope(ScopeA)}/${scope(ScopeB)}/${scope(ScopeC)}`
-  );
-  const Wrapper = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={ScopeA} value={"a1"}>
-      <ScopeProvider scope={ScopeB} value={"b1"}>
-        <ScopeProvider scope={ScopeC} value={"c1"}>
-          <ScopeProvider scope={ScopeB} value={"b2"}>
+    const ScopeAMolecule = molecule(
+      (mol, scope) => `${scope(ScopeA)}/${scope(ScopeB)}/${scope(ScopeC)}`,
+    );
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={ScopeA} value={"a1"}>
+          <ScopeProvider scope={ScopeB} value={"b1"}>
+            <ScopeProvider scope={ScopeC} value={"c1"}>
+              <ScopeProvider scope={ScopeB} value={"b2"}>
+                {children}
+              </ScopeProvider>
+            </ScopeProvider>
+          </ScopeProvider>
+        </ScopeProvider>
+      </Outer>
+    );
+
+    const useTestcase = () => {
+      return {
+        molecule: useMolecule(ScopeAMolecule),
+        context: useContext(ScopeContext),
+      };
+    };
+    const { result } = renderHook(useTestcase, {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.molecule).toStrictEqual("a1/b2/c1");
+  });
+
+  test("Use molecule should produce a different value in different providers", () => {
+    const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={UserScope} value={"sam@example.com"}>
+          {children}
+        </ScopeProvider>
+      </Outer>
+    );
+    const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider
+          scope={UserScope}
+          value={"jeffrey@example.com"}
+          children={children}
+        />
+      </Outer>
+    );
+
+    const useUserMolecule = () => {
+      return {
+        molecule: useMolecule(UserMolecule),
+        context: useContext(ScopeContext),
+      };
+    };
+
+    const { result: result1, ...rest1 } = renderHook(useUserMolecule, {
+      wrapper: Wrapper1,
+    });
+
+    expect(userLifecycle.mounts).toHaveBeenLastCalledWith("sam@example.com");
+
+    const { result: result2, ...rest2 } = renderHook(useUserMolecule, {
+      wrapper: Wrapper2,
+    });
+    expect(userLifecycle.mounts).toHaveBeenLastCalledWith(
+      "jeffrey@example.com",
+    );
+
+    expect(result1.current.context).toStrictEqual([
+      [UserScope, "sam@example.com"],
+    ]);
+    expect(result1.current.molecule.userId).toBe("sam@example.com");
+    expect(result2.current.molecule.userId).toBe("jeffrey@example.com");
+
+    rest1.unmount();
+    expect(userLifecycle.unmounts).toHaveBeenLastCalledWith("sam@example.com");
+
+    rest2.unmount();
+    expect(userLifecycle.unmounts).toHaveBeenLastCalledWith(
+      "jeffrey@example.com",
+    );
+
+    if (isStrict) {
+      // userLifecycle.expectCalledTimesEach(4, 4, 4);
+    } else {
+      userLifecycle.expectToHaveBeenCalledTimes(2);
+      userLifecycle.expectToMatchCalls(
+        ["sam@example.com"],
+        ["jeffrey@example.com"],
+      );
+    }
+  });
+
+  describe("Separate ScopeProviders", () => {
+    beforeEach(() => {
+      // Turn on logging for this test
+      resetDefaultInjector({});
+    });
+    test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
+      const TestHookContext = React.createContext<
+        ReturnType<typeof useTestHook>
+      >(undefined as any);
+
+      const mountA = atom(true);
+      const valueA = atom(undefined as unknown);
+      const mountB = atom(true);
+      const valueB = atom(undefined as unknown);
+
+      const useTestHook = () => {
+        const setMountA = useSetAtom(mountA);
+        const setMountB = useSetAtom(mountB);
+        return { setMountA, setMountB };
+      };
+
+      const sharedAtExample = "shared@example.com";
+
+      const Child = (props: {
+        name: string;
+        value: PrimitiveAtom<unknown>;
+      }) => {
+        const value = useMolecule(UserMolecule);
+        const setValue = useSetAtom(props.value);
+
+        // console.log("Child render", props.name, value);
+        useEffect(() => {
+          // console.log("Child effect", props.name, value);
+          setValue(value);
+          return () => {
+            setValue(undefined);
+          };
+        }, []);
+
+        setValue(value);
+        return <div>Bad</div>;
+      };
+      const ProviderWithChild = (props: {
+        show: Atom<boolean>;
+        value: PrimitiveAtom<unknown>;
+        name: string;
+      }) => {
+        const isShown = useAtomValue(props.show);
+        return (
+          <ScopeProvider scope={UserScope} value={sharedAtExample}>
+            {isShown && <Child name={props.name} value={props.value} />}
+          </ScopeProvider>
+        );
+      };
+
+      const Controller = () => {
+        return (
+          <>
+            <ProviderWithChild key="a" name="a" show={mountA} value={valueA} />
+            <ProviderWithChild key="b" name="b" show={mountB} value={valueB} />
+          </>
+        );
+      };
+
+      const TestHookProvider: React.FC<{ children: ReactNode }> = ({
+        children,
+      }) => {
+        const props = useTestHook();
+        return (
+          <Outer>
+            <TestHookContext.Provider value={props}>
+              {children}
+              <Controller />
+            </TestHookContext.Provider>
+          </Outer>
+        );
+      };
+
+      userLifecycle.expectUncalled();
+
+      // When the component is initially mounted
+      const { result, ...rest } = renderHook(
+        () => useContext(TestHookContext),
+        {
+          wrapper: TestHookProvider,
+        },
+      );
+
+      const initialValue = getDefaultStore().get(valueA);
+      let aValue = getDefaultStore().get(valueA);
+      let bValue = getDefaultStore().get(valueB);
+
+      // Then the molecule is mounted
+      // and executed twice, since each call to `useMolecule` will call once
+      // and mounted once, because only one value will be used
+      // and never unmounted
+      if (isStrict) {
+        userLifecycle.expectCalledTimesEach(2, 2, 1);
+      } else {
+        userLifecycle.expectCalledTimesEach(2, 1, 0);
+      }
+      expect(aValue).toBe(bValue);
+
+      act(() => {
+        // When A is unmounted
+        result.current.setMountA(false);
+      });
+
+      // Then the molecule is still mounted
+      // Because it's still being used by B
+      if (isStrict) {
+        userLifecycle.expectCalledTimesEach(2, 2, 1);
+      } else {
+        userLifecycle.expectCalledTimesEach(2, 1, 0);
+      }
+
+      aValue = getDefaultStore().get(valueA);
+      bValue = getDefaultStore().get(valueB);
+
+      // Then A has been unmounted
+      expect(aValue).toBe(undefined);
+      // Then B still has the original value
+      expect(bValue).toBe(initialValue);
+
+      // When B is unmounted
+      act(() => {
+        // When A is unmounted
+        result.current.setMountB(false);
+      });
+
+      // Then the molecule is unmounted
+      if (isStrict) {
+        userLifecycle.expectCalledTimesEach(2, 2, 2);
+      } else {
+        userLifecycle.expectCalledTimesEach(2, 1, 1);
+      }
+
+      aValue = getDefaultStore().get(valueA);
+      bValue = getDefaultStore().get(valueB);
+
+      // Then both values are cleaned up
+      expect(aValue).not.toBe(initialValue);
+      expect(bValue).not.toBe(initialValue);
+      expect(aValue).toBeUndefined();
+      expect(bValue).toBeUndefined();
+
+      // When B is re-mounted
+      act(() => {
+        result.current.setMountB(true);
+      });
+
+      bValue = getDefaultStore().get(valueB);
+      // Then a new molecule value is created
+      if (isStrict) {
+        userLifecycle.expectCalledTimesEach(3, 4, 3);
+      } else {
+        userLifecycle.expectCalledTimesEach(3, 2, 1);
+      }
+      expect(bValue).not.toBeUndefined();
+      // And it doesn't match the original value
+      expect(bValue).not.toBe(initialValue);
+      expect(bValue).not.toStrictEqual(initialValue);
+
+      // When the component is unmounted
+      rest.unmount();
+
+      // Then the user molecule lifecycle has been completed twice
+      if (isStrict) {
+        userLifecycle.expectCalledTimesEach(3, 4, 4);
+      } else {
+        userLifecycle.expectCalledTimesEach(3, 2, 2);
+      }
+    });
+  });
+
+  test("Void scopes can be used to create unique molecules", () => {
+    const VoidScope = createScope(undefined);
+
+    const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={VoidScope} children={children} uniqueValue />
+      </Outer>
+    );
+    const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={VoidScope} children={children} uniqueValue />
+      </Outer>
+    );
+
+    const voidLifecycle = createLifecycleUtils();
+    const voidMolecule = molecule(() => {
+      use(VoidScope);
+      voidLifecycle.connect();
+      return {
+        example: Math.random(),
+      };
+    });
+    const useVoidMolecule = () => {
+      return {
+        molecule: useMolecule(voidMolecule),
+        context: useContext(ScopeContext),
+      };
+    };
+
+    voidLifecycle.expectUncalled();
+    const { result: result1, ...rest1 } = renderHook(useVoidMolecule, {
+      wrapper: Wrapper1,
+    });
+    const { result: result2, ...rest2 } = renderHook(useVoidMolecule, {
+      wrapper: Wrapper2,
+    });
+
+    expect(result1.current.molecule).not.toBe(result2.current.molecule);
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      voidLifecycle.expectCalledTimesEach(2, 4, 2);
+    } else {
+      voidLifecycle.expectCalledTimesEach(2, 2, 0);
+    }
+
+    rest1.unmount();
+    rest2.unmount();
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      voidLifecycle.expectCalledTimesEach(2, 4, 4);
+    } else {
+      voidLifecycle.expectToHaveBeenCalledTimes(2);
+    }
+  });
+
+  test("Object scope values are shared across providers", () => {
+    const childAtom = atom("sam@example.com");
+    const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
+      <ScopeProvider scope={AtomScope} value={childAtom} children={children} />
+    );
+    const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
+      <ScopeProvider scope={AtomScope} value={childAtom} children={children} />
+    );
+
+    const useUserMolecule = () => {
+      const molecule = useMolecule(AtomMolecule);
+      const context = useContext(ScopeContext);
+      const name = useAtom(molecule.userNameAtom)[0];
+      const userId = useAtom(molecule.userIdAtom)[0];
+      return {
+        molecule,
+        context,
+        name,
+        userId,
+      };
+    };
+    atomLifecycle.expectUncalled();
+    const { result: result1, ...rest1 } = renderHook(useUserMolecule, {
+      wrapper: Wrapper1,
+    });
+    atomLifecycle.expectActivelyMounted();
+    const { result: result2, ...rest2 } = renderHook(useUserMolecule, {
+      wrapper: Wrapper2,
+    });
+    atomLifecycle.expectActivelyMounted();
+    expect(result1.current.molecule).toBe(result2.current.molecule);
+    expect(result1.current.userId).toBe("sam@example.com");
+    expect(result2.current.userId).toBe("sam@example.com");
+
+    rest1.unmount();
+    atomLifecycle.expectActivelyMounted();
+    rest2.unmount();
+
+    atomLifecycle.expectToMatchCalls([childAtom]);
+  });
+
+  test("Use molecule should will use the nested scope", () => {
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={UserScope} value={"sam@example.com"}>
+          <ScopeProvider scope={UserScope} value={"jeffrey@example.com"}>
             {children}
           </ScopeProvider>
         </ScopeProvider>
-      </ScopeProvider>
-    </ScopeProvider>
-  );
-
-  const useTestcase = () => {
-    return {
-      molecule: useMolecule(ScopeAMolecule),
-      context: useContext(ScopeContext),
-    };
-  };
-  const { result } = renderHook(useTestcase, {
-    wrapper: Wrapper,
-  });
-
-  expect(result.current.molecule).toStrictEqual("a1/b2/c1");
-});
-
-test("Use molecule should produce a different value in different providers", () => {
-  const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={UserScope} value={"sam@example.com"}>
-      {children}
-    </ScopeProvider>
-  );
-  const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider
-      scope={UserScope}
-      value={"jeffrey@example.com"}
-      children={children}
-    />
-  );
-
-  const useUserMolecule = () => {
-    return {
-      molecule: useMolecule(UserMolecule),
-      context: useContext(ScopeContext),
-    };
-  };
-  const { result: result1 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper1,
-  });
-  const { result: result2 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper2,
-  });
-
-  expect(result1.current.context).toStrictEqual([
-    [UserScope, "sam@example.com"],
-  ]);
-  expect(result1.current.molecule.userId).toBe("sam@example.com");
-  expect(result2.current.molecule.userId).toBe("jeffrey@example.com");
-});
-
-describe("String scopes", () => {
-  const useUserMolecule = () => {
-    return {
-      molecule: useMolecule(UserMolecule),
-      context: useContext(ScopeContext),
-    };
-  };
-
-  test("String scope values are cleaned up at the right time (not too soon, not too late)", async () => {
-    const StringScopeTestContext = React.createContext<ReturnType<typeof useTextHook>>(
-      undefined as any
+      </Outer>
     );
-    const useTextHook = () => {
-      const [mountA, setMountA] = useState(true);
-      const [mountB, setMountB] = useState(true);
-      const insideValue = useRef(null as any);
-      const props = { mountA, mountB, setMountA, setMountB, insideValue };
-      return props;
-    };
-    const sharedKey = "shared@example.com";
-    const TestStuffProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-      const props = useTextHook();
-      return (
-        <StringScopeTestContext.Provider value={props}>
-          {children}
-          <Controller {...props} />
-        </StringScopeTestContext.Provider>
-      );
-    };
-    const Child = () => {
-      const scopes = useScopes().filter(([scope]) => scope !== ComponentScope);
-      const context = useContext(StringScopeTestContext);
-      context.insideValue.current = scopes;
-      return <div>Bad</div>
-    }
-    const Controller = (props: any) => {
-      return (
-        <>
-          {props.mountA && (
-            <ScopeProvider scope={UserScope} value={sharedKey}>
-              <Child />
-            </ScopeProvider>
-          )}
-          {props.mountB && (
-            <ScopeProvider scope={UserScope} value={sharedKey}>
-              <Child />
-            </ScopeProvider>
-          )}
-        </>
-      );
-    };
 
-    const { result } = renderHook(() => useContext(StringScopeTestContext), {
-      wrapper: TestStuffProvider,
+    userLifecycle.expectUncalled();
+    const useUserMolecule = () => {
+      return {
+        molecule: useMolecule(UserMolecule),
+        context: useContext(ScopeContext),
+      };
+    };
+    const { result, ...rest } = renderHook(useUserMolecule, {
+      wrapper: Wrapper,
     });
 
-    const { insideValue } = result.current;
-    const initialScopes = insideValue.current;
-    expect(initialScopes).not.toBeUndefined();
-    expect(initialScopes.length).toBe(1);
-
-    const userScopeTuple = initialScopes[0];
-    if (true) {
-      const [scopeKey, scopeValue] = userScopeTuple;
-      expect(scopeKey).toBe(UserScope);
-      expect(scopeValue).toBe(sharedKey);
+    if (isStrict) {
+      userLifecycle.expectCalledTimesEach(1, 2, 1);
+    } else {
+      userLifecycle.expectCalledTimesEach(1, 1, 0);
     }
 
-    await act(() => {
-      result.current.setMountA(false);
-    });
+    expect(result.current.context).toStrictEqual([
+      [UserScope, "jeffrey@example.com"],
+    ]);
+    expect(result.current.molecule.userId).toBe("jeffrey@example.com");
 
-    const afterUnmountCache = insideValue.current;
+    rest.unmount();
 
-    expect(afterUnmountCache[0]).toBe(userScopeTuple);
-
-    act(() => {
-      result.current.setMountB(false);
-    });
-
-    const finalTuples = insideValue.current;
-    expect(finalTuples[0]).toBe(userScopeTuple);
-
-
-    act(() => {
-      result.current.setMountB(true);
-    });
-
-    const freshTuples = insideValue.current;
-    const [freshTuple] = freshTuples;
-    expect(freshTuple).not.toBe(userScopeTuple);
-    if (true) {
-      const [scopeKey, scopeValue] = freshTuple;
-      expect(scopeKey).toBe(UserScope);
-      expect(scopeValue).toBe(sharedKey);
+    if (isStrict) {
+      userLifecycle.expectCalledTimesEach(1, 2, 2);
+    } else {
+      userLifecycle.expectCalledTimesEach(1, 1, 1);
+      userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
-
   });
-});
-
-test("Void scopes can be used to create unique molecules", () => {
-  const VoidScope = createScope(undefined);
-
-  const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={VoidScope} children={children} uniqueValue />
-  );
-  const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={VoidScope} children={children} uniqueValue />
-  );
-
-  const voidMolecule = molecule((_, getScope) => {
-    getScope(VoidScope);
-    return {
-      example: Math.random(),
-    };
-  });
-  const useVoidMolecule = () => {
-    return {
-      molecule: useMolecule(voidMolecule),
-      context: useContext(ScopeContext),
-    };
-  };
-  const { result: result1 } = renderHook(useVoidMolecule, {
-    wrapper: Wrapper1,
-  });
-  const { result: result2 } = renderHook(useVoidMolecule, {
-    wrapper: Wrapper2,
-  });
-
-  expect(result1.current.molecule).not.toBe(result2.current.molecule);
-});
-
-test("Object scope values are shared across providers", () => {
-  const childAtom = atom("sam@example.com");
-  const Wrapper1 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={AtomScope} value={childAtom} children={children} />
-  );
-  const Wrapper2 = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={AtomScope} value={childAtom} children={children} />
-  );
-
-  const useUserMolecule = () => {
-    const molecule = useMolecule(AtomMolecule);
-    const context = useContext(ScopeContext);
-    const name = useAtom(molecule.userNameAtom)[0];
-    const userId = useAtom(molecule.userIdAtom)[0];
-    return {
-      molecule,
-      context,
-      name,
-      userId,
-    };
-  };
-  const { result: result1 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper1,
-  });
-  const { result: result2 } = renderHook(useUserMolecule, {
-    wrapper: Wrapper2,
-  });
-
-  expect(result1.current.molecule).toBe(result2.current.molecule);
-  expect(result1.current.userId).toBe("sam@example.com");
-  expect(result2.current.userId).toBe("sam@example.com");
-});
-
-test("Use molecule should will use the nested scope", () => {
-  const Wrapper = ({ children }: { children?: React.ReactNode }) => (
-    <ScopeProvider scope={UserScope} value={"sam@example.com"}>
-      <ScopeProvider scope={UserScope} value={"jeffrey@example.com"}>
-        {children}
-      </ScopeProvider>
-    </ScopeProvider>
-  );
-
-  const useUserMolecule = () => {
-    return {
-      molecule: useMolecule(UserMolecule),
-      context: useContext(ScopeContext),
-    };
-  };
-  const { result } = renderHook(useUserMolecule, {
-    wrapper: Wrapper,
-  });
-
-  expect(result.current.context).toStrictEqual([
-    [UserScope, "jeffrey@example.com"],
-  ]);
-  expect(result.current.molecule.userId).toBe("jeffrey@example.com");
 });

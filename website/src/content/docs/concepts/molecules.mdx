@@ -3,6 +3,8 @@ title: "Molecules"
 sidebar:
   order: 1
 ---
+import LifecycleExample from "~/components/examples/LifecycleExample.astro";
+
 
 Molecules are the core building block of bunshi. They are functions that return a value.
 
@@ -21,7 +23,7 @@ import { molecule } from "bunshi";
 
 export const RandomMolecule = molecule(() => Math.random());
 export const UsernameMolecule = molecule(
-  (mol) => `You are user ${mol(RandomMolecule)}`
+  (mol) => `You are user ${mol(RandomMolecule)}`,
 );
 export const IDMolecule = molecule((mol) => `ID: ${mol(RandomMolecule)}`);
 ```
@@ -33,10 +35,88 @@ import { molecule } from "bunshi";
 import { userIdScope } from "./scopes";
 
 export const UsernameMolecule = molecule(
-  (mol, scope) => `You are user ${scope(userIdScope)}`
+  (mol, scope) => `You are user ${scope(userIdScope)}`,
 );
 export const IDMolecule = molecule((mol) => `ID: ${scope(userIdScope)}`);
 ```
+
+## `use` Syntax
+
+New in Bunshi 2.1 is the `use` syntax for declaring dependencies instead of calling `mol` of `scope`.
+
+```ts
+import { molecule, use } from "bunshi";
+
+export const RandomMolecule = molecule(() => Math.random());
+export const UsernameMolecule = molecule(
+  () => `You are user ${use(RandomMolecule)}`,
+);
+export const IDMolecule = molecule(() => `ID: ${use(RandomMolecule)}`);
+```
+
+Molecules can also depend on [scopes](/scopes). When a molecule depends on a scope, then an instance will be created for each scope. In other words, your molecule function will be run once per unique scope, instead of once globally for your application.
+
+```ts
+import { molecule, use } from "bunshi";
+import { userIdScope } from "./scopes";
+
+export const UsernameMolecule = molecule(
+  () => `You are user ${use(userIdScope)}`,
+);
+export const IDMolecule = molecule(() => `ID: ${use(userIdScope)}`);
+```
+
+## Rules
+
+- A molecule without any dependencies or scopes will return a single value.
+- A molecule that depends on scope (i.e. a scoped molecule) will return a single value per unique scope.
+- A molecule that depends on a _Scoped Molecule_ will return a single value per unique scope of it's dependency.
+- If a molecule calls `scope` or `use` with a scope then it will be a _scoped molecule_
+- If a molecule calls `mol` or `use` with a molecule then it will _depend_ on that molecule
+
+## Molecule Lifecycle
+
+New in Bunshi 2.1 are the `onMount` and `onUnmount` lifecycle hooks. They allow state libraries to be shared and
+cleaned up at the right time.
+
+### onMount
+
+Run some code only when a molecule is mounted.
+
+```ts
+import { molecule, onMount } from "bunshi";
+
+molecule(() => {
+  let i = 0;
+  // use `onMount` to guarantee that your code is run only when a molecule is used
+  onMount(() => {
+    const id = setInterval(() => console.log("Ticking...", i++), 1000);
+    // Calls
+    return () => clearInterval(id);
+  });
+  return i;
+});
+```
+
+### onUnmount
+
+```ts
+import { molecule, onUnmount } from "bunshi";
+
+molecule(() => {
+  onUnmount(() => console.log("Goodbye!"));
+  return Math.random();
+});
+```
+
+### Example
+
+<LifecycleExample />
+
+Lifecycle events are called differently in React Strict Mode.
+
+See:
+ - [Lifecycle Events](/concepts/lifecycle)
 
 ## Best Practices
 
@@ -63,6 +143,15 @@ export const FormAtom = molecule((mol, scope) => {
 Molecules don't just have to return only one type of thing. They can create stores using one
 or many libraries and wire them all together.
 
+Here's an example that combines three libraries:
+
+- Valtio
+- Zustand
+- Jotai
+
+The final `derivedAtom` is reactive to all 3, and the `CountersAtom` is useable across
+Vue, React and vanilla javascript.
+
 ```ts
 import { molecule, ComponentScope } from "bunshi";
 
@@ -80,7 +169,6 @@ import { atomWithStore } from "jotai-zustand";
 import { atomWithProxy } from "jotai-valtio";
 
 export const CountersAtom = molecule(() => {
-
   // Zustand store
   const counterStore = create(() => ({ count: 0 }));
 
@@ -94,7 +182,7 @@ export const CountersAtom = molecule(() => {
   const storeAtom = atomWithStore(counterStore);
   const proxyAtom = atomWithProxy(proxyState);
   const derivedAtom = atom(
-    (get) => get(storeAtom) * get(proxyAtom) * get(counterAtom)
+    (get) => get(storeAtom) * get(proxyAtom) * get(counterAtom),
   );
 
   // Molecules returns all the stores
@@ -106,11 +194,3 @@ export const CountersAtom = molecule(() => {
   };
 });
 ```
-
-## Rules
-
-- A molecule without any dependencies or scopes will only be called once.
-- A molecule that depends on scope (i.e. a scoped molecule) will be called once per unique scope.
-- A molecule that depends on a _Scoped Molecule_ will be called once per unique scope of it's dependency.
-- If a molecule calls `scope` then it will be a _scoped molecule_
-- If a molecule calls `mol` then it will _depend_ on that molecule

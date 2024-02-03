@@ -5,3 +5,4 @@ export { default as valtio } from "./valtio/sources";
 export { default as xstate } from "./xstate/sources";
 export { default as zustand } from "./zustand/sources";
 export { default as vueRefs } from "./vue-refs/sources";
+export { default as lifecycle } from "./lifecycle/sources";

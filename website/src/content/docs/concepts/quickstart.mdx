@@ -10,7 +10,8 @@ import { quickstart } from "~/source-examples/sources";
 
 ## Installation
 
-Bunshi is distributed on NPM as both a CommonJS and ES Module. It supports both Javscript and Typescript.
+Bunshi is distributed on NPM as both a CommonJS and ES Module. It supports both Javscript and Typescript,
+and since it's written in Typescript it comes with type definitions and tests for typing out of the box.
 
 ```sh
 npm i -D bunshi
@@ -18,8 +19,8 @@ npm i -D bunshi
 
 ## Create a Molecule
 
-Molecules are the core building block of bunshi. They are functions that return a value. Use molecules when you want to create a stable
-object to share with the rest of your application. For this example, a `jotai` atom.
+**Molecules** are the core of bunshi. They are functions that return a value. Use molecules to create something
+to share across your app. For this example, a `jotai` atom.
 
 ```ts
 import { molecule } from "bunshi";
@@ -28,11 +29,13 @@ import { atom } from "jotai/vanilla";
 export const CountMolecule = molecule(() => atom(0));
 ```
 
-> When this `CountMolecule` is used it will always return the same `atom`. The value is memoized and cached.
+> When this `CountMolecule` is used it will always return the same `atom`. The value is memoized and cached
+> so that it can be shared across an app.
 
 ## Use a Molecule
 
-To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue). An instance of `atom` will be automatically created once and shared across the application in every call to `useMolecule`.
+To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue). An instance of `atom` will be automatically created once 
+and shared across the application in every call to `useMolecule`.
 
 <Tabs>
   <TabItem label="React">
@@ -64,22 +67,22 @@ To use a molecule, pass it to `useMolecule` in your framework integration (React
 
 ## Scope a Molecule
 
-Molecules can be [scoped](/concepts/scopes). Scoped molecules provide a single value per scope, instead of a single value globally.
-In the above example the `atom` was shared globally across the app. Instead, let's make each component have it's own state
+Molecules can be [scoped](/concepts/scopes). Scoped molecules provide one value per scope, instead of one value globally.
+In the above example the `atom` was shared globally across the app, now let's give each component it's own state
 using the built-in `ComponentScope`.
 
 ```ts
-import { ComponentScope, molecule } from "bunshi";
+import { ComponentScope, molecule, use } from "bunshi";
 import { atom } from "jotai/vanilla";
 
-export const CountMolecule = molecule((_, scope) => {
-  // Because `scope` was called here, this molecule is component scoped
-  scope(ComponentScope);
+export const CountMolecule = molecule(() => {
+  // Because scope is used here, this molecule is component scoped
+  use(ComponentScope);
   return atom(0);
 });
 ```
 
-Scoping is declarative. By calling `scope(ComponentScope)` the molecule will automatically be scoped.
+Scoping is declarative. By calling `use(ComponentScope)` the molecule will automatically be scoped.
 
 <Tabs>
   <TabItem label="React">
@@ -114,21 +117,21 @@ Scoping is declarative. By calling `scope(ComponentScope)` the molecule will aut
 
 ## Use a custom scope
 
-Sometimes state needs to be shared, not globally or per-component, but somewhere in the middle like a Form. Bunshi has `createScope` for this.
-There are a lot of use cases for [scopes](/concepts/scopes) for sharing data across pages, sections, forms, or even rows or columns in a table.
+Sometimes state doesn't need to be shared globally or per-component, but somewhere in the middle like a Form. Bunshi has `createScope` for this.
+There are many use cases for [scopes](/concepts/scopes); sharing data across pages, sections, forms, or even rows or columns in a table.
 
 Here let's share our state for all counters in the same form.
 
 ```ts
-import { createScope, molecule } from "bunshi";
+import { createScope, molecule, use } from "bunshi";
 import { atom } from "jotai/vanilla";
 
 // FormScope will be used for provided a string value to forms
 export const FormScope = createScope("none");
 
-export const CountMolecule = molecule((_, scope) => {
-  // Since `scope` is called here, it makes `CountMolecule` scoped to the form
-  scope(FormScope);
+export const CountMolecule = molecule(() => {
+  // Since scope is used here, it makes `CountMolecule` scoped to the form
+  use(FormScope);
   return atom(0);
 });
 ```
@@ -139,7 +142,8 @@ Custom scopes need to be provided using the framework-specific API. Bunshi comes
 
 <Tabs>
   <TabItem label="React">
-    For React use a `ScopeProvider` as a wrapping component, and all children can implicitly use that scope.
+    For React use a `ScopeProvider` as a wrapping component, and all children
+    can implicitly use that scope.
     <CodeEditor
       files={{
         "App.tsx": quickstart.ReactFormApp,
@@ -151,7 +155,8 @@ Custom scopes need to be provided using the framework-specific API. Bunshi comes
     />
   </TabItem>
   <TabItem label="Vue">
-    For Vue use `provideScope` to provide scope implicitly to all children in the `slot`.
+    For Vue use `provideScope` to provide scope implicitly to all children in
+    the `slot`.
     <CodeEditor
       files={{
         "src/App.vue": quickstart.VueFormApp,
@@ -168,7 +173,7 @@ Custom scopes need to be provided using the framework-specific API. Bunshi comes
   </TabItem>
 </Tabs>
 
-In this example everything inside of the `<Form>` component will be share an `atom`, it won't be unique per component
+In this example everything inside of the `<Form>` component will share an `atom`, it won't be unique per component
 or shared across the entire application.
 
 ## Conclusion - Decoupled and Lazy
@@ -176,8 +181,13 @@ or shared across the entire application.
 The code that you wrote is decoupled and lazy.
 
 - **Decoupled**: You can refactor the `CountMolecule` without affecting the thing that depend on it.
-- **Lazy**: An atom is only created lazily when it's needed. It's not eagerly created and sitting around in a variable.
+- **Lazy**: An atom is only created lazily when it's needed. It's not eagerly created and sitting around in a global variable.
 
 When your write code with molecules, you can pull state up or push state down, without having to refactor your components.
 
-We completed an example of scoping the `atom` to be global, scoped to a component, or shared inside of a form.
+There are many other powerful features for molecules in Bunshi, such as:
+
+- Molecules using other molecules
+- Molecules using lifecycles to run code when they are first used (i.e. mounted or unmounted)
+- Molecule interfaces for decoupling molecules
+- Straightforward usage with many different state libraries

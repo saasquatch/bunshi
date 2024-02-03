@@ -1,58 +1,27 @@
-import { atom, PrimitiveAtom } from "jotai";
-import { createInjector, getDefaultInjector } from "./injector";
-import { ErrorInvalidGlobalInjector, ErrorInvalidMolecule, ErrorInvalidScope, ErrorUnboundMolecule } from "./internal/errors";
-import { DefaultInjector } from "./internal/symbols";
+import { atom } from "jotai";
+import { createInjector } from "./injector";
+import {
+  ErrorBadUse,
+  ErrorInvalidMolecule,
+  ErrorInvalidScope,
+  ErrorUnboundMolecule,
+} from "./internal/errors";
+import { use } from "./lifecycle";
 import { Molecule, molecule, moleculeInterface } from "./molecule";
 import { createScope } from "./scope";
+import {
+  CompanyScope,
+  UserScope,
+  company1Scope,
+  company2Scope,
+  companyMolecule,
+  exampleMol,
+  unrelatedScope1,
+  user1Scope,
+  user2Scope,
+  userMolecule,
+} from "./testing/test-molecules";
 import { ScopeTuple } from "./types";
-
-type BaseAtoms = {
-  nameAtom: PrimitiveAtom<string>;
-};
-const exampleMol = molecule<BaseAtoms>(() => {
-  return {
-    nameAtom: atom(`${Math.random()}`),
-  };
-});
-
-
-
-const UnrelatedScope = createScope<number>(1);
-const unrelatedScope1: ScopeTuple<number> = [UnrelatedScope, 1];
-
-const UserScope = createScope<string>("bob@example.com");
-const user1Scope: ScopeTuple<string> = [UserScope, "one@example.com"];
-const user2Scope: ScopeTuple<string> = [UserScope, "two@example.com"];
-
-const CompanyScope = createScope<string>("example.com");
-const company1Scope: ScopeTuple<string> = [CompanyScope, "example.com"];
-const company2Scope: ScopeTuple<string> = [CompanyScope, "foo.example.com"];
-
-const userMolecule = molecule((mol, scope) => {
-  const userId = scope(UserScope);
-  const company = mol(companyMolecule);
-  const userNameAtom = atom(userId + " name");
-  const userCountryAtom = atom(userId + " country");
-  const groupAtom = atom((get) => {
-    return userId + " in " + get(company.companyNameAtom);
-  });
-  return {
-    userId,
-    userCountryAtom,
-    userNameAtom,
-    groupAtom,
-    company: company.company,
-  };
-});
-
-const companyMolecule = molecule((_, getScope) => {
-  const company = getScope(CompanyScope);
-  const companyNameAtom = atom(company.toUpperCase());
-  return {
-    company,
-    companyNameAtom,
-  };
-});
 
 test("returns the same values for dependency-free molecule", () => {
   const injector = createInjector();
@@ -64,7 +33,6 @@ test("returns the same values for dependency-free molecule", () => {
 });
 
 describe("Derived molecules", () => {
-
   const derivedMol = molecule((mol) => {
     const base = mol(exampleMol);
     return { base, ageAtom: atom(`${Math.random()}`) };
@@ -104,8 +72,7 @@ describe("Derived molecules", () => {
   test("returns the same value for 2nd order derived molecule", () => {
     testDerived(doubleDerived);
   });
-})
-
+});
 
 test("two injectors return different molecules", () => {
   const injector1 = createInjector();
@@ -206,7 +173,7 @@ describe("Scoping", () => {
       userMolecule,
       company1Scope,
       unrelatedScope1,
-      user1Scope
+      user1Scope,
     );
     // Molecule has a direct dependency AND a transitive dependency
     // Should be the same for the same scope
@@ -217,13 +184,21 @@ describe("Scoping", () => {
   test("Creates ONLY one molecule per dependent molecule, regardless of scope order", () => {
     const injector = createInjector();
 
-    const firstValue = injector.get(userMolecule, company1Scope, user1Scope);
-    const secondValue = injector.get(userMolecule, user1Scope, company1Scope);
-    const thirdValue = injector.get(
+    const [firstValue, unsub1] = injector.use(
+      userMolecule,
+      company1Scope,
+      user1Scope,
+    );
+    const [secondValue, unsub2] = injector.use(
+      userMolecule,
+      user1Scope,
+      company1Scope,
+    );
+    const [thirdValue, unsub3] = injector.use(
       userMolecule,
       unrelatedScope1,
       user1Scope,
-      company1Scope
+      company1Scope,
     );
     // Molecule has a direct dependency AND a transitive dependency
     // Should be the same for the same scope
@@ -368,19 +343,19 @@ describe("Scoping", () => {
         scope1,
         rightScope1,
         leftScope1,
-        bottomScope1
+        bottomScope1,
       );
       const bottom2 = injector.get(
         molBottom,
         scope2,
         rightScope2,
         leftScope2,
-        bottomScope2
+        bottomScope2,
       );
 
       expect(
         // Second call to get should return the same value
-        injector.get(molBottom)
+        injector.get(molBottom),
       ).toBe(bottom0);
       expect(bottom0).toStrictEqual([
         "bottom",
@@ -392,7 +367,7 @@ describe("Scoping", () => {
 
       expect(
         // Second call to get should return the same value
-        injector.get(molBottom, scope1, rightScope1, leftScope1, bottomScope1)
+        injector.get(molBottom, scope1, rightScope1, leftScope1, bottomScope1),
       ).toBe(bottom1);
       expect(bottom1).toStrictEqual([
         "bottom",
@@ -404,7 +379,7 @@ describe("Scoping", () => {
 
       expect(
         // Second call to get should return the same value
-        injector.get(molBottom, scope2, rightScope2, leftScope2, bottomScope2)
+        injector.get(molBottom, scope2, rightScope2, leftScope2, bottomScope2),
       ).toBe(bottom2);
       expect(bottom2).toStrictEqual([
         "bottom",
@@ -417,11 +392,7 @@ describe("Scoping", () => {
 
     test("Works with a diamond pattern dependency tree, with sibling dependency", () => {
       const molLeft = molecule((mol) => ["left", mol(molTop)]);
-      const molRight = molecule((mol) => [
-        "right",
-        mol(molTop),
-        mol(molLeft),
-      ]);
+      const molRight = molecule((mol) => ["right", mol(molTop), mol(molLeft)]);
 
       const molBottom = molecule((mol) => [
         "bottom",
@@ -538,95 +509,103 @@ describe("Scoping", () => {
 });
 
 describe("Validation", () => {
-
   test("Molecules will throw errors if `mol` is called asynchronously", async () => {
-
     const badMolecule = molecule((mol) => {
       // Okay -- runs sync
       mol(exampleMol);
-      return new Promise((resolve, reject) => setTimeout(() => {
-        try {
-          // Not okay -- runs in a timeout
-          resolve(mol(exampleMol))
-        } catch (e) {
-          reject(e);
-        }
-      }, 10));
+      return new Promise((resolve, reject) =>
+        setTimeout(() => {
+          try {
+            // Not okay -- runs in a timeout
+            resolve(mol(exampleMol));
+          } catch (e) {
+            reject(e);
+          }
+        }, 10),
+      );
     });
 
     const injector1 = createInjector();
 
     const firstValue = injector1.get(badMolecule);
     await expect(firstValue).rejects.toThrow("o");
-  })
-
+  });
 
   test("Molecules will throw errors if `scope` is called asynchronously", async () => {
-
     const badMolecule = molecule((_, scope) => {
       // Okay -- runs sync
-      return new Promise((resolve, reject) => setTimeout(() => {
-        try {
-          // Not okay -- runs in a timeout
-          resolve(scope(UserScope))
-        } catch (e) {
-          reject(e);
-        }
-      }, 10));
+      return new Promise((resolve, reject) =>
+        setTimeout(() => {
+          try {
+            // Not okay -- runs in a timeout
+            resolve(scope(UserScope));
+          } catch (e) {
+            reject(e);
+          }
+        }, 10),
+      );
     });
 
     const injector1 = createInjector();
 
     const firstValue = injector1.get(badMolecule);
     await expect(firstValue).rejects.toThrow("o");
-  })
+  });
 
   describe("Bad dependencies", () => {
     const injector1 = createInjector();
 
     test("Molecules can't depend on garbage molecules", () => {
+      const badMol = molecule(() => use(new Set() as any));
+      expect(() => injector1.get(badMol)).toThrow(ErrorBadUse);
+    });
+    test("Molecules can't depend on garbage molecules", () => {
       const badMol = molecule((mol) => mol(new Set() as any));
       expect(() => injector1.get(badMol)).toThrow(ErrorInvalidMolecule);
-    })
+    });
+    test("Molecules can't depend on garbage scopes", () => {
+      const badMol = molecule(() => use(new Set() as any));
+      expect(() => injector1.get(badMol)).toThrow(ErrorBadUse);
+    });
     test("Molecules can't depend on garbage scopes", () => {
       const badMol = molecule((_, scope) => scope(new Set() as any));
       expect(() => injector1.get(badMol)).toThrow(ErrorInvalidScope);
-    })
+    });
   });
 
   describe("Validation for inputs to injector", () => {
     const injector1 = createInjector();
 
     test("Can't `get` a non-molecule", () => {
-      expect(() => injector1.get(new Set() as any)).toThrow(ErrorInvalidMolecule);
-    })
+      expect(() => injector1.get(new Set() as any)).toThrow(
+        ErrorInvalidMolecule,
+      );
+    });
     test("Can't `use` a non-molecule", () => {
-      expect(() => injector1.use(new Map() as any)).toThrow(ErrorInvalidMolecule);
-    })
-
+      expect(() => injector1.use(new Map() as any)).toThrow(
+        ErrorInvalidMolecule,
+      );
+    });
   });
-})
-
+});
 
 describe("Binding", () => {
-
   interface HTTPService {
     identity: string;
-    get(url: string): Promise<string>
-    post(url: string): Promise<string>
+    get(url: string): Promise<string>;
+    post(url: string): Promise<string>;
   }
 
   const HTTPService = moleculeInterface<HTTPService>();
 
   const NeedsHttp = molecule((mol) => {
-
     const httpService = mol(HTTPService);
 
-    const logout = () => httpService.post("/logout")
+    const logout = () => httpService.post("/logout");
     return {
       httpService,
-      logout
-    }
+      logout,
+    };
   });
 
   test("Errors when a molecule interface is not bound", () => {
@@ -635,10 +614,7 @@ describe("Binding", () => {
   });
 
   describe("Allows binding a molecule interface to a molecule", () => {
-
-
     const MockHTTPMolecule = molecule<HTTPService>(() => {
-
       return {
         identity: "MockHTTP",
         async get(url) {
@@ -647,12 +623,12 @@ describe("Binding", () => {
         async post(url) {
           return "I am fake";
         },
-      }
+      };
     });
 
     test("Injects bindings into downstream dependencies", () => {
       const injector1 = createInjector({
-        bindings: [[HTTPService, MockHTTPMolecule]]
+        bindings: [[HTTPService, MockHTTPMolecule]],
       });
 
       const firstValue = injector1.get(NeedsHttp);
@@ -660,49 +636,43 @@ describe("Binding", () => {
 
       const bound = injector1.get(HTTPService);
       expect(bound).toBe(firstValue.httpService);
-    })
+    });
 
     describe("Work with tuple bindings", () => {
       const arrayBindings = [[HTTPService, MockHTTPMolecule]];
       const injector1 = createInjector({
-        bindings: [[HTTPService, MockHTTPMolecule]]
+        bindings: [[HTTPService, MockHTTPMolecule]],
       });
 
       test("injects the right values", () => {
         expect(injector1.get(HTTPService).identity).toBe("MockHTTP");
-      })
+      });
       test("doesn't update the injector when the bindings array is mutated", () => {
         arrayBindings.pop();
-        expect(arrayBindings).toStrictEqual([])
+        expect(arrayBindings).toStrictEqual([]);
         expect(injector1.get(HTTPService).identity).toBe("MockHTTP");
-      })
-    })
+      });
+    });
 
     describe("Works with map bindings", () => {
-
       const mapBindings = new Map();
       mapBindings.set(HTTPService, MockHTTPMolecule);
       const injector1 = createInjector({
-        bindings: mapBindings
+        bindings: mapBindings,
       });
 
       test("injects the right values", () => {
         expect(injector1.get(HTTPService).identity).toBe("MockHTTP");
-      })
-
+      });
 
       test("doesn't update the injector when the map is mutated", () => {
         mapBindings.delete(HTTPService);
         expect(injector1.get(HTTPService).identity).toBe("MockHTTP");
-      })
-    })
-
-
-
-  })
+      });
+    });
+  });
 
   test("Allows binding a molecule interface to a scoped molecule", async () => {
-
     const UserScopedHTTPMolecule = molecule<HTTPService>((_, getScope) => {
       const user = getScope(UserScope);
       return {
@@ -713,11 +683,11 @@ describe("Binding", () => {
         async post(url) {
           return `I am ${user}`;
         },
-      }
+      };
     });
 
     const injector1 = createInjector({
-      bindings: [[HTTPService, UserScopedHTTPMolecule]]
+      bindings: [[HTTPService, UserScopedHTTPMolecule]],
     });
 
     const firstValue = injector1.get(NeedsHttp);
@@ -729,153 +699,86 @@ describe("Binding", () => {
 
     const loggedOut2 = await secondValue.logout();
     expect(loggedOut2).toBe("I am one@example.com");
-
-  })
-})
+  });
+});
 
 describe("Scope caching", () => {
-
-  test("Caches a scope tuple", () => {
-    const injector = createInjector();
-    const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
-    const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
-    expect(tuple1).toBe(tuple2);
-
-    unsub1();
-    unsub2();
-  });
-
   describe("Caches a scoped molecule", () => {
-
     const injector = createInjector();
 
     describe("String scopes", () => {
-      const UserScoped = molecule((_, scope) => scope(UserScope) + Math.random());
+      const UserScoped = molecule(
+        (_, scope) => scope(UserScope) + Math.random(),
+      );
       test("It caches for overlapping leases", () => {
-        const [mol1, unsub1] = injector.use(UserScoped, [UserScope, "one@example.com"]);
-        const [mol2, unsub2] = injector.use(UserScoped, [UserScope, "one@example.com"]);
+        const [mol1, unsub1] = injector.use(UserScoped, [
+          UserScope,
+          "one@example.com",
+        ]);
+        const [mol2, unsub2] = injector.use(UserScoped, [
+          UserScope,
+          "one@example.com",
+        ]);
         expect(mol1).toBe(mol2);
 
         unsub1();
         unsub2();
-      })
+      });
 
       test("It does not cache when leases are not overlapping", () => {
-        const [mol1, unsub1] = injector.use(UserScoped, [UserScope, "one@example.com"]);
+        const [mol1, unsub1] = injector.use(UserScoped, [
+          UserScope,
+          "one@example.com",
+        ]);
         unsub1();
-        const [mol2, unsub2] = injector.use(UserScoped, [UserScope, "one@example.com"]);
+        const [mol2, unsub2] = injector.use(UserScoped, [
+          UserScope,
+          "one@example.com",
+        ]);
         unsub2();
 
         expect(mol1).not.toBe(mol2);
-      })
-    })
+      });
+    });
     describe("Objects scopes", () => {
       const objectScope = createScope(new Set());
 
-      const ObjectScopedMol = molecule((_, scope) => new Set(scope(objectScope).entries()));
+      const ObjectScopedMol = molecule(
+        (_, scope) => new Set(scope(objectScope).entries()),
+      );
 
       test("It caches for overlapping leases", () => {
         const testSet = new Set();
-        const [mol1, unsub1] = injector.use(ObjectScopedMol, [objectScope, testSet]);
-        const [mol2, unsub2] = injector.use(ObjectScopedMol, [objectScope, testSet]);
+        const [mol1, unsub1] = injector.use(ObjectScopedMol, [
+          objectScope,
+          testSet,
+        ]);
+        const [mol2, unsub2] = injector.use(ObjectScopedMol, [
+          objectScope,
+          testSet,
+        ]);
         expect(mol1).toBe(mol2);
         unsub1();
         unsub2();
-      })
+      });
 
-      test("It cache EVEN WHEN leases are not overlapping", () => {
+      test("It does NOT cache when leases are not overlapping", () => {
+        // Note: Behaviour changed in Version 2.1
+
         const testSet = new Set();
-        const [mol1, unsub1] = injector.use(ObjectScopedMol, [objectScope, testSet]);
+        const [mol1, unsub1] = injector.use(ObjectScopedMol, [
+          objectScope,
+          testSet,
+        ]);
         unsub1();
-        const [mol2, unsub2] = injector.use(ObjectScopedMol, [objectScope, testSet]);
+        const [mol2, unsub2] = injector.use(ObjectScopedMol, [
+          objectScope,
+          testSet,
+        ]);
         unsub2();
 
-        expect(mol1).toBe(mol2);
-      })
-    })
+        expect(mol1).not.toBe(mol2);
+      });
+    });
   });
-
-  test("Does not cache when scopes are cleaned up", () => {
-    const injector = createInjector();
-    const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
-    unsub1();
-
-    // Note: GC / cleanup happens in here
-
-    const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
-    unsub2();
-    // Subscription 1 and 2 never overlapped
-    expect(tuple1).not.toBe(tuple2);
-  });
-
-  test("Caches if there are overlapping subscriptions", () => {
-    const injector = createInjector();
-    const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
-    const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
-    unsub2();
-    unsub1();
-    // Subscription 2 overlapped with 1
-    expect(tuple1).toBe(tuple2);
-  });
-
-  test("Caches as long as subscriptions overlap", () => {
-    const injector = createInjector();
-    const [[tuple1], unsub1] = injector.useScopes([UserScope, "one@example.com"]);
-
-
-    const [[tuple2], unsub2] = injector.useScopes([UserScope, "one@example.com"]);
-
-    // Doesn't create a new value, the second use has a lease
-    unsub1();
-
-    const [[tuple3], unsub3] = injector.useScopes([UserScope, "one@example.com"]);
-    unsub2();
-
-    const [[tuple4], unsub4] = injector.useScopes([UserScope, "one@example.com"]);
-    unsub3();
-
-    // Final cleanup
-    unsub4();
-
-    expect(tuple1).toBe(tuple2);
-    expect(tuple1).toBe(tuple3);
-    expect(tuple1).toBe(tuple4);
-  });
-})
-
-
-describe("Global injector", () => {
-
-  test("It always returns the same injector", () => {
-    (globalThis as any)[DefaultInjector] = undefined;
-
-    const one = getDefaultInjector();
-    const two = getDefaultInjector();
-
-    expect(one).toBe(two);
-
-    (globalThis as any)[DefaultInjector] = undefined;
-
-    const three = getDefaultInjector();
-    expect(three).not.toBe(two);
-  })
-
-  test("It returns different objects if the global scope is nulled out", () => {
-    (globalThis as any)[DefaultInjector] = undefined;
-    const one = getDefaultInjector();
-
-    (globalThis as any)[DefaultInjector] = undefined;
-    const two = getDefaultInjector();
-    expect(one).not.toBe(two);
-  })
-
-  test("It throws errors when global scoped is poluted with garbage", () => {
-    // Pollute global scope with garbage
-    (globalThis as any)[DefaultInjector] = { "I am a lot of": "Terrible garbage" };
-
-    expect(getDefaultInjector).toThrow(ErrorInvalidGlobalInjector);
-
-    // Cleanup garbage
-    (globalThis as any)[DefaultInjector] = undefined;
-  })
-})
+});

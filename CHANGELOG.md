@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2024-01-22
+
+Version 2.1.0 is a big update to Bunshi. It fixes a few key efficiency issues in #35 and #39. It introduces
+the new `use` syntax for wiring up dependencies, and the new `onMount` and `onUnmount` lifecycle events
+for cleaning up dependencies, even when the state management libraries themselves don't have it.
+
+In the process of preparing this release, the number of test cases was expanded dramatically to
+make sure that the lifecycle of bunshi molecules remains stable and predictable going forwards.
+Some behaviour that was implicit is now being explicitly tested for.
+
+Big thank you to the community for the help.
+
+- @davidisaaclee for highlighting the issue of molecules being run too frequently in #39
+- @asfktz for playing with XState and promoting the creation of cleanup lifecycle in #35. Thanks @Andarist for the pointers.
+- @00salmon for providing feedback on the release candidates
+
+### Changes
+
+- Change to scoping. Object scopes will now be cleaned up, even for non-overlapping leases.
+- Molecules callbacks are called more efficiently. Reduces the number of calls in many cases. Fixes #39. Thanks @davidisaaclee
+
+### Added
+
+- `onMount` and `onUnmount` lifecycle hooks inside of molecules. Fixes #35. Thanks @asfktz
+- Support for React strict mode (and tests). Fixes #35
+- New `use` syntax for depending on scopes or molecules,
+- Add methods to injector and scope for using lazily to support React strict mode
+
+## [2.1.0-rc.2] - 2024-01-08
+
+### Added
+
+- Add methods to injector and scope for using lazily to support React strict mode
+
+### Removed
+
+- Removed support for conditional dependencies. When detected, conditional dependencies will now throw an error.
+- Removed `subscriptionId` from all calls (introduced in 2.1.0-rc.1)
+
+## [2.1.0-rc.1] - 2023-11-23
+
+### Changed
+
+- Change to scoping. Object scopes will now be cleaned up, even for non-overlapping leases.
+- Molecules callbacks are called more efficiently. Reduces the number of calls in many cases. Fixes #39
+- Injectors have new methods to pass along a `subscriptionId` to ensure that default scopes can be used and cleaned up.
+
+### Added
+
+- `onMount` and `onUnmount` lifecycle hooks inside of molecules. Fixes #35
+- New `use` syntax for depending on scopes or molecules
+
 ## [2.0.2] - 2023-11-01
 
 ### Fixed
@@ -95,6 +147,9 @@ Initial release of `jotai-molecules`
 - `ScopeProvider` a React component for providing scope to the tree
 
 [unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.2...HEAD
+[2.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0
+[2.1.0-rc.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.2
+[2.1.0-rc.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.1
 [2.0.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.2
 [2.0.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.1
 [2.0.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.0.0
