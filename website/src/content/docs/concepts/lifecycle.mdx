@@ -13,6 +13,8 @@ import LifecycleExample from "~/components/examples/LifecycleExample.astro";
 Molecules are used to create values. Those values are created as needed depending on the application, scope, and injectors. They
 can be mounted to signal they are in use, unmounted when they are no longer in use, and then finally cleaned up in garbage collection.
 
+<Image src={lifecycle} alt="Molecule lifecycle from created, mounted, unmounted and garbage collected."/>
+
 ## Example
 
 <LifecycleExample />
@@ -33,11 +35,7 @@ In React Strict Mode there are additional calls to lifecycle events:
 
 <Image src={consoleStrict} alt="Console log output for React Strict Mode"/>
 
-## Lifecyle Diagram
 
-The following diagram lays out the molecule lifecycle in more detail.
-
-<Image src={lifecycle} alt="Molecule lifecycle from created, mounted, unmounted and garbage collected."/>
 
 ## Created
 
@@ -78,12 +76,12 @@ It helps avoid some of the challenges of working with `useMemo` and `useEffect`,
 on your molecules.
 
 There are a couple things to be aware of:
-* Your molecule values may be re-mounted. `onMounted` may be called again after `onUnmounted` has been called.
-* Lifecycles methods will be called in order, so `onMounted` then `onUmounted` then again `onMounted`, and so on.
-* Your molecule values may NEVER be mounted. Strict mode may dispose of a value before calling `onMounted`.
+* Your molecule values may be re-mounted. `onMount` may be called again after `onUnmount` has been called.
+* Lifecycles methods will be called in order, so `onMount` then `onUnmount` then again `onMount`, and so on.
+* Your molecule values may NEVER be mounted. Strict mode may dispose of a value before calling `onMount`.
 * In strict mode your molecule may be called twice:
   * one value thrown away (in the first render)
-  * the other value `onMounted` then `onUmounted` then again `onMounted` (in the second render)
+  * the other value `onMount` then `onUnmount` then again `onMount` (in the second render)
 
 **The core premise of Bunshi still applies.** If a molecule is being used by another component then that value is used. These notes about strict mode only
 apply to newly created values. Existing values are shared without un-necessary lifecycle calls.

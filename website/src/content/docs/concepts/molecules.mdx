@@ -76,10 +76,10 @@ export const IDMolecule = molecule(() => `ID: ${use(userIdScope)}`);
 
 ## Molecule Lifecycle
 
-New in Bunshi 2.1 are the `onMounted` and `onUnmounted` lifecycle hooks. They allow state libraries to be shared and
+New in Bunshi 2.1 are the `onMount` and `onUnmount` lifecycle hooks. They allow state libraries to be shared and
 cleaned up at the right time.
 
-### onMounted
+### onMount
 
 Run some code only when a molecule is mounted.
 
@@ -98,7 +98,7 @@ molecule(() => {
 });
 ```
 
-### onUnmounted
+### onUnmount
 
 ```ts
 import { molecule, onUnmount } from "bunshi";

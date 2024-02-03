@@ -10,7 +10,8 @@ import { quickstart } from "~/source-examples/sources";
 
 ## Installation
 
-Bunshi is distributed on NPM as both a CommonJS and ES Module. It supports both Javscript and Typescript.
+Bunshi is distributed on NPM as both a CommonJS and ES Module. It supports both Javscript and Typescript,
+and since it's written in Typescript it comes with type definitions and tests for typing out of the box.
 
 ```sh
 npm i -D bunshi
@@ -18,7 +19,7 @@ npm i -D bunshi
 
 ## Create a Molecule
 
-Molecules are the core of bunshi. They are functions that return a value. Use molecules to create something
+**Molecules** are the core of bunshi. They are functions that return a value. Use molecules to create something
 to share across your app. For this example, a `jotai` atom.
 
 ```ts
@@ -29,11 +30,12 @@ export const CountMolecule = molecule(() => atom(0));
 ```
 
 > When this `CountMolecule` is used it will always return the same `atom`. The value is memoized and cached
-so that it can be shared across an app.
+> so that it can be shared across an app.
 
 ## Use a Molecule
 
-To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue). An instance of `atom` will be automatically created once and shared across the application in every call to `useMolecule`.
+To use a molecule, pass it to `useMolecule` in your framework integration (React or Vue). An instance of `atom` will be automatically created once 
+and shared across the application in every call to `useMolecule`.
 
 <Tabs>
   <TabItem label="React">
@@ -140,7 +142,8 @@ Custom scopes need to be provided using the framework-specific API. Bunshi comes
 
 <Tabs>
   <TabItem label="React">
-    For React use a `ScopeProvider` as a wrapping component, and all children can implicitly use that scope.
+    For React use a `ScopeProvider` as a wrapping component, and all children
+    can implicitly use that scope.
     <CodeEditor
       files={{
         "App.tsx": quickstart.ReactFormApp,
@@ -152,7 +155,8 @@ Custom scopes need to be provided using the framework-specific API. Bunshi comes
     />
   </TabItem>
   <TabItem label="Vue">
-    For Vue use `provideScope` to provide scope implicitly to all children in the `slot`.
+    For Vue use `provideScope` to provide scope implicitly to all children in
+    the `slot`.
     <CodeEditor
       files={{
         "src/App.vue": quickstart.VueFormApp,
@@ -183,7 +187,7 @@ When your write code with molecules, you can pull state up or push state down, w
 
 There are many other powerful features for molecules in Bunshi, such as:
 
- * Molecules using other molecules
- * Molecules using lifecycles to run code when they are mounted or unmounted
- * Molecule interfaces for decoupling molecules
- * Straightforward usage with many different state libraries
+- Molecules using other molecules
+- Molecules using lifecycles to run code when they are first used (i.e. mounted or unmounted)
+- Molecule interfaces for decoupling molecules
+- Straightforward usage with many different state libraries
