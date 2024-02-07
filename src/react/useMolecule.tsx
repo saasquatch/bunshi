@@ -40,12 +40,12 @@ export function useMolecule<T>(
     ...flattenTuples(inputTuples),
   ]);
 
-  const [mutableValue, setMutableValue] = useState(value);
+  const [mutableValue, setMutableValue] = useState(() => value);
 
   useEffect(() => {
     // console.log("==== useEffect! =====");
     const subbedValue = handle.start();
-    setMutableValue(subbedValue);
+    setMutableValue(() => subbedValue);
     return () => {
       // console.log("==== CLEANUP useEffect! =====");
       handle.stop();
