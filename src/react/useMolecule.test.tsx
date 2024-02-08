@@ -25,6 +25,21 @@ export const UserMolecule = molecule((_, getScope) => {
 
 strictModeSuite(({ wrapper, isStrict }) => {
   describe("useMolecule", () => {
+    test("useMolecule returns a function returned by a molecule", () => {
+      const returnFunction = () => {};
+      const FunctionMolecule = molecule(() => {
+        return returnFunction;
+      });
+      const useFunctionMolecule = () => {
+        return {
+          molecule: useMolecule(FunctionMolecule),
+        };
+      };
+      const { result } = renderHook(useFunctionMolecule, {});
+
+      expect(result.current.molecule).toBe(returnFunction);
+    });
+
     test("Use molecule can have scope provided", () => {
       const useUserMolecule = () => {
         return {
