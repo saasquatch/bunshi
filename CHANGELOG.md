@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2024-02-07
+
+Minor release to fix bug in react `useMolecule`
+
+### Fixed
+
+- (React) `useMolecule` - When molecule returns a function, useMolecule should also return the same function #47 - thanks @3846masa
+
 ## [2.1.0] - 2024-01-22
 
 Version 2.1.0 is a big update to Bunshi. It fixes a few key efficiency issues in #35 and #39. It introduces
@@ -146,7 +154,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.0.2...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.1
 [2.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0
 [2.1.0-rc.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.2
 [2.1.0-rc.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0-rc.1
