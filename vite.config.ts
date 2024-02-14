@@ -15,10 +15,17 @@ export default defineConfig({
         // Don't consider code in helper directories
         "src/**/testing/**/*.{ts,tsx}",
       ],
-      branches: 90,
-      lines: 90,
-      statements: 90,
+      thresholds: {
+        branches: 90,
+        lines: 90,
+        statements: 90,
+      },
       reporter: ["text", "json", "clover", "html"],
+    },
+    browser: {
+      name: "chrome",
+      provider: "playwright",
+      headless: true,
     },
   },
   plugins: [vue()],
