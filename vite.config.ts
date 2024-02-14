@@ -23,6 +23,18 @@ export default defineConfig({
       reporter: ["text", "json", "clover", "html"],
     },
     browser: {
+      /**
+       * This is intentionally disabled here, but browsers tests
+       * can still be run.
+       *
+       * To run browser tests, use `vitest --browser=chrome`
+       */
+      enabled: false,
+      /**
+       * This is hard-coded as chrome here, but overriden in package.json scripts
+       * and github actions. We can still run tests on other browsers
+       * with `vitest --browser=chrome`
+       */
       name: "chrome",
       provider: "playwright",
       headless: true,
