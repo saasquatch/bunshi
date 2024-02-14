@@ -1,5 +1,4 @@
 import type { MoleculeInjector } from ".";
-import { createSubId } from "./createSubId";
 import type { Instrumentation } from "./internal/instrumentation";
 import type {
   AnyMoleculeScope,
@@ -71,7 +70,7 @@ export function createScoper(instrumentation?: Instrumentation) {
         /**
          * The set of subscription IDs that are using this scope value
          */
-        references: Set<Symbol>;
+        references: Set<ScopeSubscription>;
 
         /**
          * These callbacks should be called when there are no more subscriptions
@@ -104,7 +103,7 @@ export function createScoper(instrumentation?: Instrumentation) {
    */
   const cleanupsRun = new WeakSet<CleanupCallback>();
 
-  const releasedSubscriptions = new WeakSet<Symbol>();
+  const releasedSubscriptions = new WeakSet<ScopeSubscription>();
 
   function getScopes<T>(tuples: ScopeTuple<T>[]): ScopeTuple<T>[] {
     return tuples.map((t) => getScope(t));
@@ -134,14 +133,14 @@ export function createScoper(instrumentation?: Instrumentation) {
    * @param tuple
    */
   function startSubscription<T>(
-    subscriptionId: Symbol,
+    subscriptionObj: ScopeSubscription,
     tuple: ScopeTuple<T>,
   ): ScopeTuple<T> {
     const [scope, value] = tuple;
     const innerCached = scopeCache.get(scope)?.get(value);
     if (innerCached) {
       // Increment references
-      innerCached.references.add(subscriptionId);
+      innerCached.references.add(subscriptionObj);
       return innerCached.tuple as ScopeTuple<T>;
     } else {
       // Get or create initial map
@@ -151,7 +150,7 @@ export function createScoper(instrumentation?: Instrumentation) {
       // Increment references
       valuesForScope.set(value, {
         tuple,
-        references: new Set<Symbol>([subscriptionId]),
+        references: new Set<ScopeSubscription>([subscriptionObj]),
         cleanups: new Set(),
       });
 
@@ -160,10 +159,10 @@ export function createScoper(instrumentation?: Instrumentation) {
   }
 
   function startSubscriptions(
-    subscriptionId: Symbol,
+    subscriptionObj: ScopeSubscription,
     tuples: AnyScopeTuple[],
   ): AnyScopeTuple[] {
-    return tuples.map((t) => startSubscription(subscriptionId, t));
+    return tuples.map((t) => startSubscription(subscriptionObj, t));
   }
 
   /**
@@ -173,19 +172,19 @@ export function createScoper(instrumentation?: Instrumentation) {
    */
   function stopSubscription(
     tuples: Set<AnyScopeTuple>,
-    subscriptionId: Symbol,
+    subscriptionObj: ScopeSubscription,
   ) {
-    if (releasedSubscriptions.has(subscriptionId)) {
+    if (releasedSubscriptions.has(subscriptionObj)) {
       // throw new Error(
       //   "Can't release a subscription that has already been released. Don't call unsub twice.",
       // );
       return;
     } else {
-      releasedSubscriptions.add(subscriptionId);
+      releasedSubscriptions.add(subscriptionObj);
     }
     if (!tuples) return;
 
-    const cleanupsToRun = releaseTuples(tuples, subscriptionId);
+    const cleanupsToRun = releaseTuples(tuples, subscriptionObj);
 
     Array.from(cleanupsToRun.values())
       .reverse()
@@ -199,17 +198,17 @@ export function createScoper(instrumentation?: Instrumentation) {
       });
   }
 
-  function releaseTuples(tuples: Set<AnyScopeTuple>, subscriptionId: Symbol) {
+  function releaseTuples(tuples: Set<AnyScopeTuple>, subscriptionObj: ScopeSubscription) {
     const cleanupsToRun = new Set<CleanupCallback>();
     tuples.forEach(([scope, value]) => {
       const scopeMap = scopeCache.get(scope);
       const cached = scopeMap?.get(value);
 
       const references = cached?.references;
-      references?.delete(subscriptionId);
+      references?.delete(subscriptionObj);
 
       if (references && references.size <= 0) {
-        instrumentation?.scopeStopWithCleanup(subscriptionId, cached);
+        instrumentation?.scopeStopWithCleanup(subscriptionObj, cached);
         scopeMap?.delete(value);
 
         // Run all cleanups
@@ -217,7 +216,7 @@ export function createScoper(instrumentation?: Instrumentation) {
           cleanupsToRun.add(cb);
         });
       } else {
-        instrumentation?.scopeStopWithCleanup(subscriptionId, cached);
+        instrumentation?.scopeStopWithCleanup(subscriptionObj, cached);
         // Not empty yet, do not run cleanups
       }
     });
@@ -288,7 +287,6 @@ export function createScoper(instrumentation?: Instrumentation) {
     }
     __tupleMap = new Map<AnyMoleculeScope, AnyScopeTuple>();
     __stableArray: AnyScopeTuple[] = [];
-    __subId = createSubId();
     get tuples(): AnyScopeTuple[] {
       return this.__stableArray;
     }
@@ -301,10 +299,10 @@ export function createScoper(instrumentation?: Instrumentation) {
       return tuples;
     }
     start() {
-      return startSubscriptions(this.__subId, this.__stableArray);
+      return startSubscriptions(this, this.__stableArray);
     }
     stop() {
-      stopSubscription(new Set(this.tuples), this.__subId);
+      stopSubscription(new Set(this.tuples), this);
     }
   }
 
