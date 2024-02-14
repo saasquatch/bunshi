@@ -27,9 +27,10 @@
     "test:format": "prettier -c src",
     "test:size": "size-limit",
     "test:browsers": "run-p test:browsers:*",
-    "test:browsers:chrome": "vitest --run --browser=chromium",
-    "test:browsers:firefox": "vitest --run --browser=firefox",
-    "test:browsers:safari": "vitest --run --browser=webkit",
+    "test:browsers:chrome": "npm run test:browsers-suite -- --browser=chromium",
+    "test:browsers:firefox": "npm run test:browsers-suite -- --browser=firefox",
+    "test:browsers:safari": "npm run test:browsers-suite -- --browser=webkit",
+    "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts",
     "format": "prettier -w src"
   },
   "main": "dist/vanilla.js",
