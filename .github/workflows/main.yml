@@ -37,5 +37,11 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
   
-      - name: Install Playwright Browsers
-        run: npm run test:browsers
+      - name: Firefox tests
+        run: npm run test:browsers:firefox
+
+      - name: Safari tests
+        run: npm run test:browsers:safari        
+
+      - name: Chrome tests
+        run: npm run test:browsers:chrome                
