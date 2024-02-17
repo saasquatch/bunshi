@@ -40,7 +40,7 @@ export function useScopes(
     };
   }, [sub, setTuples]);
 
-  return useMemo(() => tuples, flattened);
+  return tuples;
 }
 
 /**

@@ -45,7 +45,7 @@ export function ScopeProvider<T>(
   // in theory this should reduce context re-renders
   const downstreamScopes = useMemo(
     () => simpleDownstreamScopes.filter(([scope]) => scope !== ComponentScope),
-    [simpleDownstreamScopes],
+    [simpleDownstreamScopes, scope],
   );
 
   return React.createElement(

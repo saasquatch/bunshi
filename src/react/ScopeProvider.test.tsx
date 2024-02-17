@@ -15,7 +15,6 @@ import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
-import { I } from "vitest/dist/types-198fd1d9";
 
 const ExampleMolecule = molecule(() => {
   return {

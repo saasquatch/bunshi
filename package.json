@@ -1,7 +1,7 @@
 {
   "name": "bunshi",
   "description": "A tiny, fast, dependency-free 1.18kb library for creating jotai atoms in a way that lets you lift state up, or push state down.",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "license": "MIT",
   "author": "ReferralSaaSquatch.com, Inc.",
   "homepage": "https://bunshi.org",
