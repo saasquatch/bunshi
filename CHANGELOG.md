@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - 2024-02-16
+
+Fixes reactivity in the React ScopeProvider
+
+### Fixed
+
+- #50 - Fix the internals of `ScopeProvider` so that it is reactive. Thanks @OhSeungWan
+
 ## [2.1.2] - 2024-02-14
 
 Minor release to fix bug in Firefox
@@ -162,7 +170,8 @@ Initial release of `jotai-molecules`
 - `createScope` for creating a scope for molecules
 - `ScopeProvider` a React component for providing scope to the tree
 
-[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.1.2...HEAD
+[unreleased]: https://github.com/saasquatch/jotai-molecules/compare/v2.1.3...HEAD
+[2.1.3]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.3
 [2.1.2]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.2
 [2.1.1]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.1
 [2.1.0]: https://github.com/saasquatch/jotai-molecules/releases/tag/v2.1.0
