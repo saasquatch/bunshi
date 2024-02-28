@@ -31,7 +31,8 @@
     "test:browsers:firefox": "npm run test:browsers-suite -- --browser=firefox",
     "test:browsers:safari": "npm run test:browsers-suite -- --browser=webkit",
     "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts",
-    "format": "prettier -w src"
+    "format": "prettier -w src",
+    "lint": "eslint . --ext .js,.ts"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",
@@ -121,12 +122,16 @@
     "@testing-library/vue": "^8.0.1",
     "@types/react": "^18",
     "@types/use-sync-external-store": "^0.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vitest/browser": "^1.2.2",
     "@vitest/coverage-v8": "^1.2.2",
     "@vitest/ui": "^1.2.2",
     "@vue/tsconfig": "^0.1.3",
     "downlevel-dts": "^0.11.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-compat": "^4.2.0",
     "happy-dom": "^10.0.3",
     "husky": "^7.0.4",
     "jotai": "^2.4.2",
@@ -143,5 +148,12 @@
     "use-sync-external-store": "^1.2.0",
     "vitest": "^1.2.2",
     "vue": "^3.3.4"
-  }
+  },
+  "browserslist": [
+    "chrome 64",
+    "edge 79",
+    "firefox 67",
+    "opera 51",
+    "safari 12"
+  ]
 }
