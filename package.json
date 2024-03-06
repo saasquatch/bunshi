@@ -32,7 +32,7 @@
     "test:browsers:safari": "npm run test:browsers-suite -- --browser=webkit",
     "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts",
     "format": "prettier -w src",
-    "lint": "eslint . --ext .js,.ts"
+    "test:eslint": "eslint . --ext .js,.ts"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",
