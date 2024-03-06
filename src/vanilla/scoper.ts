@@ -198,7 +198,10 @@ export function createScoper(instrumentation?: Instrumentation) {
       });
   }
 
-  function releaseTuples(tuples: Set<AnyScopeTuple>, subscriptionObj: ScopeSubscription) {
+  function releaseTuples(
+    tuples: Set<AnyScopeTuple>,
+    subscriptionObj: ScopeSubscription,
+  ) {
     const cleanupsToRun = new Set<CleanupCallback>();
     tuples.forEach(([scope, value]) => {
       const scopeMap = scopeCache.get(scope);
