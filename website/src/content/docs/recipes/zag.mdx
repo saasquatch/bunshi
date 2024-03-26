@@ -64,7 +64,7 @@ at the same scope. We define a component-scoped molecule, and [lifecycle hooks](
 ## Global state
 
 If you want to share some state between components in Zag, then things become more tricky using the provided APIs. You can use `useService` to
-create a service, store in framework state, then share it `provide/inject` in vue or `Context` in React, and then use `useActor` in children components.
+create a service, store in framework state, then share it with `provide/inject` in Vue or `Context` in React, and then use `useActor` in children components.
 This is time-consuming boilerplate just to be able to share state.
 
 **This is where Bunshi comes in.** You can use Zag to define a machine that is shared across your application, and Bunshi will look after creating it, starting it
