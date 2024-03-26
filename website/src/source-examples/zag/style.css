@@ -1,0 +1,63 @@
+.visually-hidden {
+  display: none;
+}
+
+[data-part="root"] {
+  /* styles for the pagination's root */
+}
+
+[data-part="root"] ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style-type: none;
+}
+
+[data-part="item"] {
+  /* styles for the pagination's items */
+  padding-inline: 0.75rem;
+  height: 2rem;
+  text-align: center;
+  margin: auto 4px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.01071em;
+  line-height: 1.43;
+  font-size: 13px;
+  user-select: none;
+  text-decoration: none;
+  border: 1px solid;
+  border-color: #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+
+[data-part="ellipsis"] {
+  /* styles for the pagination's ellipsis */
+}
+
+[data-part="prev-trigger"] {
+  /* styles for the pagination's previous page trigger */
+}
+
+[data-part="next-trigger"] {
+  /* styles for the pagination's next page trigger */
+}
+
+/* We add a data-disabled attribute to the prev/next items when on the first/last page  */
+
+[data-part="prev-trigger"][data-disabled] {
+  /* styles for the pagination's previous page trigger when on first page */
+}
+
+[data-part="next-trigger"][data-disabled] {
+  /* styles for the pagination's next page trigger when on first page */
+}
+
+[data-selected] {
+  font-weight: bold;
+  text-decoration: none;
+  color: black;
+  background: rgb(56, 161, 105);
+}
