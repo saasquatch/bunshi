@@ -1,0 +1,120 @@
+---
+title: "Zag"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { zag } from "~/source-examples/sources";
+
+## Background
+
+[Zag](https://zagjs.com/) is a new approach to the component design process, designed to help you avoid re-inventing the wheel and build better UI components regardless of framework.
+Zag includes a number of packages:
+
+* A core state library based on state machines, inspired by and similar to [XState](/recipes/xstate/).
+* Framework adapters, to use that state inside of React, Vue, Solid, Svelte and others.
+* Out-of-the box machines for common component patterns.
+
+Zag is defined by default for component-level state, but provides APIs like `useActor`, `useService`, `useSnapshot` and `useMachine`.
+
+Bunshi helps make Zag machines easier to share by creating, starting and stopping a Zag service at just the right times.
+
+## Component state
+
+Bunshi lets you create Zag machines per component. This is the scope that state is normally defined in Zag by using the provided `useMachine` API. Using Bunshi we can define state
+at the same scope. We define a component-scoped molecule, and [lifecycle hooks](/concepts/lifecycle/) to start it and stop it at the right times.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": zag.ReactApp,
+        "style.css": zag.style,
+        "molecules.ts": {
+          code: zag.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@zag-js/pagination": "^0.40",
+        "@zag-js/react": "^0.40",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": zag.VueApp,
+        "src/Pagination.vue": zag.VuePagination,
+        "src/style.css": zag.style,
+        "src/molecules.ts": {
+          code: zag.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@zag-js/pagination": "^0.40",
+        "@zag-js/vue": "^0.40",
+      }}
+      template="vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Global state
+
+If you want to share some state between components in Zag, then things become more tricky using the provided APIs. You can use `useService` to
+create a service, store in framework state, then share it `provide/inject` in vue or `Context` in React, and then use `useActor` in children components.
+This is time-consuming boilerplate just to be able to share state.
+
+**This is where Bunshi comes in.** You can use Zag to define a machine that is shared across your application, and Bunshi will look after creating it, starting it
+and stopping it at the right times.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": zag.ReactApp,
+        "style.css": zag.style,
+        "molecules.ts": {
+          code: zag.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@zag-js/pagination": "^0.40",
+        "@zag-js/react": "^0.40",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": zag.VueApp,
+        "src/Pagination.vue": zag.VuePagination,
+        "src/style.css": zag.style,
+        "src/molecules.ts": {
+          code: zag.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@zag-js/pagination": "^0.40",
+        "@zag-js/vue": "^0.40",
+      }}
+      template="vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Why Bunshi with Zag?
+
+Bunshi helps scope your Zag machines so they are easy to share. Notice how in this example you didn't need to touch
+your Pagination component to move the state to being global or component scoped. Bunshi helps remove
+boilerplate and centralize your state management tools.
+
+ * Use Zag for global state stores that are started and stopped at the exactly right time.
+ * Move state without touching components
+ * Use the vanilla javascript API of Zag and avoid framework lock-in
+ * Share machines across different pages, components or sections
+ * Keep your state logic decoupled from your UI framework
