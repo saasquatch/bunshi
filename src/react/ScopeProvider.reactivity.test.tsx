@@ -8,7 +8,7 @@ const TestCope = createScope<{ number?: number }>({});
 const lifecycle = createLifecycleUtils();
 const TestMol = molecule(() => {
   const scope = use(TestCope);
-  console.log(scope.number); //In the first case, there is no change, and in the second case, the value from one timing ago is output.
+  // console.log(scope.number); //In the first case, there is no change, and in the second case, the value from one timing ago is output.
   lifecycle.connect(scope.number);
   return { scope };
 });
