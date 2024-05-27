@@ -6,6 +6,11 @@ import { AnyScopeTuple } from "./internal/internal-types";
 import { onMount, onUnmount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
+import {
+  ConfigMolecule,
+  ConfigScope,
+  LibaryMolecule,
+} from "./testing/test-molecules";
 
 const defaultFn = vi.fn();
 const ExampleScope = createScope<Function>(defaultFn);
@@ -442,6 +447,24 @@ describe("Conditional dependencies", () => {
         "a1",
       ]);
       expect(() => injector.use(TwoForks)).toThrow();
+    });
+  });
+
+  describe("Required scope is a molecule", () => {
+    test("Use the molecule, expect error", () => {
+      const injector = createInjector();
+      expect(() => injector.use(LibaryMolecule)).toThrow();
+    });
+    test("Non-conditional path works", () => {
+      const injector = createInjector();
+      const [library, unsub1] = injector.use(LibaryMolecule, [
+        ConfigScope,
+        ConfigMolecule,
+      ]);
+      const [config, unsub2] = injector.use(ConfigMolecule);
+      expect(library.example).toBe(config.example);
+      unsub1();
+      unsub2();
     });
   });
 });

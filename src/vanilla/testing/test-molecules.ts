@@ -1,7 +1,8 @@
-import { atom, PrimitiveAtom } from "jotai";
+import { Atom, atom, PrimitiveAtom } from "jotai";
 import { molecule } from "../molecule";
 import { createScope } from "../scope";
 import { ScopeTuple } from "../types";
+import { Molecule, use } from "..";
 
 type BaseAtoms = {
   nameAtom: PrimitiveAtom<string>;
@@ -47,5 +48,31 @@ export const companyMolecule = molecule((_, getScope) => {
   return {
     company,
     companyNameAtom,
+  };
+});
+
+type Config = {
+  example: Atom<string>;
+};
+
+export const ConfigMolecule = molecule<Config>(() => {
+  return {
+    example: atom("example"),
+  };
+});
+
+export const ConfigScope = createScope<Molecule<Config> | undefined>(undefined);
+
+export const LibaryMolecule = molecule(() => {
+  const configMol = use(ConfigScope);
+  if (!configMol)
+    throw new Error("This molecule requires ConfigScope to function!");
+
+  const config = use(configMol) as Config;
+  const derivedAtom = atom((get) => get(config.example).toUpperCase());
+
+  return {
+    ...config,
+    derivedAtom,
   };
 });
