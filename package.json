@@ -32,7 +32,9 @@
     "test:browsers:safari": "npm run test:browsers-suite -- --browser=webkit",
     "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts",
     "format": "prettier -w src",
-    "test:eslint": "eslint . --ext .js,.ts"
+    "test:eslint": "eslint . --ext .js,.ts",
+    "version": "changeset version && npm i",
+    "publish": "changeset publish"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",
@@ -117,6 +119,8 @@
   ],
   "devDependencies": {
     "@astrojs/language-server": "^2.3.3",
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.3",
     "@size-limit/preset-small-lib": "^9.0.0",
     "@testing-library/react": "^14.1.2",
     "@testing-library/vue": "^8.0.1",
