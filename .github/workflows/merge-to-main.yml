@@ -1,0 +1,42 @@
+name: Merge to Main
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  create-pr:
+    name: Update PR or Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: bahmutov/npm-install@v1
+
+      - name: Build
+        run: npm run build
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # Runs `npm i` after changeset to make sure that `package-lock.json` files are also updated
+          # Without this change only `package.json` files are updated, without `package-lock.json` changes.
+          version: npm run version
+          # Runs changesets on publish - will create tags and deploy to NPM
+          publish: npm run publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.LOGVOL_NPM_ACCESS_TOKEN }}
+          NPM_TOKEN: ${{ secrets.LOGVOL_NPM_ACCESS_TOKEN }}
