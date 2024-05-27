@@ -3,6 +3,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     name: Build, lint, and test on Node ${{ matrix.node }} and ${{ matrix.os }}
@@ -36,12 +40,12 @@ jobs:
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-  
+
       - name: Firefox tests
         run: npm run test:browsers:firefox
 
       - name: Safari tests
-        run: npm run test:browsers:safari        
+        run: npm run test:browsers:safari
 
       - name: Chrome tests
-        run: npm run test:browsers:chrome                
+        run: npm run test:browsers:chrome
