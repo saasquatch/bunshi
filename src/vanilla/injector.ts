@@ -647,29 +647,31 @@ function runMolecule(
   useImpl.push(use);
   let running = true;
   trackingScopeGetter(InternalOnlyGlobalScope);
-  const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
-  running = false;
-  onMountImpl.pop();
-  useImpl.pop();
-
-  return {
-    deps: {
-      molecules: dependentMolecules,
-      allScopes,
-      defaultScopes,
-      mountedCallbacks,
-      /**
-       * Returns a copy
-       *
-       * Reverses the order so that the deepest dependencies are at the top
-       * of the list. This will be important for ensuring ordering for how
-       * mounts are called with transient dependencies.
-       *
-       */
-      buddies: buddies.slice().reverse(),
-    },
-    value,
-  };
+  try {
+    const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
+    return {
+      deps: {
+        molecules: dependentMolecules,
+        allScopes,
+        defaultScopes,
+        mountedCallbacks,
+        /**
+         * Returns a copy
+         *
+         * Reverses the order so that the deepest dependencies are at the top
+         * of the list. This will be important for ensuring ordering for how
+         * mounts are called with transient dependencies.
+         *
+         */
+        buddies: buddies.slice().reverse(),
+      },
+      value,
+    };
+  } finally {
+    running = false;
+    onMountImpl.pop();
+    useImpl.pop();
+  }
 }
 
 type CreationProps = {
