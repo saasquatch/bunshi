@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.5
+
+### Patch Changes
+
+- [#59](https://github.com/saasquatch/bunshi/pull/59) [`58ccacf`](https://github.com/saasquatch/bunshi/commit/58ccacfacc19600ee019e3f399f05e404fb72bad) Thanks [@loganvolkers](https://github.com/loganvolkers)! - Improve handling for molecules that throw exceptions. This will no longer break the global `use` functions, or break `getMol` or `getScope`. Fixes #61
+
 ## [2.1.4] - 2024-03-06
 
 Small fixes for browser compatibility.
