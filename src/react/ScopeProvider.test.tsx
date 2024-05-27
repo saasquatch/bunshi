@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import {
   Atom,
   PrimitiveAtom,
@@ -15,6 +15,12 @@ import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
+import {
+  LibaryMolecule,
+  ConfigScope,
+  ConfigAMolecule,
+  ConfigBMolecule,
+} from "../shared/testing/scope-required-molecule";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -474,5 +480,64 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       userLifecycle.expectCalledTimesEach(1, 1, 1);
       userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
+  });
+});
+
+describe("Conditional dependencies", () => {
+  /**
+   * This test covers a bug come across using storybook in raisins.
+   *
+   * Given two stories
+   * And each story has different config molecule in scope
+   * When you load one story
+   * Then it works
+   * When you navigate to another story
+   * Then it throws an error
+   *    "Molecule is using conditional dependencies. This is not supported."
+   * But you reload
+   * And it doesn't throw an error
+   *
+   * This seems to imply that a ScopeProvider that is being re-used is
+   * creating an inconsistent
+   *
+   */
+
+  const InnerComponent = () => {
+    const mol = useMolecule(LibaryMolecule);
+    const value = useAtomValue(mol.example);
+    return <div>{value}</div>;
+  };
+
+  const ComponentA = () => (
+    <ScopeProvider scope={ConfigScope} value={ConfigAMolecule}>
+      <InnerComponent />
+    </ScopeProvider>
+  );
+
+  const ComponentB = () => (
+    <ScopeProvider scope={ConfigScope} value={ConfigBMolecule}>
+      <InnerComponent />
+    </ScopeProvider>
+  );
+
+  beforeEach(() => {
+    resetDefaultInjector();
+  });
+
+  test.each([
+    { C: ComponentA, text: "Config A" },
+    { C: ComponentB, text: "Config B" },
+  ])("Rendering $text works on it's own", async ({ C, text }) => {
+    const result = render(<C />);
+    const inner = await result.findByText(text);
+    expect(inner).not.toBeUndefined();
+  });
+
+  test.each([
+    { case: "A then B", First: ComponentA, Second: ComponentB },
+    { case: "B then A", First: ComponentB, Second: ComponentA },
+  ])("Rendering $case doesn't error", async ({ First, Second }) => {
+    const result = render(<First />);
+    result.rerender(<Second />);
   });
 });
