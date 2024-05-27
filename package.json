@@ -34,7 +34,7 @@
     "format": "prettier -w src",
     "test:eslint": "eslint . --ext .js,.ts",
     "version": "changeset version && npm i",
-    "publish": "changeset publish"
+    "dopublish": "changeset publish"
   },
   "main": "dist/vanilla.js",
   "module": "dist/vanilla.mjs",

@@ -35,7 +35,7 @@ jobs:
           # Without this change only `package.json` files are updated, without `package-lock.json` changes.
           version: npm run version
           # Runs changesets on publish - will create tags and deploy to NPM
-          publish: npm run publish
+          publish: npm run dopublish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.LOGVOL_NPM_ACCESS_TOKEN }}
