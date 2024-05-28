@@ -103,8 +103,6 @@ export function createScoper(instrumentation?: Instrumentation) {
    */
   const cleanupsRun = new WeakSet<CleanupCallback>();
 
-  const releasedSubscriptions = new WeakSet<ScopeSubscription>();
-
   function getScopes<T>(tuples: ScopeTuple<T>[]): ScopeTuple<T>[] {
     return tuples.map((t) => getScope(t));
   }
@@ -174,14 +172,6 @@ export function createScoper(instrumentation?: Instrumentation) {
     tuples: Set<AnyScopeTuple>,
     subscriptionObj: ScopeSubscription,
   ) {
-    if (releasedSubscriptions.has(subscriptionObj)) {
-      // throw new Error(
-      //   "Can't release a subscription that has already been released. Don't call unsub twice.",
-      // );
-      return;
-    } else {
-      releasedSubscriptions.add(subscriptionObj);
-    }
     if (!tuples) return;
 
     const cleanupsToRun = releaseTuples(tuples, subscriptionObj);
