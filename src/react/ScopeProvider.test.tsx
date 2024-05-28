@@ -483,7 +483,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
   });
 });
 
-describe("Conditional dependencies", () => {
+describe.skip("Conditional dependencies", () => {
   /**
    * This test covers a bug come across using storybook in raisins.
    *

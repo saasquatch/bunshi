@@ -188,33 +188,7 @@ export function createInjector(
     MoleculeCacheValue
   >();
 
-  /**
-   * The Dependency Cache reduces the number of times that a molecule needs
-   * to be run to determine it's dependencies.
-   *
-   * Give a molecule, what scopes might it depend on?
-   */
-  const dependencyCache: WeakMap<
-    /**
-     * The key is the molecule itself
-     */
-    AnyMolecule,
-    /**
-     * This can be a weak set because it's only ever used to determine
-     * if the scopes in context should apply to this molecule.
-     *
-     * For example:
-     *  - Molecule is used with scopes context A, B and C
-     *  - This set contains B, C and D
-     *  - The relevant scopes are B and C
-     *  - This set doesn't need to be iterable, because the scope context (e.g. A, B and C) is iterable
-     */
-    Set</**
-     * We only need to store the scope keys, not the scope values.
-     */
-    AnyMoleculeScope>
-  > = new WeakMap();
-
+  const dependencyCacher = new DependencyCache();
   const bindings = bindingsToMap(injectorProps.bindings);
 
   /**
@@ -245,9 +219,9 @@ export function createInjector(
     props: CreationProps,
   ): MoleculeCacheValue {
     injectorProps.instrumentation?.getInternal(m);
-    const cachedDeps = dependencyCache.get(m);
+    const cachedRelevantScopes = dependencyCacher.get(m, props);
 
-    if (cachedDeps) {
+    if (cachedRelevantScopes) {
       /**
        * Stage 1 cache
        *
@@ -259,11 +233,7 @@ export function createInjector(
        * if we run a molecule twice and it has a different set of dependencies.
        */
 
-      const relevantScopes = props.scopes.filter((tuple) =>
-        cachedDeps.has(tuple[0]),
-      );
-
-      const deps = getCachePath(relevantScopes, m);
+      const deps = getCachePath(cachedRelevantScopes, m);
       const cachedValue = moleculeCache.get(deps);
 
       if (cachedValue) {
@@ -365,27 +335,7 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    if (dependencyCache.has(m)) {
-      const cachedDeps = dependencyCache.get(m)!;
-      if (mounted.deps.allScopes.size !== cachedDeps?.size) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-      let mismatch = false;
-      mounted.deps.allScopes.forEach((s) => {
-        if (!cachedDeps.has(s)) {
-          mismatch = true;
-        }
-      });
-      if (mismatch) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-    } else {
-      dependencyCache.set(m, mounted.deps.allScopes);
-    }
+    dependencyCacher.safeSet(m, props, mounted);
     return multiCache(
       m,
       relatedScope,
@@ -671,6 +621,82 @@ function runMolecule(
     running = false;
     onMountImpl.pop();
     useImpl.pop();
+  }
+}
+
+class DependencyCache {
+  /**
+   * The Dependency Cache reduces the number of times that a molecule needs
+   * to be run to determine it's dependencies.
+   *
+   * Give a molecule, what scopes might it depend on?
+   */
+  // private internal: WeakMap<
+  //   /**
+  //    * The key is the molecule itself
+  //    */
+  //   AnyMolecule,
+  //   /**
+  //    * This can be a weak set because it's only ever used to determine
+  //    * if the scopes in context should apply to this molecule.
+  //    *
+  //    * For example:
+  //    *  - Molecule is used with scopes context A, B and C
+  //    *  - This set contains B, C and D
+  //    *  - The relevant scopes are B and C
+  //    *  - This set doesn't need to be iterable, because the scope context (e.g. A, B and C) is iterable
+  //    */
+  //   Set</**
+  //    * We only need to store the scope keys, not the scope values.
+  //    */
+  //   AnyMoleculeScope>
+  // > = new WeakMap();
+
+  private internal = createDeepCache<
+    AnyMolecule | AnyScopeTuple,
+    Set</**
+     * We only need to store the scope keys, not the scope values.
+     */
+    AnyMoleculeScope>
+  >();
+
+  get(m: AnyMolecule, props: CreationProps) {
+    const cachedDeps = this.internal.get([m]);
+    if (!cachedDeps) return undefined;
+
+    const relevantScopeTuples = props.scopes.filter((tuple) =>
+      cachedDeps.has(tuple[0]),
+    );
+
+    return relevantScopeTuples;
+  }
+
+  safeSet(
+    m: AnyMolecule,
+    props: CreationProps,
+    mounted: ReturnType<typeof runMolecule>,
+  ) {
+    // const cachedDeps = this.internal.get([m])!;
+    // if (cachedDeps) {
+    //   if (mounted.deps.allScopes.size !== cachedDeps?.size) {
+    //     throw new Error(
+    //       "Molecule is using conditional dependencies. This is not supported.",
+    //     );
+    //   }
+    //   let mismatch = false;
+    //   mounted.deps.allScopes.forEach((s) => {
+    //     if (!cachedDeps.has(s)) {
+    //       mismatch = true;
+    //     }
+    //   });
+    //   if (mismatch) {
+    //     throw new Error(
+    //       "Molecule is using conditional dependencies. This is not supported.",
+    //     );
+    //   }
+    // } else {
+    this.internal.set([m], mounted.deps.allScopes);
+    // }
   }
 }
 

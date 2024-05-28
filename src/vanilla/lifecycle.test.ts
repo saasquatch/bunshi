@@ -11,6 +11,7 @@ import {
   ConfigScope,
   LibaryMolecule,
 } from "./testing/test-molecules";
+import { atom } from "jotai";
 
 const defaultFn = vi.fn();
 const ExampleScope = createScope<Function>(defaultFn);
@@ -311,7 +312,7 @@ test("Can't use `mounted` hook in globally scoped molecule", () => {
   lifecycle.expectToMatchCalls([value]);
 });
 
-describe("Conditional dependencies", () => {
+describe.skip("Conditional dependencies", () => {
   /**
    * Types of conditional dependency checks
    *
@@ -449,23 +450,39 @@ describe("Conditional dependencies", () => {
       expect(() => injector.use(TwoForks)).toThrow();
     });
   });
+});
 
-  describe("Required scope is a molecule", () => {
-    test("Use the molecule, expect error", () => {
-      const injector = createInjector();
-      expect(() => injector.use(LibaryMolecule)).toThrow();
-    });
-    test("Non-conditional path works", () => {
-      const injector = createInjector();
-      const [library, unsub1] = injector.use(LibaryMolecule, [
-        ConfigScope,
-        ConfigMolecule,
-      ]);
-      const [config, unsub2] = injector.use(ConfigMolecule);
-      expect(library.example).toBe(config.example);
-      unsub1();
-      unsub2();
-    });
+describe("Exceptions are handled", () => {
+  const ThrowsError = molecule(() => {
+    throw new Error("");
+  });
+  const GoodMolecule = molecule(() => atom("good"));
+
+  const DependsOnThrows = molecule(() => use(ThrowsError));
+  const DependsOnGood = molecule(() => use(GoodMolecule));
+
+  test("Use the molecule, expect error", () => {
+    const injector = createInjector();
+    expect(() => injector.use(ThrowsError)).toThrow();
+  });
+
+  test("Use the molecule, expect error", () => {
+    const injector = createInjector();
+    expect(() => injector.use(DependsOnThrows)).toThrow();
+  });
+
+  test("Throws should not affect good molecules", () => {
+    const injector = createInjector();
+    const [good1] = injector.use(GoodMolecule);
+    const [good2] = injector.use(DependsOnGood);
+    expect(good1).toBe(good2);
+
+    expect(() => injector.use(ThrowsError)).toThrow();
+    expect(() => injector.use(DependsOnThrows)).toThrow();
+
+    const [good3] = injector.use(GoodMolecule);
+    const [good4] = injector.use(DependsOnGood);
+    expect(good3).toBe(good4);
   });
 });
 

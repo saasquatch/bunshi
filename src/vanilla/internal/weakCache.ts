@@ -83,6 +83,7 @@ export type DeepCache<TKey extends {}, TValue> = {
   ): TValue;
 
   get(deps: Deps<TKey>): TValue | undefined;
+  set(deps: Deps<TKey>, value: TValue | undefined): void;
 
   /**
    * Create or update an item in the cache
@@ -135,9 +136,12 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   };
 
   const get = (deps: Deps<TKey>) => getWeakCacheItem(cache, deps);
+  const set = (deps: Deps<TKey>, val: TValue) =>
+    setWeakCacheItem(cache, deps, val);
 
   return {
     get,
+    set,
     cache,
     deepCache,
     upsert,
