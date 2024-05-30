@@ -120,7 +120,7 @@ describe("Scoping", () => {
   });
 
   test.each([{ first: "direct" }, { first: "indirect" }])(
-    "Works with both directions of scoping, starting with $first",
+    "Issue #64 - Works with both directions of scoping, starting with $first",
     ({ first }) => {
       const Direct = molecule(() => use(UserScope) + Math.random());
       const Indirect = molecule(() => use(Direct));
