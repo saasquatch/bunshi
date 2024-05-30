@@ -119,6 +119,35 @@ describe("Scoping", () => {
     expect(thirdValue).not.toBe(secondValue);
   });
 
+  test.each([{ first: "direct" }, { first: "indirect" }])(
+    "Works with both directions of scoping, starting with $first",
+    ({ first }) => {
+      const Direct = molecule(() => use(UserScope) + Math.random());
+      const Indirect = molecule(() => use(Direct));
+
+      const injector = createInjector();
+
+      const sub1 = injector.useLazily(first === "direct" ? Direct : Indirect, [
+        UserScope,
+        "bob",
+      ]);
+      const sub2 = injector.useLazily(first === "direct" ? Indirect : Direct, [
+        UserScope,
+        "bob",
+      ]);
+
+      expect(sub1[0]).not.toBe(sub2[0]);
+
+      const new1 = sub1[1].start();
+      const new2 = sub2[1].start();
+
+      expect(new1).toBe(new2);
+
+      sub1[1].stop();
+      sub2[1].stop();
+    },
+  );
+
   test("Creates only one molecule per dependent scope", () => {
     const injector = createInjector();
 
