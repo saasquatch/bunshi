@@ -288,7 +288,7 @@ export function createInjector(
     injectorProps.instrumentation?.stage1CacheMiss();
     const { previous } = props;
 
-    if (previous !== false) {
+    if (previous !== false && previousIsCacheable(m, props)) {
       return moleculeCache.deepCache(
         () => previous,
         () => {},
@@ -296,6 +296,34 @@ export function createInjector(
       );
     }
     return runAndCache<T>(m, props);
+  }
+
+  function previousIsCacheable(m: AnyMolecule, props: CreationProps) {
+    const { previous } = props;
+
+    // If no previous value, then nothing is cacheable
+    if (previous === false) return false;
+
+    /**
+     * All buddies are:
+     *  - exact matches from the cache
+     *  - missing in the cache
+     *
+     * are not:
+     *  - conflicting (not equal) to their cache value
+     */
+
+    const buddiesAllGood = previous.deps.buddies.every((buddy) => {
+      const currentCacheValue = getInternal(buddy, {
+        scopes: buddy.scopes,
+        lease: props.lease,
+        previous: buddy,
+      });
+      // FIXME: I think that this value should be reversed...
+      return currentCacheValue !== buddy;
+    });
+
+    return buddiesAllGood;
   }
 
   function multiCache(
