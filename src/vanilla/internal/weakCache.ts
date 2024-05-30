@@ -85,6 +85,8 @@ export type DeepCache<TKey extends {}, TValue> = {
   get(deps: Deps<TKey>): TValue | undefined;
   set(deps: Deps<TKey>, value: TValue | undefined): void;
 
+  find(deps: Deps<TKey>): Deps<{ path: Deps<TKey>; value: TValue }>;
+
   /**
    * Create or update an item in the cache
    *
@@ -139,7 +141,52 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   const set = (deps: Deps<TKey>, val: TValue) =>
     setWeakCacheItem(cache, deps, val);
 
+  const longest = (deps: Deps<TKey>) => {
+    let start = 0;
+
+    const matches: {
+      path: Deps<TKey>;
+      value: TValue;
+    }[] = [];
+
+    for (let start = 0; start < deps.length; start++) {
+      // Mutates these
+      const matchedPath: Array<TKey> = [];
+
+      const hasStart = cache.has(deps[start]);
+      if (hasStart) {
+        // Pointers
+        let cachePointer = cache;
+        let lastIsValue: TValue | undefined = undefined;
+        for (let i = start; i < deps.length; i++) {
+          const element = deps[i];
+
+          const entry = cachePointer.get(element);
+          if (entry) {
+            const hasValue = entry.length === 2;
+            matchedPath.push(element);
+            if (hasValue) {
+              lastIsValue = entry[1];
+            }
+            cachePointer = entry[0];
+          } else {
+          }
+        }
+
+        if (matchedPath.length > 0 && lastIsValue) {
+          matches.push({
+            path: matchedPath,
+            value: lastIsValue,
+          });
+        }
+      }
+    }
+
+    return matches;
+  };
+
   return {
+    find: longest,
     get,
     set,
     cache,

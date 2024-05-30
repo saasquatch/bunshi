@@ -20,7 +20,8 @@ export type MoleculeCacheValue = {
   deps: Deps;
   value: unknown;
   isMounted: boolean;
-  path: (AnyScopeTuple | AnyMolecule)[];
+  self: AnyMolecule;
+  path: AnyScopeTuple[];
   instanceId: symbol;
 };
 

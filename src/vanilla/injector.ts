@@ -14,6 +14,7 @@ import type {
   AnyMoleculeScope,
   AnyScopeTuple,
   MoleculeInternal,
+  ScopeTuple,
 } from "./internal/internal-types";
 import type { MoleculeCacheValue } from "./internal/internal-types";
 import { scopeTupleSort } from "./internal/scopeTupleSort";
@@ -23,7 +24,7 @@ import {
   isMoleculeInterface,
   isMoleculeScope,
 } from "./internal/utils";
-import { createDeepCache } from "./internal/weakCache";
+import { DeepCache, WeakCache, createDeepCache } from "./internal/weakCache";
 import {
   onMountImpl,
   useImpl,
@@ -176,19 +177,7 @@ function bindingsToMap(bindings?: Bindings): BindingMap {
 export function createInjector(
   injectorProps: CreateInjectorProps = {},
 ): MoleculeInjector {
-  /*
-   *
-   *
-   *     State
-   *
-   *
-   */
-  const moleculeCache = createDeepCache<
-    AnyMolecule | AnyScopeTuple,
-    MoleculeCacheValue
-  >();
-
-  const dependencyCacher = new DependencyCache();
+  const cacher = new Cacher();
   const bindings = bindingsToMap(injectorProps.bindings);
 
   /**
@@ -219,48 +208,47 @@ export function createInjector(
     props: CreationProps,
   ): MoleculeCacheValue {
     injectorProps.instrumentation?.getInternal(m);
-    const cachedRelevantScopes = dependencyCacher.get(m, props);
 
-    if (cachedRelevantScopes) {
+    /**
+     * Stage 1 cache
+     *
+     * If we have hit this case, then the molecule has been run at least once
+     * before, and during that run produced a set of scope keys that it
+     * depends on.
+     *
+     * We don't support conditional dependencies, and that case is caught
+     * if we run a molecule twice and it has a different set of dependencies.
+     */
+
+    const cachedValue = cacher.getStage1Cache(m, props);
+
+    if (cachedValue) {
+      // Extend the lease to include the any default scopes
+      // that are implicitly leased
+      cachedValue.deps.defaultScopes.forEach((s) => {
+        props.lease(s.defaultTuple);
+      });
+
+      injectorProps.instrumentation?.stage1CacheHit(m, cachedValue);
+      return cachedValue;
+    } else {
       /**
-       * Stage 1 cache
+       * Fall through to Stage 2 cache
        *
-       * If we have hit this case, then the molecule has been run at least once
-       * before, and during that run produced a set of scope keys that it
-       * depends on.
-       *
-       * We don't support conditional dependencies, and that case is caught
-       * if we run a molecule twice and it has a different set of dependencies.
+       * We don't want to be creating anything new here, we
+       * just want to fall back to the regular handling of
+       * molecules
        */
-
-      const deps = getCachePath(cachedRelevantScopes, m);
-      const cachedValue = moleculeCache.get(deps);
-
-      if (cachedValue) {
-        // Extend the lease to include the any default scopes
-        // that are implicitly leased
-        cachedValue.deps.defaultScopes.forEach((s) => {
-          props.lease(s.defaultTuple);
-        });
-
-        injectorProps.instrumentation?.stage1CacheHit(m, cachedValue);
-        return cachedValue;
-      } else {
-        /**
-         * Fall through to Stage 2 cache
-         *
-         * We don't want to be creating anything new here, we
-         * just want to fall back to the regular handling of
-         * molecules
-         */
-      }
     }
+
     injectorProps.instrumentation?.stage1CacheMiss();
     const { previous } = props;
     if (previous !== false) {
-      return moleculeCache.deepCache(
+      return cacher.getMoleculeCache(m).deepCache(
         () => previous,
-        () => {},
+        () => {
+          // found
+        },
         previous.path,
       );
     }
@@ -273,14 +261,15 @@ export function createInjector(
     createFn: () => Omit<Omit<MoleculeCacheValue, "path">, "instanceId">,
     foundFn: (found: MoleculeCacheValue) => void,
   ): MoleculeCacheValue | undefined {
-    const deps = getCachePath(scopes, mol);
+    const deps = getCachePath(scopes);
 
-    const cached = moleculeCache.deepCache(
+    const cached = cacher.getMoleculeCache(mol).deepCache(
       () => {
         const innerCached = {
           ...createFn(),
           path: deps,
           instanceId: instanceId(),
+          self: mol,
         };
 
         return innerCached;
@@ -335,7 +324,7 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    dependencyCacher.safeSet(m, props, mounted);
+    cacher.safeSet(m, props, mounted);
     return multiCache(
       m,
       relatedScope,
@@ -345,6 +334,7 @@ export function createInjector(
           props.lease(s.defaultTuple);
         });
         const created = {
+          self: m,
           deps: mounted.deps,
           value: mounted.value,
           isMounted: false,
@@ -402,7 +392,7 @@ export function createInjector(
        * Without this repeated calls to `injector.use` would not create
        * new values, and would not run lifecycle hooks (mount, unmount).
        */
-      moleculeCache.remove(...mol.path);
+      cacher.getMoleculeCache(mol.self).remove(...mol.path);
       mol.isMounted = false;
     });
 
@@ -442,7 +432,7 @@ export function createInjector(
     m: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
   ): [T, Unsub] {
-    const [moleculeValue, options] = lazyUse(m, ...scopes);
+    const [, options] = lazyUse(m, ...scopes);
 
     return [options.start(), options.stop];
   }
@@ -523,7 +513,7 @@ enum MoleculeSubscriptionState {
  * @param mol
  * @returns
  */
-function getCachePath(scopes: AnyScopeTuple[], mol: AnyMolecule) {
+function getCachePath(scopes: AnyScopeTuple[]) {
   /**
    * Important: We filter out default scopes as a part of the cache path
    * because it makes it easier for us to find a molecule in our Stage 1
@@ -535,8 +525,10 @@ function getCachePath(scopes: AnyScopeTuple[], mol: AnyMolecule) {
    * Important: Sorting of scopes is important to ensure a consistent path
    * for storing (and finding) molecules in the deep cache tree
    */
-  const deps = [mol, ...scopeTupleSort(nonDefaultScopes)];
-  return deps;
+  return [
+    InternalOnlyGlobalScope.defaultTuple,
+    ...scopeTupleSort(nonDefaultScopes),
+  ];
 }
 
 /**
@@ -624,46 +616,79 @@ function runMolecule(
   }
 }
 
-class DependencyCache {
+class Cacher {
   /**
    * The Dependency Cache reduces the number of times that a molecule needs
    * to be run to determine it's dependencies.
    *
    * Give a molecule, what scopes might it depend on?
    */
-  // private internal: WeakMap<
-  //   /**
-  //    * The key is the molecule itself
-  //    */
-  //   AnyMolecule,
-  //   /**
-  //    * This can be a weak set because it's only ever used to determine
-  //    * if the scopes in context should apply to this molecule.
-  //    *
-  //    * For example:
-  //    *  - Molecule is used with scopes context A, B and C
-  //    *  - This set contains B, C and D
-  //    *  - The relevant scopes are B and C
-  //    *  - This set doesn't need to be iterable, because the scope context (e.g. A, B and C) is iterable
-  //    */
-  //   Set</**
-  //    * We only need to store the scope keys, not the scope values.
-  //    */
-  //   AnyMoleculeScope>
-  // > = new WeakMap();
-
-  private internal = createDeepCache<
-    AnyMolecule | AnyScopeTuple,
+  private depsCache = createDeepCache<
+    AnyMolecule,
     Set</**
      * We only need to store the scope keys, not the scope values.
      */
     AnyMoleculeScope>
   >();
 
-  get(m: AnyMolecule, props: CreationProps) {
-    const cachedDeps = this.internal.get([m]);
+  private valueCache = new WeakMap<
+    AnyMolecule,
+    DeepCache<AnyScopeTuple, MoleculeCacheValue>
+  >();
+
+  getMoleculeCache(m: AnyMolecule) {
+    const exists = this.valueCache.get(m);
+    if (exists) return exists;
+
+    const moleculeCache = createDeepCache<AnyScopeTuple, MoleculeCacheValue>();
+    this.valueCache.set(m, moleculeCache);
+    return moleculeCache;
+  }
+
+  getStage1Cache(m: AnyMolecule, props: CreationProps) {
+    //
+    // FIXME: Can we get this working? If so, then we can remove `depsCache` and simplify our
+    //        internal data structures
+    //
+    // const scopesCache = this.valueCache.get(m);
+    // const search = scopeTupleSort(
+    //   props.scopes.filter((s) => s[0].defaultValue !== s[1]),
+    // );
+    // const matches = scopesCache?.find(search) ?? [];
+    // if (matches.length > 1) throw new Error("Too many matches");
+    // const match = matches.find((m) => {
+    //   // Return first match that path matches exactly what was cached
+    //   return m.value.path.every((value, idx) => m.path[idx] === value);
+    // });
+
+    // return match;
+
+    const cachedRelevantScopes = this.getRelevantScopes(m, props);
+
+    if (cachedRelevantScopes) {
+      /**
+       * Stage 1 cache
+       *
+       * If we have hit this case, then the molecule has been run at least once
+       * before, and during that run produced a set of scope keys that it
+       * depends on.
+       *
+       * We don't support conditional dependencies, and that case is caught
+       * if we run a molecule twice and it has a different set of dependencies.
+       */
+
+      const deps = getCachePath(cachedRelevantScopes);
+      const cachedValue = this.getMoleculeCache(m).get(deps);
+      return cachedValue;
+    }
+    return undefined;
+  }
+
+  getRelevantScopes(m: AnyMolecule, props: CreationProps) {
+    const cachedDeps = this.depsCache.get([m]);
     if (!cachedDeps) return undefined;
 
+    // return matchedPath;
     const relevantScopeTuples = props.scopes.filter((tuple) =>
       cachedDeps.has(tuple[0]),
     );
@@ -695,7 +720,7 @@ class DependencyCache {
     //     );
     //   }
     // } else {
-    this.internal.set([m], mounted.deps.allScopes);
+    this.depsCache.set([m], mounted.deps.allScopes);
     // }
   }
 }
