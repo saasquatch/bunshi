@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import {
   Atom,
   PrimitiveAtom,
@@ -474,5 +474,70 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       userLifecycle.expectCalledTimesEach(1, 1, 1);
       userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
+  });
+
+  describe("Issue #64 - Peer providers don't share a value", () => {
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>{children}</Outer>
+    );
+
+    const Nested = molecule(() => use(UserMolecule));
+
+    const NestedComponent = () => (
+      <div data-testid="nested">{useMolecule(Nested).example}</div>
+    );
+    const NonNestedComponent = () => (
+      <div data-testid="non-nested">{useMolecule(UserMolecule).example}</div>
+    );
+
+    test.each([{ tcase: "nested" }, { tcase: "direct" }])(
+      "Should render when $tcase is first",
+      async ({ tcase }) => {
+        userLifecycle.expectUncalled();
+
+        const result = render(
+          tcase === "nested" ? (
+            <>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NestedComponent />
+              </ScopeProvider>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NonNestedComponent />
+              </ScopeProvider>
+            </>
+          ) : (
+            <>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NonNestedComponent />
+              </ScopeProvider>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NestedComponent />
+              </ScopeProvider>
+            </>
+          ),
+          {
+            wrapper: Wrapper,
+          },
+        );
+
+        // if (isStrict) {
+        //   userLifecycle.expectCalledTimesEach(1, 2, 1);
+        // } else {
+        //   userLifecycle.expectCalledTimesEach(1, 1, 0);
+        // }
+
+        const a = await result.findByTestId("nested");
+        const b = await result.findByTestId("non-nested");
+        expect(a.innerText).toBe(b.innerText);
+        result.unmount();
+
+        // if (isStrict) {
+        //   userLifecycle.expectCalledTimesEach(1, 2, 2);
+        // } else {
+        //   userLifecycle.expectCalledTimesEach(1, 1, 1);
+        //   userLifecycle.expectToMatchCalls(["bob"]);
+        // }
+      },
+    );
   });
 });
