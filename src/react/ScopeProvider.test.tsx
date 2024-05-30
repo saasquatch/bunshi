@@ -533,7 +533,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       return id;
     };
 
-    test.only.each([{ tcase: "nested" }, { tcase: "direct" }])(
+    test.each([{ tcase: "nested" }, { tcase: "direct" }])(
       "Should render when $tcase is first",
       async ({ tcase }) => {
         userLifecycle.expectUncalled();
