@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { dstream } from "../shared/getDownstreamScopes";
 import { ComponentScope, ScopeTuple } from "../vanilla";
@@ -56,13 +56,17 @@ export function useScopes(
 export function useScopeTuplesRaw(options?: MoleculeScopeOptions) {
   const parentScopes = useContext(ScopeContext);
 
-  const generatedValue = useMemo(
-    () => new Error("Do not use this scope value. It is a placeholder only."),
-    [],
-  );
+  // `useState` instead of `useMemo`, so React cannot discard the cached value.
+  const [componentScopeTuple] = useState(() => {
+    // We only care about referential stability, so this value can be any object.
+    const generatedValue = new Error(
+      "Do not use this scope value. It is a placeholder only.",
+    );
 
-  const componentScopeTuple = useRef([ComponentScope, generatedValue] as const)
-    .current as ScopeTuple<unknown>;
+    return [ComponentScope, generatedValue] as ScopeTuple<unknown>;
+  });
+
+  const generatedValue = componentScopeTuple[1];
 
   const inputTuples: AnyScopeTuple[] = (() => {
     if (!options) return [...parentScopes, componentScopeTuple];
