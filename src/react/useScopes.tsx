@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { MoleculeScopeOptions } from "../shared/MoleculeScopeOptions";
 import { dstream } from "../shared/getDownstreamScopes";
 import { ComponentScope, ScopeTuple } from "../vanilla";
@@ -30,17 +30,14 @@ export function useScopes(
     return innerSub;
   }, [injector, ...flattened]);
 
-  const [tuples, setTuples] = useState(sub.tuples);
-
   useEffect(() => {
-    const subbedTuples = sub.start();
-    setTuples(subbedTuples);
+    sub.start();
     return () => {
       sub.stop();
     };
-  }, [sub, setTuples]);
+  }, [sub]);
 
-  return tuples;
+  return sub.tuples;
 }
 
 /**
