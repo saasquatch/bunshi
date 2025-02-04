@@ -1,0 +1,112 @@
+---
+title: "Reatom"
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CodeEditor from "~/components/CodeEditor.astro";
+import { reatom } from "~/source-examples/sources";
+
+## Background
+
+[Reatom](https://reatom.dev) is a compact and powerful state manager for building scalable, reactive applications.
+It combines immutable state management with explicit reactivity using three core primitives: ctx, atom, and action.
+Designed for projects of any size, Reatom ensures atomicity, advanced async flow control (caching, retries, cancellation), and a DI-like context system for seamless testing and SSR.
+
+With a 2 KB core and an ecosystem under 15 KB, Reatom delivers a lightweight yet feature-rich solution that balances simplicity, performance, and developer experience.
+Drawing inspiration from libraries like [Jotai](https://jotai.org/) and [Recoil](https://recoiljs.org/), Reatom builds on the concept of atomic state management while introducing its own innovations: an async-first design, modular architecture, and framework-agnostic flexibility.
+It works seamlessly with React, Vue, Solid, Svelte and vanilla JS, making it a versatile choice for modern development.
+
+## Component state
+
+Bunshi lest you re-use the power of Reatom atoms to build local state for your components, instead of only globally.
+
+- The multiplier uses **global state**
+- The counter uses **component state**
+- The value is derived from **both** local and global state
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": reatom.ReactApp,
+        "molecules.ts": {
+          code: reatom.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@reatom/core": "^3.9.3",
+        "@reatom/npm-react": "^3.10.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": reatom.VueApp,
+        "src/Counter.vue": reatom.VueCounter,
+        "src/Multiplier.vue": reatom.VueMultiplier,
+        "src/molecules.ts": {
+          code: reatom.molecules2,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@reatom/core": "^3.9.3",
+        "@reatom/npm-vue": "^3.6.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Global state
+
+You can use Reatom to define global atoms shared across your application.
+
+<Tabs>
+  <TabItem label="React">
+    <CodeEditor
+      files={{
+        "App.tsx": reatom.ReactApp,
+        "molecules.ts": {
+          code: reatom.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@reatom/core": "^3.9.3",
+        "@reatom/npm-react": "^3.10.5",
+      }}
+    />
+  </TabItem>
+  <TabItem label="Vue">
+    <CodeEditor
+      files={{
+        "src/App.vue": reatom.VueApp,
+        "src/Counter.vue": reatom.VueCounter,
+        "src/Multiplier.vue": reatom.VueMultiplier,
+        "src/molecules.ts": {
+          code: reatom.molecules,
+          active: true,
+        },
+      }}
+      dependencies={{
+        "@reatom/core": "^3.9.3",
+        "@reatom/npm-vue": "^3.6.1",
+      }}
+      template="vite-vue"
+    />
+  </TabItem>
+</Tabs>
+
+## Why Bunshi with Reatom?
+
+Bunshi helps with scoping your atoms. It allows you to pull state up and push state down the component tree.
+If the only type of state you have is global state and it doesn't need to be lazy, then you can avoid bunshi and use Reatom with
+global variables.
+
+- Start using Reatom for component-level state
+- Stick to the vanilla javascript API for Reatom
+- Decouple your Reatom logic from your UI framework code
+- Move your state from component level to global without refactoring components
