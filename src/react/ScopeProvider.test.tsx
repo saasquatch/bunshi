@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import {
   Atom,
   PrimitiveAtom,
@@ -10,11 +10,20 @@ import {
 } from "jotai";
 import React, { ReactNode, useContext, useEffect } from "react";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
-import { createScope, molecule, resetDefaultInjector, use } from "../vanilla";
+import {
+  ComponentScope,
+  createScope,
+  molecule,
+  resetDefaultInjector,
+  use,
+} from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
+import { AnyScopeTuple } from "../vanilla/internal/internal-types";
+import { useScopeTuplesRaw, useScopes } from "./useScopes";
+import { Debug } from "../vanilla/internal/symbols";
 
 const ExampleMolecule = molecule(() => {
   return {
@@ -22,9 +31,13 @@ const ExampleMolecule = molecule(() => {
   };
 });
 
-export const UserScope = createScope("user@example.com");
+export const UserScope = createScope("user@example.com", {
+  debugLabel: "UserScope",
+});
 
-const AtomScope = createScope(atom("user@example.com"));
+const AtomScope = createScope(atom("user@example.com"), {
+  debugLabel: "AtomScope",
+});
 
 const userLifecycle = createLifecycleUtils();
 export const UserMolecule = molecule(() => {
@@ -474,5 +487,104 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       userLifecycle.expectCalledTimesEach(1, 1, 1);
       userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
+  });
+
+  describe("Issue #64 - Peer providers don't share a value", () => {
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>{children}</Outer>
+    );
+
+    const Nested = molecule(() => use(UserMolecule));
+
+    const NestedComponent = () => (
+      <>
+        <div data-testid="nested">{useMolecule(Nested).example}</div>
+        <div data-testid="nested-scopes">
+          {useScopeTuplesRaw()
+            .filter((x) => x[0] !== ComponentScope)
+            .map(getTupleId)
+            .join(",")}
+        </div>
+      </>
+    );
+    const NonNestedComponent = () => (
+      <>
+        <div data-testid="non-nested">{useMolecule(UserMolecule).example}</div>
+        <div data-testid="non-nested-scopes">
+          {useScopeTuplesRaw()
+            .filter((x) => x[0] !== ComponentScope)
+            .map(getTupleId)
+            .join(",")}
+        </div>
+      </>
+    );
+
+    const tupleIds = new Map<AnyScopeTuple, string>();
+    const getTupleId = (tuple: AnyScopeTuple) => {
+      const found = tupleIds.get(tuple);
+      if (found) return found;
+      const id =
+        (tuple[0][Debug] as symbol)?.description +
+        "=" +
+        tuple[1] +
+        ";tuple=" +
+        Math.random();
+      tupleIds.set(tuple, id);
+      return id;
+    };
+
+    test.each([{ tcase: "nested" }, { tcase: "direct" }])(
+      "Should render when $tcase is first",
+      async ({ tcase }) => {
+        userLifecycle.expectUncalled();
+
+        const result = render(
+          tcase === "nested" ? (
+            <>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NestedComponent />
+              </ScopeProvider>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NonNestedComponent />
+              </ScopeProvider>
+            </>
+          ) : (
+            <>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NonNestedComponent />
+              </ScopeProvider>
+              <ScopeProvider scope={UserScope} value="bob">
+                <NestedComponent />
+              </ScopeProvider>
+            </>
+          ),
+          {
+            wrapper: Wrapper,
+          },
+        );
+
+        // if (isStrict) {
+        //   userLifecycle.expectCalledTimesEach(1, 2, 1);
+        // } else {
+        //   userLifecycle.expectCalledTimesEach(1, 1, 0);
+        // }
+
+        const nestedScopes = await result.findByTestId("nested-scopes");
+        const nonNestedScopes = await result.findByTestId("non-nested-scopes");
+        expect(nestedScopes.innerText).toBe(nonNestedScopes.innerText);
+
+        const nestedValue = await result.findByTestId("nested");
+        const nonNestedValue = await result.findByTestId("non-nested");
+        expect(nestedValue.innerText).toBe(nonNestedValue.innerText);
+        result.unmount();
+
+        // if (isStrict) {
+        //   userLifecycle.expectCalledTimesEach(1, 2, 2);
+        // } else {
+        //   userLifecycle.expectCalledTimesEach(1, 1, 1);
+        //   userLifecycle.expectToMatchCalls(["bob"]);
+        // }
+      },
+    );
   });
 });
