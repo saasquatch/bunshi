@@ -5,7 +5,7 @@ title: "React"
 Bunshi ships with support for React out of the box.
 
 ```ts
-import { useMolecule, ScopeProvider } from "bunshi/react";
+import { useMolecule, ScopeProvider, MoleculeProvider } from "bunshi/react";
 ```
 
 ## Basic API
@@ -76,3 +76,60 @@ const App = () => (
 
 - `scope` the `MoleculeScope` reference to provide
 - `value` a new value for that scope
+
+## Advanced API
+
+### MoleculeProvider
+
+Provides implementations for [molecule interfaces](/advanced/interfaces) throughout the React component tree, allowing you to supply concrete molecules for abstract interfaces.
+
+```tsx
+// Define interface and implementation
+const SendsEmailMolecule = moleculeInterface<{
+  sendEmail(recipient: string);
+}>();
+
+const SendGmailMolecule = molecule(() => ({
+  sendEmail: (recipient: string) => { /* ... */ },
+}));
+
+// Provide implementation
+const App = () => (
+  <MoleculeProvider interface={SendsEmailMolecule} value={SendGmailMolecule}>
+    <EmailForm />
+  </MoleculeProvider>
+);
+```
+
+#### Interface Resolution in Child Molecules
+
+Child molecules can resolve interfaces while preserving existing molecule instances:
+
+```tsx
+// Parent molecule (created once, shared everywhere)
+const CacheMolecule = molecule(() => new Map());
+
+// Molecule using interfaces
+const UserServiceMolecule = molecule((get) => {
+  const cache = get(CacheMolecule);       // Existing molecule (not re-created)
+  const db = get(DatabaseInterface);      // Resolved via provider
+  const logger = get(LoggerInterface);    // Resolved via provider
+  return {
+    async getUser(id: string) {
+      const cached = cache.get(id);
+      if (cached) return cached;
+      // ... fetch and cache
+    }
+  };
+});
+
+const App = () => (
+  <MoleculeProvider interface={DatabaseInterface} value={SqliteDatabaseMolecule}>
+    <MoleculeProvider interface={LoggerInterface} value={ConsoleLevelMolecule}>
+      <UserProfile userId="123" />
+    </MoleculeProvider>
+  </MoleculeProvider>
+);
+```
+
+Providers create child injectors that inherit the parent cache, preserving existing molecules while enabling interface resolution.

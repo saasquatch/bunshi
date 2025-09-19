@@ -781,4 +781,343 @@ describe("Scope caching", () => {
       });
     });
   });
+
+  describe("Parent injectors", () => {
+    interface APIService {
+      fetch(): string;
+    }
+    interface CacheService {
+      get(key: string): any;
+      set(key: string, value: any): void;
+    }
+
+    const APIServiceInterface = moleculeInterface<APIService>();
+    const CacheServiceInterface = moleculeInterface<CacheService>();
+
+    const MockAPIMolecule = molecule(() => ({
+      fetch: () => "mocked-api-data",
+    }));
+
+    const MemoryCacheMolecule = molecule(() => {
+      const cache = new Map();
+      return {
+        get: (key: string) => cache.get(key),
+        set: (key: string, value: any) => cache.set(key, value),
+      };
+    });
+
+    const ComposedServiceMolecule = molecule((get) => {
+      const api = get(APIServiceInterface);
+      const cache = get(CacheServiceInterface);
+      return {
+        getData: () => {
+          const cached = cache.get("data");
+          if (cached) return cached;
+          const data = api.fetch();
+          cache.set("data", data);
+          return data;
+        },
+      };
+    });
+
+    test("child injector inherits parent bindings", () => {
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      const service = childInjector.get(ComposedServiceMolecule);
+      expect(service.getData()).toBe("mocked-api-data");
+    });
+
+    test("child injector overrides parent bindings", () => {
+      const OverrideAPIMolecule = molecule(() => ({
+        fetch: () => "override-data",
+      }));
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [
+          [APIServiceInterface, OverrideAPIMolecule], // Override parent
+          [CacheServiceInterface, MemoryCacheMolecule],
+        ],
+      });
+
+      const service = childInjector.get(ComposedServiceMolecule);
+      expect(service.getData()).toBe("override-data");
+    });
+
+    test("child injector inherits molecules created before its creation", () => {
+      let creationCount = 0;
+      const SharedMolecule = molecule(() => {
+        creationCount++;
+        return { id: creationCount };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      // Create molecule in parent first - this adds it to parent's cache
+      const parentInstance = parentInjector.get(SharedMolecule);
+
+      // Now create child injector - it inherits the parent's cache
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Child should access the same instance from the shared cache
+      const childInstance = childInjector.get(SharedMolecule);
+
+      expect(parentInstance).toBe(childInstance);
+      expect(creationCount).toBe(1); // Only created once in parent
+    });
+
+    test("parent can access molecules created in child (bidirectional cache)", () => {
+      let creationCount = 0;
+      const SharedMolecule = molecule(() => {
+        creationCount++;
+        return { id: creationCount };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create molecule in child first - this should add it to shared cache
+      const childInstance = childInjector.get(SharedMolecule);
+
+      // Parent should access the same instance from the shared cache
+      const parentInstance = parentInjector.get(SharedMolecule);
+
+      expect(parentInstance).toBe(childInstance);
+      expect(creationCount).toBe(1); // Only created once in child
+    });
+
+    test("scoped molecules have consistent behavior between parent and child", () => {
+      let creationCount = 0;
+      const ScopedMolecule = molecule((get, getScope) => {
+        const scope = getScope(UserScope);
+        creationCount++;
+        return { id: creationCount, user: scope };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create scoped molecule in parent
+      const [parentInstance, parentUnsub] = parentInjector.use(ScopedMolecule, [
+        UserScope,
+        "user123",
+      ]);
+
+      // Access same scoped molecule from child
+      const [childInstance, childUnsub] = childInjector.use(ScopedMolecule, [
+        UserScope,
+        "user123",
+      ]);
+
+      // Both should have the same user scope value
+      expect(parentInstance.user).toBe("user123");
+      expect(childInstance.user).toBe("user123");
+
+      // Both should work with same scope value
+      expect(parentInstance.user).toBe(childInstance.user);
+
+      parentUnsub();
+      childUnsub();
+    });
+
+    test("child modifications affect parent cache", () => {
+      let globalState = { counter: 0 };
+      const StatefulMolecule = molecule(() => {
+        globalState.counter++;
+        return {
+          increment: () => globalState.counter++,
+          getCount: () => globalState.counter,
+        };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Get molecule from child first
+      const childInstance = childInjector.get(StatefulMolecule);
+      expect(childInstance.getCount()).toBe(1); // Initial creation
+
+      // Modify state through child
+      childInstance.increment();
+      expect(childInstance.getCount()).toBe(2);
+
+      // Get same molecule from parent - should see the modified state
+      const parentInstance = parentInjector.get(StatefulMolecule);
+      expect(parentInstance).toBe(childInstance); // Same instance
+      expect(parentInstance.getCount()).toBe(2); // See the modification
+    });
+
+    test("parent modifications affect child cache", () => {
+      let globalState = { value: "initial" };
+      const MutableMolecule = molecule(() => ({
+        setValue: (val: string) => {
+          globalState.value = val;
+        },
+        getValue: () => globalState.value,
+      }));
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Get molecule from parent first
+      const parentInstance = parentInjector.get(MutableMolecule);
+      expect(parentInstance.getValue()).toBe("initial");
+
+      // Get same molecule from child - should see the modified state
+      const childInstance = childInjector.get(MutableMolecule);
+      expect(childInstance).toBe(parentInstance); // Same instance
+      expect(childInstance.getValue()).toBe("initial");
+
+      // Modify state through parent
+      parentInstance.setValue("modified-by-parent");
+
+      expect(parentInstance.getValue()).toBe("modified-by-parent"); // See the modification
+      expect(childInstance.getValue()).toBe("modified-by-parent"); // See the modification
+    });
+
+    test("complex scoped molecules with interface dependencies work across injectors", () => {
+      let creationCount = 0;
+      const ComplexServiceMolecule = molecule((get, getScope) => {
+        const user = getScope(UserScope);
+        const api = get(APIServiceInterface);
+        creationCount++;
+
+        return {
+          id: creationCount,
+          user,
+          fetchUserData: () => `${api.fetch()}-for-${user}`,
+          getUserInfo: () => `info-${user}`,
+        };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create scoped service in parent
+      const [parentService, parentUnsub] = parentInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "alice"],
+      );
+
+      // Access same scoped service from child
+      const [childService, childUnsub] = childInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "alice"],
+      );
+
+      // Both should have access to the interface and same scope
+      expect(childService.fetchUserData()).toBe("mocked-api-data-for-alice");
+      expect(childService.getUserInfo()).toBe("info-alice");
+      expect(parentService.user).toBe(childService.user); // Same scope value
+
+      // Different scope should create new instance
+      const [childService2, childUnsub2] = childInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "bob"],
+      );
+
+      expect(childService2).not.toBe(childService);
+      expect(childService2.user).toBe("bob");
+      expect(childService2.getUserInfo()).toBe("info-bob");
+
+      parentUnsub();
+      childUnsub();
+      childUnsub2();
+    });
+
+    test("deeply nested injector hierarchy works", () => {
+      const LoggerInterface = moleculeInterface<{
+        log: (msg: string) => void;
+      }>();
+
+      const ConsoleLoggerMolecule = molecule(() => ({
+        log: (msg: string) => console.log(msg),
+      }));
+
+      const grandParentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const parentInjector = createInjector({
+        parent: grandParentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[LoggerInterface, ConsoleLoggerMolecule]],
+      });
+
+      // Child should access all three interfaces
+      const api = childInjector.get(APIServiceInterface);
+      const cache = childInjector.get(CacheServiceInterface);
+      const logger = childInjector.get(LoggerInterface);
+
+      expect(api.fetch()).toBe("mocked-api-data");
+      expect(cache).toBeDefined();
+      expect(logger).toBeDefined();
+    });
+
+    test("deeply nested injector hierarchy (>3 levels) works", () => {
+      const APIServiceInterface = moleculeInterface<{ fetch(): string }>();
+      const MockAPIMolecule = molecule(() => ({ fetch: () => "deep-mock" }));
+
+      const level1 = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+      const level2 = createInjector({ parent: level1 });
+      const level3 = createInjector({ parent: level2 });
+      const level4 = createInjector({ parent: level3 });
+      const level5 = createInjector({ parent: level4 });
+
+      const api = level5.get(APIServiceInterface);
+      expect(api.fetch()).toBe("deep-mock");
+    });
+  });
 });

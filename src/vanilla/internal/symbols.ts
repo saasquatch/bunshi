@@ -1,3 +1,6 @@
+// For internals
+export const InjectorInternalsSymbol = Symbol.for("bunshi.injector.internals");
+
 // For validation
 export const TypeSymbol = Symbol.for("bunshi.molecules.type");
 export const ScopeSymbol = Symbol.for("bunshi.scope.type");
