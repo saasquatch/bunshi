@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { createInjector } from "./injector";
+import { createInjector, type MoleculeInjector } from "./injector";
 import {
   ErrorBadUse,
   ErrorInvalidMolecule,
@@ -20,8 +20,60 @@ import {
   user1Scope,
   user2Scope,
   userMolecule,
+  type BaseAtoms,
 } from "./testing/test-molecules";
 import { ScopeTuple } from "./types";
+
+describe("type safety", () => {
+  const injector = createInjector();
+
+  test("createInjector returns a MoleculeInjector", () => {
+    expectTypeOf(createInjector()).toEqualTypeOf<MoleculeInjector>();
+  });
+
+  test("injector infer type from molecule", () => {
+    expectTypeOf(exampleMol).toEqualTypeOf<Molecule<BaseAtoms>>();
+
+    expectTypeOf(() =>
+      injector.get(exampleMol),
+    ).returns.toEqualTypeOf<BaseAtoms>();
+
+    expectTypeOf(() => injector.use(exampleMol)).returns.toEqualTypeOf<
+      [BaseAtoms, () => unknown]
+    >();
+
+    expectTypeOf(() => injector.useLazily(exampleMol)).returns.toEqualTypeOf<
+      [BaseAtoms, { start: () => BaseAtoms; stop: () => unknown }]
+    >();
+  });
+
+  test("injector infer type from moleculeInterface", () => {
+    const ExampleInterface = moleculeInterface<{ value: number }>();
+    expectTypeOf(() => injector.get(ExampleInterface)).returns.toEqualTypeOf<{
+      value: number;
+    }>();
+  });
+
+  test("injector infer type from generic molecule", () => {
+    function useMoleculeGeneric<T>(molecule: Molecule<T>) {
+      const value = injector.get(molecule);
+      expectTypeOf({ value }).toEqualTypeOf<{ value: T }>();
+      return value;
+    }
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric({} as any);
+    }).returns.toEqualTypeOf<unknown>();
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric(molecule(() => 2));
+    }).returns.toEqualTypeOf<number>();
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric(molecule(() => ({ a: 1, b: "test" as const })));
+    }).returns.toEqualTypeOf<{ a: number; b: "test" }>();
+  });
+});
 
 test("returns the same values for dependency-free molecule", () => {
   const injector = createInjector();
@@ -47,7 +99,7 @@ describe("Derived molecules", () => {
     };
   });
 
-  function testDerived(mol: typeof derivedMol) {
+  function testDerived(mol: Molecule<{ base: unknown }>) {
     const injector = createInjector();
 
     const firstValue = injector.get(mol);

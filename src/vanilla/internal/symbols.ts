@@ -1,3 +1,6 @@
+// For type inference
+export const TypeInferSymbol = Symbol.for("bunshi.molecules.typeInfer");
+
 // For validation
 export const TypeSymbol = Symbol.for("bunshi.molecules.type");
 export const ScopeSymbol = Symbol.for("bunshi.scope.type");

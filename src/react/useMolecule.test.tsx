@@ -1,11 +1,20 @@
 import { renderHook } from "@testing-library/react";
 import React, { StrictMode, useContext } from "react";
-import { createScope, molecule, use } from ".";
+import {
+  createScope,
+  molecule,
+  moleculeInterface,
+  use,
+  type Molecule,
+  type MoleculeInterface,
+  type MoleculeOrInterface,
+} from ".";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
 import { useMolecule } from "./useMolecule";
+import { atom, useAtomValue, type Atom, type PrimitiveAtom } from "jotai";
 
 export const UserScope = createScope("user@example.com", {
   debugLabel: "User Scope",
@@ -21,6 +30,207 @@ export const UserMolecule = molecule((_, getScope) => {
   };
   userMoleculeLifecycle.connect(value);
   return value;
+});
+
+describe("type safety", () => {
+  const exampleMolecule = molecule(() => 42);
+
+  test("molecule returns a Molecule", () => {
+    expectTypeOf(exampleMolecule).toEqualTypeOf<Molecule<number>>();
+  });
+
+  test("molecule should infer the correct type of molecule", () => {
+    expectTypeOf(molecule(() => 42)).toEqualTypeOf<Molecule<number>>();
+    expectTypeOf(molecule(() => "hi")).toEqualTypeOf<Molecule<string>>();
+    expectTypeOf(molecule(() => ({ a: 1, b: "two" as const }))).toEqualTypeOf<
+      Molecule<{ a: number; b: "two" }>
+    >();
+  });
+
+  test("useMolecule should infer the correct return type of molecule", () => {
+    expectTypeOf(() =>
+      useMolecule(exampleMolecule),
+    ).returns.toEqualTypeOf<number>();
+  });
+
+  test("useMolecule should infer the correct generic return type of molecule", () => {
+    function useMoleculeGeneric<T>(molecule: Molecule<T>) {
+      const value = useMolecule(molecule);
+      expectTypeOf({ value }).toEqualTypeOf<{ value: T }>();
+      return value;
+    }
+
+    expectTypeOf(() =>
+      useMoleculeGeneric({} as any),
+    ).returns.toEqualTypeOf<unknown>();
+
+    expectTypeOf(() =>
+      useMoleculeGeneric(molecule(() => 2)),
+    ).returns.toEqualTypeOf<number>();
+
+    expectTypeOf(() =>
+      useMoleculeGeneric(molecule(() => ({ a: 1, b: "two" as const }))),
+    ).returns.toEqualTypeOf<{ a: number; b: "two" }>();
+  });
+
+  describe("with jotai", () => {
+    const exampleAtomMolecule = molecule<Atom<string>>(() => atom("example"));
+
+    test("molecule getter should infer the correct type of molecule", () => {
+      const DerivedMolecule = molecule((mol) => {
+        const anAtom = mol(exampleAtomMolecule);
+        expectTypeOf(anAtom).toEqualTypeOf<Atom<string>>();
+        return atom((get) => {
+          expectTypeOf(get(anAtom)).toEqualTypeOf<string>();
+        });
+      });
+      expectTypeOf(DerivedMolecule).toEqualTypeOf<Molecule<Atom<void>>>();
+    });
+
+    test("useMolecule should infer the correct return type of molecule", () => {
+      expectTypeOf(() =>
+        useMolecule(exampleAtomMolecule),
+      ).returns.toEqualTypeOf<Atom<string>>();
+    });
+
+    test("useMolecule with molecule can be used with useAtomValue directly", () => {
+      expectTypeOf(() =>
+        useAtomValue(useMolecule(exampleAtomMolecule)),
+      ).returns.toEqualTypeOf<string>();
+    });
+
+    // https://github.com/saasquatch/bunshi/issues/75
+    test("useMolecule should infer the correct generic return type of molecule", () => {
+      function useMoleculeGeneric<T extends Atom<unknown>>(
+        molecule: Molecule<T>,
+      ) {
+        const atom = useMolecule(molecule);
+        expectTypeOf({ atom }).toEqualTypeOf<{ atom: T }>();
+
+        const value1 = useAtomValue(atom);
+        expectTypeOf({ value1 }).toEqualTypeOf<{ value1: unknown }>();
+
+        const value2 = useAtomValue(useMolecule(molecule));
+        expectTypeOf({ value2 }).toEqualTypeOf<{ value2: unknown }>();
+        return { atom, value1, value2 };
+      }
+
+      expectTypeOf(() => useMoleculeGeneric({} as any)).returns.toEqualTypeOf<{
+        atom: Atom<unknown>;
+        value1: unknown; // T extends Atom<unknown> so unknown
+        value2: unknown; // T extends Atom<unknown> so unknown
+      }>();
+
+      expectTypeOf(() =>
+        useMoleculeGeneric(molecule((): Atom<number> => atom(2))),
+      ).returns.toEqualTypeOf<{
+        atom: Atom<number>;
+        value1: unknown; // T extends Atom<unknown> so unknown
+        value2: unknown; // T extends Atom<unknown> so unknown
+      }>();
+
+      function useMoleculeGenericWithValue<T extends Atom<string>>(
+        molecule: Molecule<T>,
+      ) {
+        const atom = useMolecule(molecule);
+        expectTypeOf({ atom }).toEqualTypeOf<{ atom: T }>();
+
+        const value1 = useAtomValue(atom);
+        expectTypeOf({ value1 }).toEqualTypeOf<{ value1: string }>();
+
+        const value2 = useAtomValue(useMolecule(molecule));
+        expectTypeOf({ value2 }).toEqualTypeOf<{ value2: string }>();
+
+        return { atom, value1, value2 };
+      }
+
+      expectTypeOf(() =>
+        useMoleculeGenericWithValue({} as any),
+      ).returns.toEqualTypeOf<{
+        atom: Atom<string>;
+        value1: string; // T extends Atom<string> so string
+        value2: string; // T extends Atom<string> so string
+      }>();
+
+      expectTypeOf(() =>
+        useMoleculeGenericWithValue(
+          molecule((): PrimitiveAtom<string> => atom("test")),
+        ),
+      ).returns.toEqualTypeOf<{
+        atom: PrimitiveAtom<string>;
+        value1: string;
+        value2: string;
+      }>();
+
+      function useMoleculeGenericWithInferredValue<T extends Atom<any>>(
+        molecule: Molecule<T>,
+      ): T extends Atom<infer U> ? U : never {
+        return useAtomValue(useMolecule(molecule));
+      }
+      expectTypeOf(() =>
+        useMoleculeGenericWithInferredValue({} as any),
+      ).returns.toBeAny();
+      expectTypeOf(() =>
+        useMoleculeGenericWithInferredValue(molecule(() => atom("test"))),
+      ).returns.toEqualTypeOf<string>();
+    });
+  });
+
+  describe("with moleculeInterface", () => {
+    const exampleMoleculeInterface = moleculeInterface<number>();
+
+    test("moleculeInterface returns a MoleculeInterface", () => {
+      expectTypeOf(exampleMoleculeInterface).toEqualTypeOf<
+        MoleculeInterface<number>
+      >();
+    });
+
+    test("useMolecule should infer the correct return type of moleculeInterface", () => {
+      expectTypeOf(() =>
+        useMolecule(exampleMoleculeInterface),
+      ).returns.toEqualTypeOf<number>();
+    });
+
+    test("useMolecule should infer the correct generic return type of moleculeInterface", () => {
+      function useMoleculeGeneric<T>(molecule: MoleculeInterface<T>) {
+        const value = useMolecule(molecule);
+        expectTypeOf({ value }).toEqualTypeOf<{ value: T }>();
+        return value;
+      }
+
+      expectTypeOf(() =>
+        useMoleculeGeneric({} as any),
+      ).returns.toEqualTypeOf<unknown>();
+
+      expectTypeOf(() =>
+        useMoleculeGeneric(molecule(() => 2)),
+      ).returns.toEqualTypeOf<number>();
+
+      expectTypeOf(() =>
+        useMoleculeGeneric(molecule(() => ({ a: 1, b: "two" as const }))),
+      ).returns.toEqualTypeOf<{ a: number; b: "two" }>();
+    });
+
+    test('useMolecule should infer the correct generic return type of "MoleculeOrInterface"', () => {
+      function useMoleculeGeneric<T>(molecule: MoleculeOrInterface<T>) {
+        const value = useMolecule(molecule);
+        expectTypeOf({ value }).toEqualTypeOf<{ value: T }>();
+        return value;
+      }
+
+      expectTypeOf(() =>
+        useMoleculeGeneric({} as any),
+      ).returns.toEqualTypeOf<unknown>();
+
+      expectTypeOf(() =>
+        useMoleculeGeneric(molecule(() => 2)),
+      ).returns.toEqualTypeOf<number>();
+
+      expectTypeOf(() =>
+        useMoleculeGeneric(molecule(() => ({ a: 1, b: "two" as const }))),
+      ).returns.toEqualTypeOf<{ a: number; b: "two" }>();
+    });
+  });
 });
 
 strictModeSuite(({ wrapper, isStrict }) => {
