@@ -3,7 +3,9 @@
     /* Bundler mode */
     "noEmit": true,
     "esModuleInterop": true,
-    "lib": ["ES2015"]
+    "lib": ["ES2015"],
+    /* Ignore parent's node_modules */
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src"]
 }
