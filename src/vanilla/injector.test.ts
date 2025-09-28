@@ -6,7 +6,8 @@ import {
   ErrorInvalidScope,
   ErrorUnboundMolecule,
 } from "./internal/errors";
-import { use } from "./lifecycle";
+import { GlobalScopeSymbol } from "./internal/symbols";
+import { onMount, onUnmount, use } from "./lifecycle";
 import { Molecule, molecule, moleculeInterface } from "./molecule";
 import { createScope } from "./scope";
 import {
@@ -22,6 +23,7 @@ import {
   userMolecule,
 } from "./testing/test-molecules";
 import { ScopeTuple } from "./types";
+import type { MoleculeInternal } from "./internal/internal-types";
 
 test("returns the same values for dependency-free molecule", () => {
   const injector = createInjector();
@@ -780,5 +782,334 @@ describe("Scope caching", () => {
         expect(mol1).not.toBe(mol2);
       });
     });
+  });
+});
+
+describe("Global molecule internal scopes", () => {
+  test("Each global molecule gets its own unique internal scope", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ value: Math.random() }));
+    const GlobalMol2 = molecule(() => ({ value: Math.random() }));
+
+    // Both molecules should work without errors
+    const [val1, unsub1] = injector.use(GlobalMol1);
+    const [val2, unsub2] = injector.use(GlobalMol2);
+
+    expect(val1).toBeDefined();
+    expect(val2).toBeDefined();
+    expect(val1).not.toBe(val2);
+
+    // Check that each molecule has its own internal scope using the proper symbol
+    const scope1 = (GlobalMol1 as any)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as any)[GlobalScopeSymbol];
+    expect(scope1).toBeDefined();
+    expect(scope2).toBeDefined();
+    expect(scope1).not.toBe(scope2);
+    expect(scope1.defaultValue).toBeDefined();
+    expect(scope2.defaultValue).toBeDefined();
+    expect(scope1.defaultValue).not.toBe(scope2.defaultValue);
+
+    unsub1();
+    unsub2();
+  });
+
+  test("Global molecule reuses the same internal scope across multiple uses", () => {
+    const injector = createInjector();
+
+    let executionCount = 0;
+    const GlobalMol = molecule(() => {
+      executionCount++;
+      return { value: executionCount };
+    });
+
+    // Use the molecule multiple times
+    const [val1, unsub1] = injector.use(GlobalMol);
+    const internalScope1 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(internalScope1).toBeDefined();
+
+    const [val2, unsub2] = injector.use(GlobalMol);
+    const internalScope2 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+
+    const [val3, unsub3] = injector.use(GlobalMol);
+    const internalScope3 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+
+    // Should all be the same instance (molecule executed only once)
+    expect(val1).toBe(val2);
+    expect(val2).toBe(val3);
+    expect(executionCount).toBe(1);
+
+    // Internal scope should be the same object across all uses
+    expect(internalScope1).toBe(internalScope2);
+    expect(internalScope2).toBe(internalScope3);
+
+    // Verify it's a stable symbol value
+    expect(typeof internalScope1?.defaultValue).toBe("symbol");
+
+    unsub1();
+    unsub2();
+    unsub3();
+  });
+
+  test("Global molecule reuses the same internal scope even after being released", () => {
+    const injector = createInjector();
+
+    let executionCount = 0;
+    const GlobalMol = molecule(() => {
+      executionCount++;
+      return { value: executionCount };
+    });
+
+    // Use the molecule and release it
+    const [val1, unsub1] = injector.use(GlobalMol);
+    const internalScope1 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(internalScope1).toBeDefined();
+    expect(executionCount).toBe(1);
+    unsub1();
+
+    // Uses it again after releasing
+    const [val2, unsub2] = injector.use(GlobalMol);
+    const internalScope2 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(executionCount).toBe(2);
+    unsub2();
+
+    // Internal scope should be the same object across all uses
+    expect(internalScope1).toBe(internalScope2);
+  });
+
+  test("Global molecule should call onUnmount even if another global molecule is still in use", () => {
+    // See https://github.com/saasquatch/bunshi/issues/80
+
+    const injector = createInjector();
+
+    let mountCount1 = 0;
+    let mountCleanupCount1 = 0;
+    let unmountCount1 = 0;
+
+    const GlobalMol1 = molecule(() => {
+      mountCount1++;
+      onMount(() => {
+        return () => {
+          mountCleanupCount1++;
+        };
+      });
+      onUnmount(() => {
+        unmountCount1++;
+      });
+      return { value: mountCount1 };
+    });
+
+    let mountCount2 = 0;
+    let mountCleanupCount2 = 0;
+    let unmountCount2 = 0;
+
+    const GlobalMol2 = molecule(() => {
+      mountCount2++;
+      onMount(() => {
+        return () => {
+          mountCleanupCount2++;
+        };
+      });
+      onUnmount(() => {
+        unmountCount2++;
+      });
+      return { value: mountCount2 };
+    });
+
+    // First use of both molecules
+    const [val1, unsub1] = injector.use(GlobalMol1);
+    expect(mountCount1).toBe(1);
+    expect(mountCount2).toBe(0);
+
+    const [val2, unsub2] = injector.use(GlobalMol2);
+    expect(mountCount1).toBe(1);
+    expect(mountCount2).toBe(1);
+
+    // Release first molecule
+    unsub1();
+    expect(mountCleanupCount1).toBe(1);
+    expect(unmountCount1).toBe(1);
+
+    // Second use of first molecule (should create new instance)
+    const [val3, unsub3] = injector.use(GlobalMol1);
+    expect(val3).not.toBe(val1);
+    expect(mountCount1).toBe(2);
+
+    // Release second molecule
+    unsub2();
+    expect(mountCleanupCount2).toBe(1);
+    expect(unmountCount2).toBe(1);
+
+    // Release first molecule again
+    unsub3();
+    expect(mountCleanupCount1).toBe(2);
+    expect(unmountCount1).toBe(2);
+  });
+
+  test("Global molecule is properly cleaned up after all references are released", () => {
+    const injector = createInjector();
+
+    let mountCount = 0;
+    let unmountCount = 0;
+
+    const GlobalMol = molecule(() => {
+      mountCount++;
+      onMount(() => {
+        return () => {
+          unmountCount++;
+        };
+      });
+      return { value: mountCount };
+    });
+
+    // First use
+    const [val1, unsub1] = injector.use(GlobalMol);
+    expect(mountCount).toBe(1);
+    expect(unmountCount).toBe(0);
+
+    // Second use (should reuse the same instance)
+    const [val2, unsub2] = injector.use(GlobalMol);
+    expect(val1).toBe(val2);
+    expect(mountCount).toBe(1);
+    expect(unmountCount).toBe(0);
+
+    // Release first reference
+    unsub1();
+    expect(unmountCount).toBe(0); // Should still be mounted
+
+    // Release second reference
+    unsub2();
+    expect(unmountCount).toBe(1); // Should now be unmounted
+
+    // Use again (should create new instance)
+    const [val3, unsub3] = injector.use(GlobalMol);
+    expect(val3).not.toBe(val1);
+    expect(mountCount).toBe(2);
+    expect(unmountCount).toBe(1);
+
+    unsub3();
+    expect(unmountCount).toBe(2);
+  });
+
+  test("Global molecule works correctly when mixed with scoped molecules", () => {
+    const injector = createInjector();
+
+    const GlobalMol = molecule(() => ({ global: Math.random() }));
+    const ScopedMol = molecule((mol, scope) => {
+      const globalValue = mol(GlobalMol);
+      const userId = scope(UserScope);
+      return { globalValue, userId };
+    });
+
+    const [scoped1, unsub1] = injector.use(ScopedMol, user1Scope);
+    const [scoped2, unsub2] = injector.use(ScopedMol, user2Scope);
+
+    // Both scoped molecules should share the same global molecule instance
+    expect(scoped1.globalValue).toBe(scoped2.globalValue);
+    // But have different user IDs
+    expect(scoped1.userId).not.toBe(scoped2.userId);
+
+    unsub1();
+    unsub2();
+  });
+
+  test("Deeply nested global molecules work correctly", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ level: 1 }));
+    const GlobalMol2 = molecule((mol) => {
+      const mol1 = mol(GlobalMol1);
+      return { level: 2, parent: mol1 };
+    });
+    const GlobalMol3 = molecule((mol) => {
+      const mol2 = mol(GlobalMol2);
+      return { level: 3, parent: mol2 };
+    });
+
+    const [val, unsub] = injector.use(GlobalMol3);
+
+    expect(val.level).toBe(3);
+    expect(val.parent.level).toBe(2);
+    expect(val.parent.parent.level).toBe(1);
+
+    // Each nested molecule should have its own internal scope
+    const scope1 = (GlobalMol1 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope3 = (GlobalMol3 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    expect(scope1).toBeDefined();
+    expect(scope2).toBeDefined();
+    expect(scope3).toBeDefined();
+    expect(scope1).not.toBe(scope2);
+    expect(scope2).not.toBe(scope3);
+    expect(scope1).not.toBe(scope3);
+
+    unsub();
+  });
+
+  test("Scoped molecules do get an internal global scope", () => {
+    const injector = createInjector();
+
+    const ScopedMol = molecule((_, scope) => {
+      const userId = scope(UserScope);
+      return { userId };
+    });
+
+    const [val, unsub] = injector.use(ScopedMol, user1Scope);
+
+    expect(val.userId).toBe(user1Scope[1]);
+
+    const globalScope1 = (ScopedMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(globalScope1).toBeDefined();
+
+    const [val2, unsub2] = injector.use(ScopedMol, user2Scope);
+    expect(val2.userId).toBe(user2Scope[1]);
+    expect(val).not.toBe(val2);
+
+    const globalScope2 = (ScopedMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(globalScope2).toBeDefined();
+    expect(globalScope1).toBe(globalScope2);
+
+    unsub();
+    unsub2();
+  });
+
+  test("Global scope internal values are unique symbols", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ id: 1 }));
+    const GlobalMol2 = molecule(() => ({ id: 2 }));
+
+    injector.use(GlobalMol1);
+    injector.use(GlobalMol2);
+
+    const scope1 = (GlobalMol1 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as MoleculeInternal<any>)[GlobalScopeSymbol];
+
+    // The default values should be unique symbols
+    expect(typeof scope1?.defaultValue).toBe("symbol");
+    expect(typeof scope2?.defaultValue).toBe("symbol");
+    expect(scope1?.defaultValue).not.toBe(scope2?.defaultValue);
+
+    // The symbols should have descriptive labels
+    expect(scope1?.defaultValue.toString()).toMatch(
+      /^Symbol\(bunshi\.global\.scope\.\d+\)$/,
+    );
+    expect(scope2?.defaultValue.toString()).toMatch(
+      /^Symbol\(bunshi\.global\.scope\.\d+\)$/,
+    );
   });
 });
