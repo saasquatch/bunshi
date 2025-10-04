@@ -233,7 +233,7 @@ strictModeSuite(({ wrapper, isStrict }) => {
         });
 
         if (isStrict) {
-          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
         } else {
           moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
         }
@@ -245,7 +245,7 @@ strictModeSuite(({ wrapper, isStrict }) => {
         });
 
         if (isStrict) {
-          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
         } else {
           moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
         }
@@ -254,7 +254,7 @@ strictModeSuite(({ wrapper, isStrict }) => {
         run1.unmount();
 
         if (isStrict) {
-          moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 1);
         } else {
           moleculeLifecycle.expectCalledTimesEach(1, 1, 0);
         }
@@ -262,7 +262,7 @@ strictModeSuite(({ wrapper, isStrict }) => {
         run2.unmount();
 
         if (isStrict) {
-          moleculeLifecycle.expectCalledTimesEach(2, 2, 2);
+          moleculeLifecycle.expectCalledTimesEach(1, 2, 2);
         } else {
           moleculeLifecycle.expectCalledTimesEach(1, 1, 1);
         }
@@ -370,8 +370,8 @@ describe("Parallel calls", () => {
       {
         case: "Strict",
         wrapper: StrictMode,
-        before: [4, 2, 1] as [number, number, number],
-        after: [4, 2, 2] as [number, number, number],
+        before: [2, 2, 1] as [number, number, number],
+        after: [2, 2, 2] as [number, number, number],
       },
       {
         case: "Non-Strict",
@@ -410,8 +410,8 @@ describe("Parallel calls", () => {
       {
         case: "Strict",
         wrapper: StrictMode,
-        before: [6, 2, 1] as [number, number, number],
-        after: [6, 2, 2] as [number, number, number],
+        before: [3, 2, 1] as [number, number, number],
+        after: [3, 2, 2] as [number, number, number],
       },
       {
         case: "Non-Strict",
@@ -454,8 +454,8 @@ describe("Parallel calls", () => {
       {
         case: "Strict",
         wrapper: StrictMode,
-        before: [8, 2, 1] as [number, number, number],
-        after: [8, 2, 2] as [number, number, number],
+        before: [4, 2, 1] as [number, number, number],
+        after: [4, 2, 2] as [number, number, number],
         beforeRenders: 4,
         afterRenders: 4 + 2,
       },
@@ -651,9 +651,9 @@ test("Strict mode", () => {
   });
 
   function expectActiveMounted() {
-    // Then execution are called twice
-    // Because once for each render in strict mode
-    expect(lifecycle.executions).toBeCalledTimes(2);
+    // Then execution is called once
+    // Because useMemo memoizes the value between renders even in strict mode
+    expect(lifecycle.executions).toBeCalledTimes(1);
     // Then mounts are called twice
     // Because of useEffects called twice in strict mode
     expect(lifecycle.mounts).toBeCalledTimes(2);
@@ -686,7 +686,7 @@ test("Strict mode", () => {
 
   run2.unmount();
 
-  expect(lifecycle.executions).toBeCalledTimes(2);
+  expect(lifecycle.executions).toBeCalledTimes(1);
   expect(lifecycle.mounts).toBeCalledTimes(2);
   // Unmounts are called
   expect(lifecycle.unmounts).toBeCalledTimes(2);
