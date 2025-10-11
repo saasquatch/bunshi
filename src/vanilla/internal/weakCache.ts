@@ -9,12 +9,12 @@
  *
  *
  */
-export type WeakCache<TKey extends {}, TValue> = WeakMap<
+export type WeakCache<TKey extends object, TValue> = WeakMap<
   TKey,
   [WeakCache<TKey, TValue>] | [WeakCache<TKey, TValue>, TValue]
 >;
 
-const getWeakCacheItem = <TKey extends {}, TValue>(
+const getWeakCacheItem = <TKey extends object, TValue>(
   cache: WeakCache<TKey, TValue>,
   deps: Deps<TKey>,
 ): TValue | undefined => {
@@ -32,7 +32,7 @@ const getWeakCacheItem = <TKey extends {}, TValue>(
   }
 };
 
-const setWeakCacheItem = <TKey extends {}, TValue>(
+const setWeakCacheItem = <TKey extends object, TValue>(
   cache: WeakCache<TKey, TValue>,
   deps: Deps<TKey>,
   item: TValue,
@@ -55,7 +55,7 @@ const setWeakCacheItem = <TKey extends {}, TValue>(
 
 type Deps<T> = readonly T[];
 
-export type DeepCache<TKey extends {}, TValue> = {
+export type DeepCache<TKey extends object, TValue> = {
   remove(...deps: TKey[]): void;
 
   /**
@@ -71,10 +71,7 @@ export type DeepCache<TKey extends {}, TValue> = {
    * If an item is not in the cache, then creates a new value from
    * the provided callback.
    *
-   * Uses the list of dependecies, in order, to cache the item.
-   *
-   * @param createFn
-   * @param deps
+   * Uses the list of dependencies, in order, to cache the item.
    */
   deepCache(
     createFn: () => TValue,
@@ -100,11 +97,11 @@ export type DeepCache<TKey extends {}, TValue> = {
   ): void;
 };
 
-export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
+export const createDeepCache = <TKey extends object, TValue>(): DeepCache<
   TKey,
   TValue
 > => {
-  let cache: WeakCache<TKey, TValue> = new WeakMap();
+  const cache: WeakCache<TKey, TValue> = new WeakMap();
   const deepCache = (
     createFn: () => TValue,
     foundFn: (found: TValue) => void,
@@ -145,13 +142,13 @@ export const createDeepCache = <TKey extends {}, TValue>(): DeepCache<
   };
 };
 
-const removeWeakCacheItem = <TKey extends {}, TValue>(
+const removeWeakCacheItem = <TKey extends object, TValue>(
   cache: WeakCache<TKey, TValue>,
   deps: Deps<TKey>,
 ): void => {
   while (true) {
     const [dep, ...rest] = deps;
-    let entry = cache.get(dep);
+    const entry = cache.get(dep);
     if (!entry) {
       // No base level value
       // So nothing to remove

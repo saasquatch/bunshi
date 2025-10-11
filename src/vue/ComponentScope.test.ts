@@ -10,7 +10,7 @@ const ComponentScopedCountMolecule = molecule(() => {
   return ref(0);
 });
 
-const GlobalScopedMoleculeCountMolecule = molecule((_, scope) => {
+const GlobalScopedMoleculeCountMolecule = molecule(() => {
   return ref(0);
 });
 

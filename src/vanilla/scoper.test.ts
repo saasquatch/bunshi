@@ -1,4 +1,3 @@
-import { LoggingInstrumentation } from "./internal/instrumentation";
 import { createScoper } from "./scoper";
 import { UserScope } from "./testing/test-molecules";
 
@@ -75,6 +74,9 @@ test("Can't register cleanups for unused scopes", () => {
 
   const sub1 = scoper.createSubscription();
   const [tuple1] = sub1.expand([[UserScope, "one@example.com"]]);
+
+  expect(tuple1[0]).toBe(UserScope);
+  expect(tuple1[1]).toBe("one@example.com");
 
   const cleanupFn = vi.fn();
 

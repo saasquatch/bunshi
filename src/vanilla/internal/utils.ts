@@ -11,7 +11,7 @@ import {
 function __isInternalType<T>(value: unknown, typeSymbol: symbol): value is T {
   if (!value) return false;
   if (typeof value !== "object") return false;
-  return (value as any)[TypeSymbol] === typeSymbol;
+  return (value as Record<symbol, unknown>)[TypeSymbol] === typeSymbol;
 }
 
 export function isMolecule(value: unknown): value is AnyMolecule {

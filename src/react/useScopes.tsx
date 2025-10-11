@@ -11,9 +11,6 @@ import { useInjector } from "./useInjector";
  * Gets the scopes that are implicitly in context for the current component.
  *
  * Scopes can also be set and overridden explicitly by passing in options to this hook.
- *
- * @param options
- * @returns
  */
 export function useScopes(
   options?: MoleculeScopeOptions,
@@ -49,9 +46,6 @@ export function useScopes(
  *
  * Since this return an array that is NOT memoized, it is not appropriate
  * to use with `injector.get`
- *
- * @param options
- * @returns
  */
 export function useScopeTuplesRaw(options?: MoleculeScopeOptions) {
   const parentScopes = useContext(ScopeContext);

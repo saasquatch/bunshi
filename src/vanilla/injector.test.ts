@@ -204,6 +204,10 @@ describe("Scoping", () => {
     // Should be the same for the same scope
     expect(firstValue).toBe(secondValue);
     expect(firstValue).toBe(thirdValue);
+
+    unsub1();
+    unsub2();
+    unsub3();
   });
 
   test("Works with highly nested molecules that depend on a top level scope", () => {
@@ -617,10 +621,10 @@ describe("Binding", () => {
     const MockHTTPMolecule = molecule<HTTPService>(() => {
       return {
         identity: "MockHTTP",
-        async get(url) {
+        async get() {
           return "I am fake";
         },
-        async post(url) {
+        async post() {
           return "I am fake";
         },
       };
@@ -677,10 +681,10 @@ describe("Binding", () => {
       const user = getScope(UserScope);
       return {
         identity: "UserScopedHTTP",
-        async get(url) {
+        async get() {
           return `I am ${user}`;
         },
-        async post(url) {
+        async post() {
           return `I am ${user}`;
         },
       };
