@@ -21,19 +21,22 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v5
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node 20
         uses: actions/setup-node@v6
         with:
           node-version: 20
 
-      - name: Root npm install
-        run: npm install
+      - name: Root pnpm install
+        run: pnpm install
 
-      - name: Website npm install
-        run: cd website && npm install
+      - name: Website pnpm install
+        run: cd website && pnpm install
 
       - name: Build website
-        run: cd website && npm run build
+        run: cd website && pnpm run build
 
       - name: Upload static files as artifact
         id: deployment

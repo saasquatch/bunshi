@@ -22,30 +22,31 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "pnpm"
           registry-url: https://registry.npmjs.org
-      
-      # Ensure npm 11.5.1 or later is installed
-      - name: Update npm
-        run: npm install -g npm@latest
-        
-      - uses: bahmutov/npm-install@v1
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       # Publishes using Trusted Publishers support in NPM: https://docs.npmjs.com/trusted-publishers
       - name: Create Release Pull Request or Publish to npm
         id: changesets
         uses: changesets/action@v1
         with:
-          # Runs `npm i` after changeset to make sure that `package-lock.json` files are also updated
-          # Without this change only `package.json` files are updated, without `package-lock.json` changes.
-          version: npm run version
+          # Runs `pnpm i` after changeset to make sure that `pnpm-lock.yaml` is also updated
+          # Without this change only `package.json` files are updated, without `pnpm-lock.yaml` changes.
+          version: pnpm run version
           # Runs changesets on publish - will create tags and deploy to NPM
-          publish: npm run dopublish
+          publish: pnpm run dopublish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
