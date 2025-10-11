@@ -119,3 +119,22 @@ test("Scope subscriptions can be re-used", () => {
     cleanupFnInner.mockReset();
   }
 });
+
+test("addCleanups method on subscription", () => {
+  const scoper = createScoper();
+  const subscription = scoper.createSubscription();
+  const cleanupFn = vi.fn();
+
+  // Expand and start the subscription to cache the scopes
+  subscription.expand([[UserScope, "test@example.com"]]);
+  subscription.start();
+
+  // Add cleanups using the addCleanups method (now the scopes are cached)
+  subscription.addCleanups(new Set([cleanupFn]));
+
+  // Stop the subscription
+  subscription.stop();
+
+  // Cleanup should have been called
+  expect(cleanupFn).toHaveBeenCalled();
+});
