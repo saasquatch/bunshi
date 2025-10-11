@@ -19,21 +19,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout your repository using git
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Use Node 18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: "pnpm"
 
-      - name: Root npm install
-        run: npm install
+      - name: Root pnpm install
+        run: pnpm install
 
-      - name: Website npm install
-        run: cd website && npm install
+      - name: Website pnpm install
+        run: cd website && pnpm install
 
       - name: Build website
-        run: cd website && npm run build
+        run: cd website && pnpm run build
 
       - name: Upload to GitHub pages
         uses: actions/upload-pages-artifact@v1
