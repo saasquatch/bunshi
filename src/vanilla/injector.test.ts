@@ -1606,3 +1606,36 @@ describe("Global molecule internal scopes", () => {
     );
   });
 });
+
+describe("lazyUse subscription errors", () => {
+  const injector = createInjector();
+  const testMol = molecule(() => ({ value: 1 }));
+
+  test("throws error when starting an already active subscription", () => {
+    const [_value, { start, stop }] = injector.useLazily(testMol);
+
+    // Start the subscription
+    start();
+
+    // Try to start again - should throw
+    expect(() => start()).toThrow(
+      "Don't start a subscription that is already started.",
+    );
+
+    // Clean up
+    stop();
+  });
+
+  test("throws error when stopping an already stopped subscription", () => {
+    const [_value, { start, stop }] = injector.useLazily(testMol);
+
+    // Start and then stop the subscription
+    start();
+    stop();
+
+    // Try to stop again - should throw
+    expect(() => stop()).toThrow(
+      "Don't stop a subscription that is already stopped.",
+    );
+  });
+});
