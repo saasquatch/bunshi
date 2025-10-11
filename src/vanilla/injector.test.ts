@@ -836,6 +836,46 @@ describe("Scope caching", () => {
     });
   });
 
+  describe("Default scope caching", () => {
+    test("returns same molecule instance when accessed with same explicit scope values", () => {
+      const injector = createInjector();
+
+      // Create two scopes: one that will vary, one that uses its default value
+      const VaryingScope = createScope<string>("default-varying");
+      const DefaultScope = createScope<number>(42);
+
+      // Molecule depends on both scopes
+      const testMol = molecule((_, getScope) => {
+        const varying = getScope(VaryingScope);
+        const def = getScope(DefaultScope); // Uses default value
+        return { varying, def };
+      });
+
+      // Create molecule with explicit scope value "A"
+      const [val1, unsub1] = injector.use(testMol, [VaryingScope, "A"]);
+      expect(val1.varying).toBe("A");
+      expect(val1.def).toBe(42);
+
+      // Create with different explicit scope value "B"
+      const [val2, unsub2] = injector.use(testMol, [VaryingScope, "B"]);
+      expect(val2.varying).toBe("B");
+      expect(val2.def).toBe(42);
+
+      // Access again with original value "A" while both subscriptions are active
+      // The cache should return the same molecule instance (val1)
+      // and properly maintain the lease on the default scope
+      const [val3, unsub3] = injector.use(testMol, [VaryingScope, "A"]);
+
+      // Verify we get the cached instance
+      expect(val3).toBe(val1);
+      expect(val3.varying).toBe("A");
+
+      unsub1();
+      unsub2();
+      unsub3();
+    });
+  });
+
   describe("Parent injectors", () => {
     interface APIService {
       fetch(): string;
