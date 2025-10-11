@@ -27,7 +27,7 @@
     "test:typings": "pnpm --ignore-workspace -C examples/old-typescript i && pnpm --ignore-workspace -C examples/old-typescript run build",
     "test:format": "prettier -c src",
     "test:size": "size-limit",
-    "test:browsers": "pnpm --parallel run /^test:browsers:(?!suite).*$/",
+    "test:browsers": "pnpm --parallel run \"/^test:browsers:(?!suite).*$/\"",
     "test:browsers:chrome": "pnpm run test:browsers-suite -- --browser=chromium",
     "test:browsers:firefox": "pnpm run test:browsers-suite -- --browser=firefox",
     "test:browsers:safari": "pnpm run test:browsers-suite -- --browser=webkit",
