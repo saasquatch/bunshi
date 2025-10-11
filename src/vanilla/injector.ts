@@ -28,12 +28,12 @@ import {
   onMountImpl,
   useImpl,
   type CleanupCallback,
-  type InternalUse,
   type MountedCallback,
 } from "./lifecycle";
 import type {
   Molecule,
   MoleculeGetter,
+  MoleculeInterface,
   MoleculeOrInterface,
   ScopeGetter,
 } from "./molecule";
@@ -120,8 +120,6 @@ export type MoleculeInjector = {
    * Use and memoize scopes.
    *
    * Returns a function to cleanup scope tuples.
-   *
-   * @param scopes
    */
   createSubscription(): ScopeSubscription;
 } & Record<symbol, unknown>;
@@ -209,10 +207,7 @@ export function createInjector(
      *  - The relevant scopes are B and C
      *  - This set doesn't need to be iterable, because the scope context (e.g. A, B and C) is iterable
      */
-    Set</**
-     * We only need to store the scope keys, not the scope values.
-     */
-    AnyMoleculeScope>
+    Set</** We only need to store the scope keys, not the scope values. */ AnyMoleculeScope>
   > = new WeakMap();
 
   const bindings = bindingsToMap(injectorProps.bindings);
@@ -483,8 +478,7 @@ export function createInjector(
   }
 
   function get<T>(m: MoleculeOrInterface<T>, ...scopes: AnyScopeTuple[]): T {
-    const [value, unsub] = use(m, ...scopes);
-    // unsub();
+    const [value] = use(m, ...scopes);
     return value;
   }
 
@@ -492,8 +486,7 @@ export function createInjector(
     m: MoleculeOrInterface<T>,
     ...scopes: AnyScopeTuple[]
   ): [T, Unsub] {
-    const [moleculeValue, options] = lazyUse(m, ...scopes);
-
+    const [, options] = lazyUse(m, ...scopes);
     return [options.start(), options.stop];
   }
 
@@ -568,10 +561,6 @@ enum MoleculeSubscriptionState {
 /**
  * Create deterministic ordered array of dependencies
  * for looking up values in the deep cache.
- *
- * @param scopes
- * @param mol
- * @returns
  */
 function getCachePath(scopes: AnyScopeTuple[], mol: AnyMolecule) {
   /**
@@ -609,12 +598,12 @@ function runMolecule(
   const mountedCallbacks = new Set<MountedCallback>();
   const buddies: MoleculeCacheValue[] = [];
 
-  const use: InternalUse = (dep: Injectable<unknown>) => {
+  const use = <T>(dep: Injectable<T>): T => {
     if (isMoleculeScope(dep)) {
       allScopes.add(dep);
       const scopeDetails = getScopeValue(dep);
       scopeDetails.defaultScopes.forEach((s) => defaultScopes.add(s));
-      return scopeDetails.value;
+      return scopeDetails.value as T;
     }
     if (isMolecule(dep) || isMoleculeInterface(dep)) {
       const dependentMolecule = getTrueMolecule(dep);
@@ -625,7 +614,7 @@ function runMolecule(
         defaultScopes.add(s);
       });
       buddies.push(mol);
-      return mol.value as any;
+      return mol.value as T;
     }
     throw new Error(ErrorBadUse);
   };

@@ -6,7 +6,6 @@ import type { ScopeTuple } from "../vanilla/types";
  *
  * @param p - Parent scopes
  * @param n - New scope tuple
- * @returns
  */
 export function dstream(p: ScopeTuple<unknown>[], n: ScopeTuple<unknown>) {
   const [k] = n;

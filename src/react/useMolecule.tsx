@@ -20,7 +20,6 @@ import { useScopeTuplesRaw } from "./useScopes";
  * @typeParam T - the type of the molecule or interface, and the type of interface returned
  * @returns a instance provided by the molecule
  */
-
 export function useMolecule<T>(
   mol: MoleculeOrInterface<T>,
   options?: MoleculeScopeOptions,

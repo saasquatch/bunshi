@@ -35,14 +35,19 @@ beforeEach(() => {
   compLifecycle.reset();
 });
 
-strictModeSuite(({ wrapper: Outer }) => {
+strictModeSuite(({ wrapper, isStrict }) => {
   describe("Global scoped molecules", () => {
     test("one counter", () => {
       globalCompLifecycle.expectUncalled();
       testOneCounter(GlobalScopedMoleculeCountMolecule, 1);
       expect(globalCompLifecycle.executions).toHaveBeenCalledOnce();
-      expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
-      expect(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
+      if (isStrict) {
+        expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(globalCompLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      } else {
+        expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
+        expect(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
+      }
     });
     test("two counters should be connected for global scope", () => {
       // Note: This is an important test case, because
@@ -58,9 +63,14 @@ strictModeSuite(({ wrapper: Outer }) => {
         expected2: 2,
       });
 
-      expect.soft(globalCompLifecycle.executions).toHaveBeenCalledOnce();
-      expect.soft(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
-      expect.soft(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
+      expect(globalCompLifecycle.executions).toHaveBeenCalledOnce();
+      if (isStrict) {
+        expect(globalCompLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(globalCompLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      } else {
+        expect(globalCompLifecycle.mounts).toHaveBeenCalledOnce();
+        expect(globalCompLifecycle.unmounts).toHaveBeenCalledOnce();
+      }
     });
   });
 
@@ -69,9 +79,15 @@ strictModeSuite(({ wrapper: Outer }) => {
       compLifecycle.expectUncalled();
       testOneCounter(ComponentScopedCountMolecule, 1);
 
-      expect(compLifecycle.executions).toHaveBeenCalledOnce();
-      expect(compLifecycle.mounts).toHaveBeenCalledOnce();
-      expect(compLifecycle.unmounts).toHaveBeenCalledOnce();
+      if (isStrict) {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      } else {
+        expect(compLifecycle.executions).toHaveBeenCalledOnce();
+        expect(compLifecycle.mounts).toHaveBeenCalledOnce();
+        expect(compLifecycle.unmounts).toHaveBeenCalledOnce();
+      }
     });
     test("two counters should be not be connected when component scoped", () => {
       compLifecycle.expectUncalled();
@@ -81,9 +97,15 @@ strictModeSuite(({ wrapper: Outer }) => {
         expected1: 1,
         expected2: 1,
       });
-      expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      if (isStrict) {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(4);
+      } else {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      }
     });
     test("two counters should be not be connected when component scoped, use first one", () => {
       compLifecycle.expectUncalled();
@@ -93,9 +115,15 @@ strictModeSuite(({ wrapper: Outer }) => {
         expected1: 1,
         expected2: 0,
       });
-      expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      if (isStrict) {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(4);
+      } else {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      }
     });
     test("two counters should be not be connected when component scoped, use second one", () => {
       testTwoCounters(ComponentScopedCountMolecule, {
@@ -104,9 +132,15 @@ strictModeSuite(({ wrapper: Outer }) => {
         expected1: 0,
         expected2: 1,
       });
-      expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
-      expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      if (isStrict) {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(4);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(4);
+      } else {
+        expect(compLifecycle.executions).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.mounts).toHaveBeenCalledTimes(2);
+        expect(compLifecycle.unmounts).toHaveBeenCalledTimes(2);
+      }
     });
   });
 
@@ -114,7 +148,7 @@ strictModeSuite(({ wrapper: Outer }) => {
     mol: typeof ComponentScopedCountMolecule,
     expectedResult: number,
   ) {
-    const { result, ...rest } = renderHook(() => useCounter(mol));
+    const { result, ...rest } = renderHook(() => useCounter(mol), { wrapper });
 
     act(() => {
       result.current.increment();
@@ -134,14 +168,18 @@ strictModeSuite(({ wrapper: Outer }) => {
       expected1: number;
     },
   ) {
-    const { result: result1, ...rest1 } = renderHook(() => useCounter(mol));
-    const { result: result2, ...rest2 } = renderHook(() => useCounter(mol));
+    const { result: result1, ...rest1 } = renderHook(() => useCounter(mol), {
+      wrapper,
+    });
+    const { result: result2, ...rest2 } = renderHook(() => useCounter(mol), {
+      wrapper,
+    });
 
     act(() => {
-      opts.actual1 && result1.current.increment();
+      if (opts.actual1) result1.current.increment();
     });
     act(() => {
-      opts.actual2 && result2.current.increment();
+      if (opts.actual2) result2.current.increment();
     });
 
     expect(result1.current.count).toBe(opts.expected1);

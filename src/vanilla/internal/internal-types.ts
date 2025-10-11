@@ -39,6 +39,8 @@ export type AnyScopeTuple = ScopeTuple<unknown>;
 export type AnyMolecule = Molecule<unknown>;
 export type AnyMoleculeInterface = MoleculeInterface<unknown>;
 
+/* eslint-disable @typescript-eslint/no-unused-vars -- Molecule's T is voluntarily unused */
+
 export type MoleculeInternal<T> = {
   [GetterSymbol]: MoleculeConstructor<T>;
   [TypeSymbol]: typeof MoleculeSymbol;
@@ -49,3 +51,5 @@ export type MoleculeInterfaceInternal<T> = {
   [TypeSymbol]: typeof MoleculeInterfaceSymbol;
   displayName?: string;
 };
+
+/* eslint-enable @typescript-eslint/no-unused-vars */

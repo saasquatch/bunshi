@@ -64,7 +64,7 @@ describe("Injector benchmarks", () => {
 
 describe("Baseline benchmarks", () => {
   bench("No-op", () => {
-    1 + 1;
+    void (1 + 1);
   });
   bench("Create an 100 element array", () => {
     // Do nothing
