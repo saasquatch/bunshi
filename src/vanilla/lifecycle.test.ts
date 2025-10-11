@@ -12,8 +12,10 @@ import {
   LibaryMolecule,
 } from "./testing/test-molecules";
 
+type ExampleScopeType = (action?: string, id?: string | number) => void;
+
 const defaultFn = vi.fn();
-const ExampleScope = createScope<Function>(defaultFn);
+const ExampleScope = createScope<ExampleScopeType>(defaultFn);
 
 const ExampleCleanupMolecule = molecule(() => {
   const testFn = use(ExampleScope);
@@ -205,10 +207,10 @@ describe("Single scope dependencies", () => {
 
 describe("Two scope dependencies", () => {
   test("Scoped molecules are mounted and cleaned up", () => {
-    const defaultFnA = () => {};
-    const defaultFnB = () => {};
-    const ExampleScopeA = createScope<Function>(defaultFnA);
-    const ExampleScopeB = createScope<Function>(defaultFnB);
+    const defaultFnA: ExampleScopeType = () => {};
+    const defaultFnB: ExampleScopeType = () => {};
+    const ExampleScopeA = createScope(defaultFnA);
+    const ExampleScopeB = createScope(defaultFnB);
     let instanceCount = 1;
     const ExampleCleanupMolecule = molecule(() => {
       const testFnA = use(ExampleScopeA);

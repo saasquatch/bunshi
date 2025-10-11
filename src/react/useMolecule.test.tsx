@@ -1,5 +1,5 @@
 import { render, renderHook } from "@testing-library/react";
-import React, { StrictMode, useContext } from "react";
+import React, { useContext } from "react";
 import {
   createScope,
   molecule,

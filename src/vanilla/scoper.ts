@@ -7,7 +7,7 @@ import type {
 import type { CleanupCallback } from "./lifecycle";
 import type { ScopeTuple } from "./types";
 
-type MaybeWeakMap<K, V> = K extends {} ? WeakMap<K, V> : Map<K, V>;
+type MaybeWeakMap<K, V> = K extends object ? WeakMap<K, V> : Map<K, V>;
 
 /**
  * The scoper is not aware of molecules, but keeps track of scopes
@@ -128,9 +128,6 @@ export function createScoper(instrumentation?: Instrumentation) {
 
   /**
    * Mutates the cache and starts the subscription
-   *
-   * @param subscriptionId
-   * @param tuple
    */
   function startSubscription<T>(
     subscriptionObj: ScopeSubscription,

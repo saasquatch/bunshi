@@ -258,6 +258,10 @@ describe("Scoping", () => {
     // Should be the same for the same scope
     expect(firstValue).toBe(secondValue);
     expect(firstValue).toBe(thirdValue);
+
+    unsub1();
+    unsub2();
+    unsub3();
   });
 
   test("Works with highly nested molecules that depend on a top level scope", () => {
@@ -671,10 +675,10 @@ describe("Binding", () => {
     const MockHTTPMolecule = molecule<HTTPService>(() => {
       return {
         identity: "MockHTTP",
-        async get(url) {
+        async get() {
           return "I am fake";
         },
-        async post(url) {
+        async post() {
           return "I am fake";
         },
       };
@@ -731,10 +735,10 @@ describe("Binding", () => {
       const user = getScope(UserScope);
       return {
         identity: "UserScopedHTTP",
-        async get(url) {
+        async get() {
           return `I am ${user}`;
         },
-        async post(url) {
+        async post() {
           return `I am ${user}`;
         },
       };
@@ -1003,7 +1007,7 @@ describe("Scope caching", () => {
     });
 
     test("child modifications affect parent cache", () => {
-      let globalState = { counter: 0 };
+      const globalState = { counter: 0 };
       const StatefulMolecule = molecule(() => {
         globalState.counter++;
         return {
@@ -1036,7 +1040,7 @@ describe("Scope caching", () => {
     });
 
     test("parent modifications affect child cache", () => {
-      let globalState = { value: "initial" };
+      const globalState = { value: "initial" };
       const MutableMolecule = molecule(() => ({
         setValue: (val: string) => {
           globalState.value = val;
@@ -1258,7 +1262,7 @@ describe("Global molecule internal scopes", () => {
     });
 
     // Use the molecule and release it
-    const [val1, unsub1] = injector.use(GlobalMol);
+    const [_val1, unsub1] = injector.use(GlobalMol);
     const internalScope1 = (GlobalMol as MoleculeInternal<any>)[
       GlobalScopeSymbol
     ];
@@ -1267,7 +1271,7 @@ describe("Global molecule internal scopes", () => {
     unsub1();
 
     // Uses it again after releasing
-    const [val2, unsub2] = injector.use(GlobalMol);
+    const [_val2, unsub2] = injector.use(GlobalMol);
     const internalScope2 = (GlobalMol as MoleculeInternal<any>)[
       GlobalScopeSymbol
     ];
@@ -1322,7 +1326,7 @@ describe("Global molecule internal scopes", () => {
     expect(mountCount1).toBe(1);
     expect(mountCount2).toBe(0);
 
-    const [val2, unsub2] = injector.use(GlobalMol2);
+    const [_val2, unsub2] = injector.use(GlobalMol2);
     expect(mountCount1).toBe(1);
     expect(mountCount2).toBe(1);
 

@@ -41,21 +41,21 @@ export class LoggingInstrumentation implements Instrumentation {
     console.log("mounted", ...args);
   }
   cleanup(...args: unknown[]): void {
-    console.log("cleanup");
+    console.log("cleanup", ...args);
   }
   executed(...args: unknown[]): void {
-    console.log("executed");
+    console.log("executed", ...args);
   }
   stage1CacheHit(...args: unknown[]): void {
-    console.log("stage1CacheHit");
+    console.log("stage1CacheHit", ...args);
   }
   stage1CacheMiss(...args: unknown[]): void {
-    console.log("stage1CacheMiss");
+    console.log("stage1CacheMiss", ...args);
   }
   stage2CacheHit(...args: unknown[]): void {
-    console.log("stage2CacheHit");
+    console.log("stage2CacheHit", ...args);
   }
   stage2CacheMiss(...args: unknown[]): void {
-    console.log("stage2CacheMiss");
+    console.log("stage2CacheMiss", ...args);
   }
 }

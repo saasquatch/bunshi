@@ -13,6 +13,7 @@ export type MoleculeProviderProps<T> = {
 /**
  * Provides the implementation of a molecule interface for all molecules lower down in the React component tree.
  *
+ * @param props - the props for the MoleculeProvider component
  * @param props.interface - the molecule interface to provide an implementation for
  * @param props.value - the molecule that implements the interface
  *

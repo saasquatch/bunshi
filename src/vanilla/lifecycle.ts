@@ -28,11 +28,11 @@ class GlobalFunctionImplementation<T> {
 }
 
 export type InternalOnMounted = typeof onMount;
-export type InternalUse = typeof use;
+export type InternalUse<T> = typeof use<T>;
 
 export const onMountImpl =
   new GlobalFunctionImplementation<InternalOnMounted>();
-export const useImpl = new GlobalFunctionImplementation<InternalUse>();
+export const useImpl = new GlobalFunctionImplementation<InternalUse<unknown>>();
 
 export type CleanupCallback = () => unknown;
 export type MountedCallback = () => CleanupCallback | void;
@@ -110,5 +110,7 @@ export function onUnmount(fn: CleanupCallback): void {
 export function use<T>(
   dependency: MoleculeOrInterface<T> | MoleculeScope<T>,
 ): T {
-  return useImpl.active("use")(dependency);
+  return (useImpl as GlobalFunctionImplementation<InternalUse<T>>).active(
+    "use",
+  )(dependency);
 }

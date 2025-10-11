@@ -1,3 +1,5 @@
+import type { useMolecule } from "../react";
+import type { ScopeContext } from "../react/contexts/ScopeContext";
 import type { MoleculeScope, ScopeTuple } from "../vanilla";
 
 export type MoleculeScopeOptions = {
