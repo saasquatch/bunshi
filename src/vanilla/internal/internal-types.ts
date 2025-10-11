@@ -32,7 +32,7 @@ type Deps = {
   buddies: MoleculeCacheValue[];
 };
 
-export * from "../types";
+export type * from "../types";
 
 export type AnyMoleculeScope = MoleculeScope<unknown>;
 export type AnyScopeTuple = ScopeTuple<unknown>;
