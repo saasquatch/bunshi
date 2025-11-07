@@ -18,12 +18,19 @@ This document provides verification that the Playwright test infrastructure is c
 - HTML reporter configured
 
 ### ✅ Test Files Created
+Tests are co-located with source code in `src/source-examples/`:
 - `tests/helpers/sandpack.ts` - Sandpack iframe interaction utilities
 - `tests/helpers/common-tests.ts` - Shared test patterns
-- `tests/quickstart.spec.ts` - Quickstart example tests (12 tests)
-- `tests/lifecycle.spec.ts` - Lifecycle example tests (8 tests)
-- `tests/recipes.spec.ts` - Recipe example tests (14 tests)
-- **Total: 34 tests covering React and Vue examples**
+- `src/source-examples/quickstart/quickstart.spec.ts` - Quickstart example tests (12 tests)
+- `src/source-examples/lifecycle/lifecycle.spec.ts` - Lifecycle example tests (8 tests)
+- `src/source-examples/jotai/jotai.spec.ts` - Jotai recipe tests (1 test)
+- `src/source-examples/nanostores/nanostores.spec.ts` - Nanostores recipe tests (2 tests)
+- `src/source-examples/valtio/valtio.spec.ts` - Valtio recipe tests (2 tests)
+- `src/source-examples/xstate/xstate.spec.ts` - XState recipe tests (2 tests)
+- `src/source-examples/zag/zag.spec.ts` - Zag recipe tests (2 tests)
+- `src/source-examples/zustand/zustand.spec.ts` - Zustand recipe tests (1 test)
+- `src/source-examples/vue-refs/vue-refs.spec.ts` - Vue Refs recipe tests (1 test)
+- **Total: 31 tests covering React and Vue examples**
 
 ### ✅ GitHub Actions Integration
 - PR validation workflow updated with website test job

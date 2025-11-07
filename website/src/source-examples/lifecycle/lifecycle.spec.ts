@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createSandpackHelper } from './helpers/sandpack';
-import { testLifecycleToggle } from './helpers/common-tests';
+import { createSandpackHelper } from '../../../tests/helpers/sandpack';
+import { testLifecycleToggle } from '../../../tests/helpers/common-tests';
 
 test.describe('Lifecycle Examples', () => {
   test.describe('React Lifecycle', () => {

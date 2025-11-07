@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createSandpackHelper } from './helpers/sandpack';
-import { testCounterIncrement, testMultipleCounters, testFormScopedCounters } from './helpers/common-tests';
+import { createSandpackHelper } from '../../../tests/helpers/sandpack';
+import { testCounterIncrement, testMultipleCounters, testFormScopedCounters } from '../../../tests/helpers/common-tests';
 
 test.describe('Quickstart Examples', () => {
   test.describe('Basic Counter Example', () => {

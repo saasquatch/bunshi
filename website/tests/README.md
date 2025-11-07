@@ -1,6 +1,6 @@
 # Website Playwright Tests
 
-This directory contains end-to-end tests for the Bunshi website examples using Playwright.
+This directory contains shared test helpers for the Bunshi website examples using Playwright.
 
 ## Overview
 
@@ -8,14 +8,39 @@ The tests focus on validating that the interactive code examples embedded in the
 
 ## Test Structure
 
+Tests are co-located with the source code they test in `src/source-examples/`:
+
 ```
+src/source-examples/
+├── quickstart/
+│   ├── App.tsx
+│   ├── molecules.ts
+│   └── quickstart.spec.ts       # Tests for quickstart examples
+├── lifecycle/
+│   ├── App.tsx
+│   ├── molecules.ts
+│   └── lifecycle.spec.ts        # Tests for lifecycle examples
+├── jotai/
+│   ├── App.tsx
+│   ├── molecules.ts
+│   └── jotai.spec.ts            # Tests for jotai recipe
+├── nanostores/
+│   └── nanostores.spec.ts       # Tests for nanostores recipe
+├── valtio/
+│   └── valtio.spec.ts           # Tests for valtio recipe
+├── xstate/
+│   └── xstate.spec.ts           # Tests for xstate recipe
+├── zag/
+│   └── zag.spec.ts              # Tests for zag recipe
+├── zustand/
+│   └── zustand.spec.ts          # Tests for zustand recipe
+└── vue-refs/
+    └── vue-refs.spec.ts         # Tests for vue-refs recipe
+
 tests/
-├── helpers/
-│   ├── sandpack.ts         # Utilities for interacting with Sandpack iframes
-│   └── common-tests.ts     # Shared test patterns for common scenarios
-├── quickstart.spec.ts      # Tests for quickstart examples
-├── lifecycle.spec.ts       # Tests for lifecycle examples
-└── recipes.spec.ts         # Tests for recipe examples (jotai, zustand, etc.)
+└── helpers/
+    ├── sandpack.ts              # Utilities for interacting with Sandpack iframes
+    └── common-tests.ts          # Shared test patterns for common scenarios
 ```
 
 ## Running Tests
@@ -48,6 +73,7 @@ npm run test:ui
 
 ```bash
 npx playwright test quickstart.spec.ts
+npx playwright test jotai.spec.ts
 ```
 
 ### Run tests for specific browser
@@ -100,12 +126,28 @@ npm test
 
 ## Writing New Tests
 
+### Co-locating Tests with Source Code
+
+When adding a new example, create the test file in the same directory as the source code:
+
+1. Create `<example-name>.spec.ts` in the example directory
+2. Import helpers from `../../../tests/helpers/`
+3. Test files will be automatically discovered by Playwright
+
+Example:
+```
+src/source-examples/my-example/
+├── App.tsx
+├── molecules.ts
+└── my-example.spec.ts    # Your test file
+```
+
 ### Testing Sandpack Examples
 
 Use the `SandpackHelper` class to interact with Sandpack iframes:
 
 ```typescript
-import { createSandpackHelper } from './helpers/sandpack';
+import { createSandpackHelper } from '../../../tests/helpers/sandpack';
 
 test('my test', async ({ page }) => {
   await page.goto('/my-page/');
@@ -128,7 +170,7 @@ test('my test', async ({ page }) => {
 For common scenarios like counter tests, use the helper functions:
 
 ```typescript
-import { testCounterIncrement, testMultipleCounters } from './helpers/common-tests';
+import { testCounterIncrement, testMultipleCounters } from '../../../tests/helpers/common-tests';
 
 test('counter increment', async ({ page }) => {
   await page.goto('/my-page/');
