@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         node: ["20.x"]
-        os: [ubuntu-latest]
+        os: [ubuntu-23.04]
 
     steps:
       - name: Checkout repo
