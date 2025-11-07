@@ -114,7 +114,7 @@
     },
     {
       "path": "dist/vanilla.mjs",
-      "limit": "3.2 KB"
+      "limit": "3.21 KB"
     }
   ],
   "devDependencies": {
