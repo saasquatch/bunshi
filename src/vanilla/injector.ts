@@ -21,6 +21,7 @@ import {
   GetterSymbol,
   GlobalScopeSymbol,
   Injector,
+  InjectorInternalsSymbol,
   TypeSymbol,
 } from "./internal/symbols";
 import {
@@ -28,7 +29,7 @@ import {
   isMoleculeInterface,
   isMoleculeScope,
 } from "./internal/utils";
-import { createDeepCache } from "./internal/weakCache";
+import { createDeepCache, type DeepCache } from "./internal/weakCache";
 import {
   onMountImpl,
   useImpl,
@@ -129,6 +130,22 @@ export type MoleculeInjector = {
 } & Record<symbol, unknown>;
 
 /**
+ * Molecule injector with access to internal methods and caches.
+ *
+ * This type is used internally and is not part of the public API and may change without warning.
+ */
+type MoleculeInjectorWithInternals = MoleculeInjector & {
+  [TypeSymbol]: typeof Injector;
+  [InjectorInternalsSymbol]: {
+    getTrueMolecule: <T>(
+      molOrIntf: MoleculeOrInterface<T>,
+    ) => MoleculeInternal<T>;
+    moleculeCache: DeepCache<AnyMolecule | AnyScopeTuple, MoleculeCacheValue>;
+    dependencyCache: WeakMap<AnyMolecule, Set<AnyMoleculeScope>>;
+  };
+};
+
+/**
  * Optional properties for creating a {@link MoleculeInjector} via {@link createInjector}
  */
 export type CreateInjectorProps = {
@@ -147,7 +164,28 @@ export type CreateInjectorProps = {
    * uses in the injector
    */
   instrumentation?: Instrumentation;
+
+  /**
+   * Parent injector to inherit molecules and cache from.
+   * When a molecule or interface is not found in this injector,
+   * it will be looked up in the parent injector.
+   * The child injector shares the parent's cache to preserve singleton behavior.
+   */
+  parent?: MoleculeInjector;
 };
+
+function getInjectorInternals(
+  injector: MoleculeInjector,
+): MoleculeInjectorWithInternals[typeof InjectorInternalsSymbol];
+function getInjectorInternals(
+  injector: MoleculeInjector | undefined,
+): MoleculeInjectorWithInternals[typeof InjectorInternalsSymbol] | undefined;
+function getInjectorInternals(
+  injector: MoleculeInjector | undefined,
+): MoleculeInjectorWithInternals[typeof InjectorInternalsSymbol] | undefined {
+  if (!injector) return undefined;
+  return (injector as MoleculeInjectorWithInternals)[InjectorInternalsSymbol];
+}
 
 function bindingsToMap(bindings?: Bindings): BindingMap {
   if (!bindings) return new Map();
@@ -185,10 +223,12 @@ export function createInjector(
    *
    *
    */
-  const moleculeCache = createDeepCache<
-    AnyMolecule | AnyScopeTuple,
-    MoleculeCacheValue
-  >();
+
+  // If we have a parent injector, share its cache for consistency
+  const parentInternals = getInjectorInternals(injectorProps.parent);
+  const moleculeCache =
+    parentInternals?.moleculeCache ??
+    createDeepCache<AnyMolecule | AnyScopeTuple, MoleculeCacheValue>();
 
   /**
    * The Dependency Cache reduces the number of times that a molecule needs
@@ -215,7 +255,7 @@ export function createInjector(
      * We only need to store the scope keys, not the scope values.
      */
     AnyMoleculeScope>
-  > = new WeakMap();
+  > = parentInternals?.dependencyCache ?? new WeakMap();
 
   const bindings = bindingsToMap(injectorProps.bindings);
 
@@ -238,6 +278,12 @@ export function createInjector(
     const bound = bindings.get(molOrIntf);
     if (bound) return bound as MoleculeInternal<T>;
     if (isMolecule(molOrIntf)) return molOrIntf as MoleculeInternal<T>;
+
+    // If not found locally and we have a parent, try the parent
+    if (injectorProps.parent) {
+      const parentInternals = getInjectorInternals(injectorProps.parent);
+      return parentInternals.getTrueMolecule(molOrIntf);
+    }
 
     throw new Error(ErrorUnboundMolecule);
   }
@@ -551,14 +597,21 @@ export function createInjector(
     return [cacheValue.value as T, { start, stop }];
   }
 
-  return {
+  const injectorInstance: MoleculeInjectorWithInternals = {
     [TypeSymbol]: Injector,
+    [InjectorInternalsSymbol]: {
+      getTrueMolecule,
+      moleculeCache,
+      dependencyCache,
+    },
     get,
     use,
     useLazily: lazyUse,
     useScopes: scoper.useScopes,
     createSubscription: scoper.createSubscription,
   };
+
+  return injectorInstance;
 }
 
 enum MoleculeSubscriptionState {
