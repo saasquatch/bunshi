@@ -88,7 +88,8 @@ Ensure any new exports are properly configured in `package.json` exports field a
 ## Performance Considerations
 
 - The library has strict size limits (see `size-limit` config in package.json)
-- Vanilla bundle must be under 3.6 KB
+- Vanilla bundle (CommonJS) must be under 3.6 KB
+- Vanilla bundle (ESM) must be under 3.2 KB
 - React bundle must be under 4.4 KB
 - Vue bundle must be under 4.1 KB
 - Always consider bundle size impact when making changes
