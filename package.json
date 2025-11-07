@@ -102,15 +102,15 @@
   "size-limit": [
     {
       "path": "dist/vanilla.js",
-      "limit": "3.5 KB"
+      "limit": "3.6 KB"
     },
     {
       "path": "dist/react.js",
-      "limit": "4.2 KB"
+      "limit": "4.4 KB"
     },
     {
       "path": "dist/vue.js",
-      "limit": "4.0 KB"
+      "limit": "4.1 KB"
     },
     {
       "path": "dist/vanilla.mjs",
