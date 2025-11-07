@@ -712,7 +712,7 @@ function runMolecule(
       debugLabel: `Global Scope ${id}`,
     });
   }
-  trackingScopeGetter(m[GlobalScopeSymbol]);
+  trackingScopeGetter(m[GlobalScopeSymbol]!);
 
   try {
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
