@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Bunshi is a tiny, fast, dependency-free library for creating state stores and dependencies. It supports React, Vue, and vanilla JavaScript/TypeScript. The library is extremely lightweight with strict bundle size limits enforced during builds.
+Bunshi is a tiny, fast, dependency-free library for creating state stores and other dependencies that lets you lift state up or push state down. It works out of the box with React, Vue, and vanilla JavaScript/TypeScript. The library is extremely lightweight with strict bundle size limits enforced during builds.
 
 ## Coding Style
 
