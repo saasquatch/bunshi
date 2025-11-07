@@ -53,6 +53,9 @@ jobs:
   website:
     name: Test website examples on Node ${{ matrix.node }} and ${{ matrix.os }}
     
+    permissions:
+      contents: read
+    
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
