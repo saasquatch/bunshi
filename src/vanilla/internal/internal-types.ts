@@ -12,6 +12,7 @@ import {
   MoleculeSymbol,
   TypeSymbol,
   GlobalScopeSymbol,
+  type TypeInferSymbol,
 } from "./symbols";
 
 /**
@@ -44,10 +45,12 @@ export type MoleculeInternal<T> = {
   [GetterSymbol]: MoleculeConstructor<T>;
   [TypeSymbol]: typeof MoleculeSymbol;
   [GlobalScopeSymbol]?: MoleculeScope<symbol>;
+  [TypeInferSymbol]?: T;
   displayName?: string;
 };
 
 export type MoleculeInterfaceInternal<T> = {
   [TypeSymbol]: typeof MoleculeInterfaceSymbol;
+  [TypeInferSymbol]?: T;
   displayName?: string;
 };

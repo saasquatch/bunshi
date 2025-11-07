@@ -1,3 +1,5 @@
+// For type inference
+export const TypeInferSymbol = Symbol.for("bunshi.molecules.typeInfer");
 // For internals
 export const InjectorInternalsSymbol = Symbol.for("bunshi.injector.internals");
 
