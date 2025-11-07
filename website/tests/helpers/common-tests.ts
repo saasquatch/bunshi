@@ -142,3 +142,29 @@ export async function testLifecycleToggle(page: Page) {
   const finalCount = await sandpack.countElements('p:has-text("Clicks:")');
   expect(finalCount).toBe(initialCount);
 }
+
+/**
+ * Test a recipe example with framework tabs
+ */
+export async function testRecipeWithFramework(
+  page: Page,
+  recipeName: string,
+  frameworkTab: string
+) {
+  await page.goto(`/recipes/${recipeName}/`);
+  
+  await page.click(`button[role="tab"]:has-text("${frameworkTab}")`);
+  await page.waitForTimeout(1000);
+  
+  const sandpack = createSandpackHelper(page);
+  
+  // Wait for sandpack to load
+  await sandpack.waitForSandpackIframe(30000);
+  
+  // Basic check that content loads
+  const iframe = await sandpack.waitForSandpackIframe();
+  const body = iframe.locator('body');
+  await expect(body).toBeVisible({ timeout: 15000 });
+  
+  return sandpack;
+}
