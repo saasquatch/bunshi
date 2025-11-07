@@ -92,12 +92,7 @@ export class SandpackHelper {
   async waitForText(selector: string, expectedText: string | RegExp, timeout = 10000): Promise<void> {
     const iframe = await this.waitForSandpackIframe(timeout);
     const element = iframe.locator(selector).first();
-    
-    if (typeof expectedText === 'string') {
-      await expect(element).toContainText(expectedText, { timeout });
-    } else {
-      await expect(element).toContainText(expectedText, { timeout });
-    }
+    await expect(element).toContainText(expectedText, { timeout });
   }
 
   /**
