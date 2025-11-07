@@ -1,18 +1,9 @@
 ---
-import {
-  getSandpackCssText,
-  type SandpackSetup,
-} from "@codesandbox/sandpack-react";
+import { getSandpackCssText } from "@codesandbox/sandpack-react";
 import { CodeEditor as ReactCodeEditor } from "./CodeEditor";
+import type { CodeEditorProps } from "./CodeEditor.types";
 
-import type { ComponentProps } from "react";
-
-type SandpackProps = ComponentProps<typeof ReactCodeEditor>;
-type Props = {
-  template?: SandpackProps["template"];
-  files?: SandpackProps["files"];
-  dependencies?: SandpackSetup["dependencies"];
-};
+type Props = CodeEditorProps;
 
 const styles = getSandpackCssText();
 const { template, files, dependencies } = Astro.props;

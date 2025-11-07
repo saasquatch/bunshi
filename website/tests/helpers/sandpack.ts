@@ -17,8 +17,8 @@ export class SandpackHelper {
     // Wait a bit for Sandpack to initialize
     await this.page.waitForTimeout(2000);
 
-    // Find the iframe with sandpack in the src
-    const iframeElement = this.page.frameLocator('iframe[src*="sandpack"]');
+    // Find the iframe with sandpack in the src - use .first() to get the first preview iframe
+    const iframeElement = this.page.frameLocator('iframe[src*="sandpack"]').first();
     
     // Wait for content to load in iframe
     await this.page.waitForTimeout(2000);
