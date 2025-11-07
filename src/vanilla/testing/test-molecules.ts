@@ -4,7 +4,7 @@ import { createScope } from "../scope";
 import { ScopeTuple } from "../types";
 import { Molecule, use } from "..";
 
-type BaseAtoms = {
+export type BaseAtoms = {
   nameAtom: PrimitiveAtom<string>;
 };
 export const exampleMol = molecule<BaseAtoms>(() => {
