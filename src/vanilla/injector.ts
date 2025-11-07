@@ -19,6 +19,7 @@ import type { MoleculeCacheValue } from "./internal/internal-types";
 import { scopeTupleSort } from "./internal/scopeTupleSort";
 import {
   GetterSymbol,
+  GlobalScopeSymbol,
   Injector,
   InjectorInternalsSymbol,
   TypeSymbol,
@@ -46,10 +47,7 @@ import { createScope } from "./scope";
 import { type ScopeSubscription, createScoper } from "./scoper";
 import type { BindingMap, Bindings, Injectable } from "./types";
 
-const InternalOnlyGlobalScope = createScope(
-  Symbol("bunshi.global.scope.value"),
-  { debugLabel: "Global Scope" },
-);
+let globalScopeId = 0;
 
 type UseScopeDetails = {
   value: unknown;
@@ -703,7 +701,19 @@ function runMolecule(
   onMountImpl.push((fn: MountedCallback) => mountedCallbacks.add(fn));
   useImpl.push(use);
   let running = true;
-  trackingScopeGetter(InternalOnlyGlobalScope);
+
+  /**
+   * Create or reuse a unique internal global scope for this molecule.
+   * This ensures cleanup mechanisms work properly via the normal scope lifecycle.
+   */
+  if (!m[GlobalScopeSymbol]) {
+    const id = ++globalScopeId;
+    m[GlobalScopeSymbol] = createScope(Symbol(`bunshi.global.scope.${id}`), {
+      debugLabel: `Global Scope ${id}`,
+    });
+  }
+  trackingScopeGetter(m[GlobalScopeSymbol]!);
+
   try {
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
     return {

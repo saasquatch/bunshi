@@ -8,6 +8,7 @@ export const TypeSymbol = Symbol.for("bunshi.molecules.type");
 export const ScopeSymbol = Symbol.for("bunshi.scope.type");
 export const Injector = Symbol.for("bunshi.injector.instance");
 export const GetterSymbol = Symbol.for("bunshi.molecules.getter");
+export const GlobalScopeSymbol = Symbol.for("bunshi.molecules.globalScope");
 export const MoleculeSymbol = Symbol.for("bunshi.molecules.molecule");
 export const MoleculeInterfaceSymbol = Symbol.for(
   "bunshi.molecules.molecule.interface",

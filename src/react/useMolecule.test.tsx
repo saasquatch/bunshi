@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { render, renderHook } from "@testing-library/react";
 import React, { StrictMode, useContext } from "react";
 import {
   createScope,
@@ -483,6 +483,118 @@ strictModeSuite(({ wrapper, isStrict }) => {
     });
 
     test("Empty", () => {});
+
+    test("global molecule should reset state upon unmount", () => {
+      const moleculeLifecycle = createLifecycleUtils();
+
+      let instanceCount = 0;
+      const Molecule = molecule(() => {
+        const value = `inner-${++instanceCount}`;
+        moleculeLifecycle.connect(value);
+        return value;
+      });
+
+      const Component = () => {
+        const value = useMolecule(Molecule);
+        return <div>{value}</div>;
+      };
+
+      const TestComponent = ({ show }: { show: boolean }) => (
+        <>{show && <Component />}</>
+      );
+
+      const { rerender } = render(<TestComponent show={true} />);
+
+      // Should be mounted initially
+      moleculeLifecycle.expectActivelyMounted();
+      expect(instanceCount).toBe(1);
+
+      // Hide the component
+      rerender(<TestComponent show={false} />);
+
+      // Should be unmounted
+      expect(instanceCount).toBe(1);
+      expect(moleculeLifecycle.unmounts).toHaveBeenCalledOnce();
+      moleculeLifecycle.expectCalledTimesEach(1, 1, 1);
+
+      // Show the component again
+      rerender(<TestComponent show={true} />);
+
+      // Should be remounted, so instance count should increase
+      expect(instanceCount).toBe(2);
+      moleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+    });
+
+    test("global molecule should reset state upon unmount even if another molecule is using the global scope", () => {
+      // See https://github.com/saasquatch/bunshi/issues/80
+
+      const outerMoleculeLifecycle = createLifecycleUtils();
+      const innerMoleculeLifecycle = createLifecycleUtils();
+
+      let outerInstanceCount = 0;
+      const OuterMolecule = molecule(() => {
+        const value = `outer-${++outerInstanceCount}`;
+        outerMoleculeLifecycle.connect(value);
+        return value;
+      });
+
+      let innerInstanceCount = 0;
+      const InnerMolecule = molecule(() => {
+        const value = `inner-${++innerInstanceCount}`;
+        innerMoleculeLifecycle.connect(value);
+        return value;
+      });
+
+      const OuterComponent = ({ children }: { children?: React.ReactNode }) => {
+        const outerValue = useMolecule(OuterMolecule);
+        return (
+          <div>
+            <span>Outer: {outerValue}</span>
+            {children}
+          </div>
+        );
+      };
+
+      const InnerComponent = () => {
+        const innerValue = useMolecule(InnerMolecule);
+        return <div>Inner: {innerValue}</div>;
+      };
+
+      const TestComponent = ({ showInner }: { showInner: boolean }) => (
+        <OuterComponent>{showInner && <InnerComponent />}</OuterComponent>
+      );
+
+      const { rerender } = render(<TestComponent showInner={true} />);
+
+      // Both molecules should be mounted initially
+      outerMoleculeLifecycle.expectActivelyMounted();
+      innerMoleculeLifecycle.expectActivelyMounted();
+      expect(outerInstanceCount).toBe(1);
+      expect(innerInstanceCount).toBe(1);
+
+      // Hide the inner component
+      rerender(<TestComponent showInner={false} />);
+
+      // Outer molecule should still be mounted
+      outerMoleculeLifecycle.expectActivelyMounted();
+      expect(outerInstanceCount).toBe(1);
+
+      // Inner molecule should be unmounted
+      expect(innerInstanceCount).toBe(1);
+      expect(innerMoleculeLifecycle.unmounts).toHaveBeenCalledOnce();
+      innerMoleculeLifecycle.expectCalledTimesEach(1, 1, 1);
+
+      // Show the inner component again
+      rerender(<TestComponent showInner={true} />);
+
+      // Outer molecule should still be mounted
+      outerMoleculeLifecycle.expectActivelyMounted();
+      expect(outerInstanceCount).toBe(1);
+
+      // Inner molecule should be remounted, so instance count should increase
+      expect(innerInstanceCount).toBe(2);
+      innerMoleculeLifecycle.expectCalledTimesEach(2, 2, 1);
+    });
   });
 });
 
