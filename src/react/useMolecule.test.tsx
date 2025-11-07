@@ -9,7 +9,10 @@ import {
   type MoleculeInterface,
   type MoleculeOrInterface,
 } from ".";
-import { createLifecycleUtils } from "../shared/testing/lifecycle";
+import {
+  createLifecycleUtils,
+  type LifecycleUtilsTuple,
+} from "../shared/testing/lifecycle";
 import { ScopeProvider } from "./ScopeProvider";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { strictModeSuite } from "./testing/strictModeSuite";
@@ -483,113 +486,113 @@ strictModeSuite(({ wrapper, isStrict }) => {
   });
 });
 
-describe("Parallel calls", () => {
-  const renders = vi.fn();
-  beforeEach(() => renders.mockReset());
+strictModeSuite(({ wrapper, isStrict }) => {
+  describe("Parallel calls", () => {
+    const renders = vi.fn();
+    beforeEach(() => renders.mockReset());
 
-  test("Parallel renders in different components", () => {
-    userMoleculeLifecycle.expectUncalled();
+    test("Parallel renders in different components", () => {
+      userMoleculeLifecycle.expectUncalled();
 
-    const useUserMolecule = () =>
-      useMolecule(UserMolecule, {
-        withScope: [UserScope, "jeffrey@example.com"],
-      });
-
-    const render1 = renderHook(useUserMolecule, {});
-    userMoleculeLifecycle.expectActivelyMounted();
-    const render2 = renderHook(useUserMolecule, {});
-    userMoleculeLifecycle.expectActivelyMounted();
-
-    expect(render1.result.current.userId).toBe("jeffrey@example.com");
-    expect(render2.result.current.userId).toBe("jeffrey@example.com");
-    expect(render2.result.current).toBe(render1.result.current);
-
-    render1.unmount();
-    render2.unmount();
-
-    expect(render1.result.current.userId).toBe("jeffrey@example.com");
-    expect(render2.result.current.userId).toBe("jeffrey@example.com");
-    expect(render2.result.current).toBe(render1.result.current);
-  });
-
-  test("Parallel calls in the same component", () => {
-    userMoleculeLifecycle.expectUncalled();
-
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule, {
+      const useUserMolecule = () =>
+        useMolecule(UserMolecule, {
           withScope: [UserScope, "jeffrey@example.com"],
-        }),
-        second: useMolecule(UserMolecule, {
-          withScope: [UserScope, "jeffrey@example.com"],
-        }),
+        });
+
+      const render1 = renderHook(useUserMolecule, {});
+      userMoleculeLifecycle.expectActivelyMounted();
+      const render2 = renderHook(useUserMolecule, {});
+      userMoleculeLifecycle.expectActivelyMounted();
+
+      expect(render1.result.current.userId).toBe("jeffrey@example.com");
+      expect(render2.result.current.userId).toBe("jeffrey@example.com");
+      expect(render2.result.current).toBe(render1.result.current);
+
+      render1.unmount();
+      render2.unmount();
+
+      expect(render1.result.current.userId).toBe("jeffrey@example.com");
+      expect(render2.result.current.userId).toBe("jeffrey@example.com");
+      expect(render2.result.current).toBe(render1.result.current);
+    });
+
+    test("Parallel calls in the same component", () => {
+      userMoleculeLifecycle.expectUncalled();
+
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule, {
+            withScope: [UserScope, "jeffrey@example.com"],
+          }),
+          second: useMolecule(UserMolecule, {
+            withScope: [UserScope, "jeffrey@example.com"],
+          }),
+        };
       };
-    };
 
-    const render1 = renderHook(useUserMolecule, {});
-    userMoleculeLifecycle.expectCalledTimesEach(2, 1, 0);
+      const render1 = renderHook(useUserMolecule, {});
+      userMoleculeLifecycle.expectCalledTimesEach(2, 1, 0);
 
-    expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
-    expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
-    expect(render1.result.current.first).toBe(render1.result.current.second);
+      expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
+      expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
+      expect(render1.result.current.first).toBe(render1.result.current.second);
 
-    render1.unmount();
-    userMoleculeLifecycle.expectCalledTimesEach(2, 1, 1);
-  });
-  test("Triple parallel calls in the same component", () => {
-    userMoleculeLifecycle.expectUncalled();
+      render1.unmount();
+      userMoleculeLifecycle.expectCalledTimesEach(2, 1, 1);
+    });
+    test("Triple parallel calls in the same component", () => {
+      userMoleculeLifecycle.expectUncalled();
 
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule, {
-          withScope: [UserScope, "jeffrey@example.com"],
-        }),
-        second: useMolecule(UserMolecule, {
-          withScope: [UserScope, "jeffrey@example.com"],
-        }),
-        third: useMolecule(UserMolecule, {
-          withScope: [UserScope, "jeffrey@example.com"],
-        }),
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule, {
+            withScope: [UserScope, "jeffrey@example.com"],
+          }),
+          second: useMolecule(UserMolecule, {
+            withScope: [UserScope, "jeffrey@example.com"],
+          }),
+          third: useMolecule(UserMolecule, {
+            withScope: [UserScope, "jeffrey@example.com"],
+          }),
+        };
       };
-    };
 
-    const render1 = renderHook(useUserMolecule, {});
-    // Then the molecule is executed once per call
-    // But only mounted once
-    userMoleculeLifecycle.expectCalledTimesEach(3, 1, 0);
+      const render1 = renderHook(useUserMolecule, {});
+      // Then the molecule is executed once per call
+      // But only mounted once
+      userMoleculeLifecycle.expectCalledTimesEach(3, 1, 0);
 
-    expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
-    expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
-    expect(render1.result.current.third.userId).toBe("jeffrey@example.com");
-    expect(render1.result.current.first).toBe(render1.result.current.second);
-    expect(render1.result.current.first).toBe(render1.result.current.third);
+      expect(render1.result.current.first.userId).toBe("jeffrey@example.com");
+      expect(render1.result.current.second.userId).toBe("jeffrey@example.com");
+      expect(render1.result.current.third.userId).toBe("jeffrey@example.com");
+      expect(render1.result.current.first).toBe(render1.result.current.second);
+      expect(render1.result.current.first).toBe(render1.result.current.third);
 
-    render1.unmount();
-    userMoleculeLifecycle.expectCalledTimesEach(3, 1, 1);
-  });
+      render1.unmount();
+      userMoleculeLifecycle.expectCalledTimesEach(3, 1, 1);
+    });
 
-  describe("Duplicate calls in the same component, with separate scopes", () => {
-    const jeffrey = "jeffrey@example.com";
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+    test("Duplicate calls in the same component, with separate scopes", () => {
+      const jeffrey = "jeffrey@example.com";
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+          second: useMolecule(UserMolecule, {
+            withScope: [UserScope, jeffrey],
+          }),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [4, 2, 1] as [number, number, number],
-        after: [4, 2, 2] as [number, number, number],
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [2, 1, 0] as [number, number, number],
-        after: [2, 1, 1] as [number, number, number],
-      },
-    ])("$case", ({ wrapper, before, after }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      if (isStrict) {
+        before = [4, 2, 1];
+        after = [4, 2, 2];
+      } else {
+        before = [2, 1, 0];
+        after = [2, 1, 1];
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -605,31 +608,29 @@ describe("Parallel calls", () => {
 
       userMoleculeLifecycle.expectCalledTimesEach(...after);
     });
-  });
 
-  describe("Triplicate calls in the same component, with separate scopes", () => {
-    const jeffrey = "jeffrey@example.com";
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+    test("Triplicate calls in the same component, with separate scopes", () => {
+      const jeffrey = "jeffrey@example.com";
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+          second: useMolecule(UserMolecule, {
+            withScope: [UserScope, jeffrey],
+          }),
+          third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [6, 2, 1] as [number, number, number],
-        after: [6, 2, 2] as [number, number, number],
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [3, 1, 0] as [number, number, number],
-        after: [3, 1, 1] as [number, number, number],
-      },
-    ])("$case", ({ wrapper, before, after }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      if (isStrict) {
+        before = [6, 2, 1];
+        after = [6, 2, 2];
+      } else {
+        before = [3, 1, 0];
+        after = [3, 1, 1];
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -647,37 +648,39 @@ describe("Parallel calls", () => {
 
       userMoleculeLifecycle.expectCalledTimesEach(...after);
     });
-  });
 
-  describe("Quadruplicate calls in the same component, with separate scopes", () => {
-    const jeffrey = "jeffrey@example.com";
-    const useUserMolecule = () => {
-      renders();
-      return {
-        first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        second: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
-        fourth: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+    test("Quadruplicate calls in the same component, with separate scopes", () => {
+      const jeffrey = "jeffrey@example.com";
+      const useUserMolecule = () => {
+        renders();
+        return {
+          first: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+          second: useMolecule(UserMolecule, {
+            withScope: [UserScope, jeffrey],
+          }),
+          third: useMolecule(UserMolecule, { withScope: [UserScope, jeffrey] }),
+          fourth: useMolecule(UserMolecule, {
+            withScope: [UserScope, jeffrey],
+          }),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [8, 2, 1] as [number, number, number],
-        after: [8, 2, 2] as [number, number, number],
-        beforeRenders: 4,
-        afterRenders: 4 + 2,
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [4, 1, 0] as [number, number, number],
-        after: [4, 1, 1] as [number, number, number],
-        beforeRenders: 2,
-        afterRenders: 2 + 1,
-      },
-    ])("$case", ({ wrapper, before, after, beforeRenders, afterRenders }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      let beforeRenders: number;
+      let afterRenders: number;
+      if (isStrict) {
+        before = [8, 2, 1];
+        after = [8, 2, 2];
+        beforeRenders = 4;
+        afterRenders = 4 + 2;
+      } else {
+        before = [4, 1, 0];
+        after = [4, 1, 1];
+        beforeRenders = 2;
+        afterRenders = 2 + 1;
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -701,34 +704,32 @@ describe("Parallel calls", () => {
       userMoleculeLifecycle.expectCalledTimesEach(...after);
       expect(renders).toHaveBeenCalledTimes(afterRenders);
     });
-  });
 
-  describe("Duplicate calls in the same component", () => {
-    const useUserMolecule = () => {
-      renders();
-      return {
-        first: useMolecule(UserMolecule),
-        second: useMolecule(UserMolecule),
+    test("Duplicate calls in the same component", () => {
+      const useUserMolecule = () => {
+        renders();
+        return {
+          first: useMolecule(UserMolecule),
+          second: useMolecule(UserMolecule),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [1, 2, 1] as [number, number, number],
-        after: [1, 2, 2] as [number, number, number],
-        beforeRenders: 2,
-        afterRenders: 4,
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [1, 1, 0] as [number, number, number],
-        after: [1, 1, 1] as [number, number, number],
-        beforeRenders: 1,
-        afterRenders: 2,
-      },
-    ])("$case", ({ wrapper, before, after, beforeRenders, afterRenders }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      let beforeRenders: number;
+      let afterRenders: number;
+      if (isStrict) {
+        before = [1, 2, 1];
+        after = [1, 2, 2];
+        beforeRenders = 2;
+        afterRenders = 4;
+      } else {
+        before = [1, 1, 0];
+        after = [1, 1, 1];
+        beforeRenders = 1;
+        afterRenders = 2;
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -750,30 +751,26 @@ describe("Parallel calls", () => {
 
       userMoleculeLifecycle.expectCalledTimesEach(...after);
     });
-  });
 
-  describe("Triplicate calls in the same component", () => {
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule),
-        second: useMolecule(UserMolecule),
-        third: useMolecule(UserMolecule),
+    test("Triplicate calls in the same component", () => {
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule),
+          second: useMolecule(UserMolecule),
+          third: useMolecule(UserMolecule),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [1, 2, 1] as [number, number, number],
-        after: [1, 2, 2] as [number, number, number],
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [1, 1, 0] as [number, number, number],
-        after: [1, 1, 1] as [number, number, number],
-      },
-    ])("$case", ({ wrapper, before, after }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      if (isStrict) {
+        before = [1, 2, 1];
+        after = [1, 2, 2];
+      } else {
+        before = [1, 1, 0];
+        after = [1, 1, 1];
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -791,31 +788,27 @@ describe("Parallel calls", () => {
 
       userMoleculeLifecycle.expectCalledTimesEach(...after);
     });
-  });
 
-  describe("Quadruplicate calls in the same component", () => {
-    const useUserMolecule = () => {
-      return {
-        first: useMolecule(UserMolecule),
-        second: useMolecule(UserMolecule),
-        third: useMolecule(UserMolecule),
-        fourth: useMolecule(UserMolecule),
+    test("Quadruplicate calls in the same component", () => {
+      const useUserMolecule = () => {
+        return {
+          first: useMolecule(UserMolecule),
+          second: useMolecule(UserMolecule),
+          third: useMolecule(UserMolecule),
+          fourth: useMolecule(UserMolecule),
+        };
       };
-    };
-    test.each([
-      {
-        case: "Strict",
-        wrapper: StrictMode,
-        before: [1, 2, 1] as [number, number, number],
-        after: [1, 2, 2] as [number, number, number],
-      },
-      {
-        case: "Non-Strict",
-        wrapper: undefined,
-        before: [1, 1, 0] as [number, number, number],
-        after: [1, 1, 1] as [number, number, number],
-      },
-    ])("$case", ({ wrapper, before, after }) => {
+
+      let before: LifecycleUtilsTuple;
+      let after: LifecycleUtilsTuple;
+      if (isStrict) {
+        before = [1, 2, 1];
+        after = [1, 2, 2];
+      } else {
+        before = [1, 1, 0];
+        after = [1, 1, 1];
+      }
+
       userMoleculeLifecycle.expectUncalled();
 
       const render1 = renderHook(useUserMolecule, { wrapper });
@@ -837,67 +830,81 @@ describe("Parallel calls", () => {
   });
 });
 
-test("Strict mode", () => {
-  const expectedUser = "strict@example.com";
+strictModeSuite(({ wrapper, isStrict }) => {
+  test("Strict mode behavior", () => {
+    const expectedUser = "strict@example.com";
 
-  const lifecycle = createLifecycleUtils();
-  const UseLifecycleMolecule = molecule(() => {
-    const userId = use(UserScope);
-    lifecycle.connect(userId);
-    return userId;
-  });
-  const testHook = () => {
-    return {
-      molecule: useMolecule(UseLifecycleMolecule, {
-        exclusiveScope: [UserScope, expectedUser],
-      }),
+    const lifecycle = createLifecycleUtils();
+    const UseLifecycleMolecule = molecule(() => {
+      const userId = use(UserScope);
+      lifecycle.connect(userId);
+      return userId;
+    });
+    const testHook = () => {
+      return {
+        molecule: useMolecule(UseLifecycleMolecule, {
+          exclusiveScope: [UserScope, expectedUser],
+        }),
+      };
     };
-  };
 
-  lifecycle.expectUncalled();
+    lifecycle.expectUncalled();
 
-  const run1 = renderHook(testHook, {
-    wrapper: StrictMode,
+    const run1 = renderHook(testHook, {
+      wrapper,
+    });
+
+    function expectActiveMounted() {
+      if (isStrict) {
+        // Then execution are called twice
+        // Because once for each render in strict mode
+        expect(lifecycle.executions).toBeCalledTimes(2);
+        // Then mounts are called twice
+        // Because of useEffects called twice in strict mode
+        expect(lifecycle.mounts).toBeCalledTimes(2);
+        // The unount is called once
+        // To cleanup from the original useEffect
+        expect(lifecycle.unmounts).toBeCalledTimes(1);
+      } else {
+        expect(lifecycle.executions).toBeCalledTimes(1);
+        expect(lifecycle.mounts).toBeCalledTimes(1);
+        expect(lifecycle.unmounts).toBeCalledTimes(0);
+      }
+    }
+    expectActiveMounted();
+    expect(run1.result.current.molecule).toBe(expectedUser);
+
+    const run2 = renderHook(testHook, {
+      wrapper,
+    });
+
+    /**
+     * Then nothing has changed in the molecule lifecycle
+     * Because a subscription was active at render time
+     * And it re-uses the cached value
+     */
+    expectActiveMounted();
+    expect(run2.result.current.molecule).toBe(expectedUser);
+
+    run1.unmount();
+
+    /**
+     * Then nothing has changed in the molecule lifecycle
+     * Because a subscription is still active
+     */
+    expectActiveMounted();
+
+    run2.unmount();
+
+    if (isStrict) {
+      expect(lifecycle.executions).toBeCalledTimes(2);
+      expect(lifecycle.mounts).toBeCalledTimes(2);
+      // Unmounts are called
+      expect(lifecycle.unmounts).toBeCalledTimes(2);
+    } else {
+      expect(lifecycle.executions).toBeCalledTimes(1);
+      expect(lifecycle.mounts).toBeCalledTimes(1);
+      expect(lifecycle.unmounts).toBeCalledTimes(1);
+    }
   });
-
-  function expectActiveMounted() {
-    // Then execution are called twice
-    // Because once for each render in strict mode
-    expect(lifecycle.executions).toBeCalledTimes(2);
-    // Then mounts are called twice
-    // Because of useEffects called twice in strict mode
-    expect(lifecycle.mounts).toBeCalledTimes(2);
-    // The unount is called once
-    // To cleanup from the original useEffect
-    expect(lifecycle.unmounts).toBeCalledTimes(1);
-  }
-  expectActiveMounted();
-  expect(run1.result.current.molecule).toBe(expectedUser);
-
-  const run2 = renderHook(testHook, {
-    wrapper: StrictMode,
-  });
-
-  /**
-   * Then nothing has changed in the molecule lifecycle
-   * Because a subscription was active at render time
-   * And it re-uses the cached value
-   */
-  expectActiveMounted();
-  expect(run2.result.current.molecule).toBe(expectedUser);
-
-  run1.unmount();
-
-  /**
-   * Then nothing has changed in the molecule lifecycle
-   * Because a subscription is still active
-   */
-  expectActiveMounted();
-
-  run2.unmount();
-
-  expect(lifecycle.executions).toBeCalledTimes(2);
-  expect(lifecycle.mounts).toBeCalledTimes(2);
-  // Unmounts are called
-  expect(lifecycle.unmounts).toBeCalledTimes(2);
 });
