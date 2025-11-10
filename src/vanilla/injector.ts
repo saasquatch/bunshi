@@ -311,8 +311,8 @@ export function createInjector(
         cachedDeps.has(tuple[0]),
       );
 
-      const deps = getCachePath(relevantScopes, m);
-      const cachedValue = moleculeCache.get(deps);
+      const cacheScopes = getCachePath(relevantScopes);
+      const cachedValue = moleculeCache.get([m, ...cacheScopes]);
 
       if (cachedValue) {
         // Extend the lease to include the any default scopes
@@ -335,36 +335,66 @@ export function createInjector(
     }
     injectorProps.instrumentation?.stage1CacheMiss();
     const { previous } = props;
-    if (previous !== false) {
+
+    if (previous !== false && previousIsCacheable(m, props)) {
       return moleculeCache.deepCache(
         () => previous,
         () => {},
-        previous.path,
+        [previous.self, ...previous.scopes],
       );
     }
     return runAndCache<T>(m, props);
   }
 
+  function previousIsCacheable(m: AnyMolecule, props: CreationProps) {
+    const { previous } = props;
+
+    // If no previous value, then nothing is cacheable
+    if (previous === false) return false;
+
+    /**
+     * All buddies are:
+     *  - exact matches from the cache
+     *  - missing in the cache
+     *
+     * are not:
+     *  - conflicting (not equal) to their cache value
+     */
+
+    const buddiesAllGood = previous.deps.buddies.every((buddy) => {
+      const currentCacheValue = getInternal(buddy, {
+        scopes: buddy.scopes,
+        lease: props.lease,
+        previous: buddy,
+      });
+      // FIXME: I think that this value should be reversed...
+      return currentCacheValue !== buddy;
+    });
+
+    return buddiesAllGood;
+  }
+
   function multiCache(
     mol: AnyMolecule,
     scopes: AnyScopeTuple[],
-    createFn: () => Omit<Omit<MoleculeCacheValue, "path">, "instanceId">,
+    createFn: () => Omit<Omit<MoleculeCacheValue, "scopes">, "instanceId">,
     foundFn: (found: MoleculeCacheValue) => void,
   ): MoleculeCacheValue | undefined {
-    const deps = getCachePath(scopes, mol);
+    const cacheScopes = getCachePath(scopes);
 
     const cached = moleculeCache.deepCache(
       () => {
         const innerCached = {
           ...createFn(),
-          path: deps,
+          scopes: cacheScopes,
+          self: mol,
           instanceId: instanceId(),
         };
 
         return innerCached;
       },
       foundFn,
-      deps,
+      [mol, ...cacheScopes],
     );
     return cached;
   }
@@ -446,6 +476,7 @@ export function createInjector(
           deps: mounted.deps,
           value: mounted.value,
           isMounted: false,
+          self: m,
         };
         injectorProps.instrumentation?.stage2CacheMiss(created);
         return created;
@@ -500,7 +531,7 @@ export function createInjector(
        * Without this repeated calls to `injector.use` would not create
        * new values, and would not run lifecycle hooks (mount, unmount).
        */
-      moleculeCache.remove(...mol.path);
+      moleculeCache.remove(mol.self, ...mol.scopes);
       mol.isMounted = false;
     });
 
@@ -520,9 +551,7 @@ export function createInjector(
      * These are the scopes that were implicitly provided when the molecule
      * was created
      */
-    const usedScopes = mol.path.filter((molOrScope) =>
-      Array.isArray(molOrScope),
-    ) as AnyScopeTuple[];
+    const usedScopes = mol.scopes;
     scoper.registerCleanups(usedScopes, cleanupSet);
 
     injectorProps?.instrumentation?.mounted(mol, usedScopes, cleanupSet);
@@ -574,6 +603,17 @@ export function createInjector(
       }
       injectorProps?.instrumentation?.subscribe(bound, cacheValue);
 
+      /**
+       * TODO: Fix for #64
+       *
+       * We need to recursively check that not only this molecule is using
+       * the right value, but also that it's using the latest version of it's
+       * dependencies, too.
+       *
+       *
+       * Side effects:
+       * - more molecule executions, so will invalidate some tests that assume only 1 execution
+       */
       cacheValue = getInternal<T>(bound, {
         scopes: sub.start(),
         lease,
@@ -628,7 +668,7 @@ enum MoleculeSubscriptionState {
  * @param mol
  * @returns
  */
-function getCachePath(scopes: AnyScopeTuple[], mol: AnyMolecule) {
+function getCachePath(scopes: AnyScopeTuple[]) {
   /**
    * Important: We filter out default scopes as a part of the cache path
    * because it makes it easier for us to find a molecule in our Stage 1
@@ -640,8 +680,7 @@ function getCachePath(scopes: AnyScopeTuple[], mol: AnyMolecule) {
    * Important: Sorting of scopes is important to ensure a consistent path
    * for storing (and finding) molecules in the deep cache tree
    */
-  const deps = [mol, ...scopeTupleSort(nonDefaultScopes)];
-  return deps;
+  return scopeTupleSort(nonDefaultScopes);
 }
 
 /**

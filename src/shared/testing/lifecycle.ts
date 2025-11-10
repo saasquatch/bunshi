@@ -43,9 +43,14 @@ export function createLifecycleUtils() {
     timesMounted: number,
     timesUnmounted: number,
   ) => {
-    expect.soft(executions).toHaveBeenCalledTimes(timesExecuted);
-    expect.soft(mounts).toHaveBeenCalledTimes(timesMounted);
-    expect(unmounts).toHaveBeenCalledTimes(timesUnmounted);
+    expect(
+      [
+        executions.mock.calls.length,
+        mounts.mock.calls.length,
+        unmounts.mock.calls.length,
+      ],
+      "component lifecycle calls mismatch",
+    ).toStrictEqual([timesExecuted, timesMounted, timesUnmounted]);
   };
 
   const expectToHaveBeenCalledTimes = (num: number) => {
