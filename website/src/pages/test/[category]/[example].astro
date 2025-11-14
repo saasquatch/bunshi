@@ -1,0 +1,39 @@
+---
+import CodeEditor from "~/components/CodeEditor.astro";
+import { categories } from "~/source-examples/sources.ts";
+
+// Define which pages to generate at build time
+export function getStaticPaths() {
+  return Object.entries(categories).flatMap(([category, exampleSet]) =>
+    Object.keys(exampleSet).map((example) => ({
+      params: { category, example }
+    }))
+  );
+}
+
+// Get the parameters from the URL path
+const { category, example } = Astro.params;
+
+// Get the example config
+const categoryExamples = category ? categories[category as keyof typeof categories] : null;
+const exampleConfig = categoryExamples && example ? categoryExamples[example as keyof typeof categoryExamples] : null;
+
+if (!exampleConfig) {
+  return Astro.redirect("/404");
+}
+
+// Generate a friendly title
+const title = `${category} - ${example}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <h1>{title}</h1>
+    <CodeEditor {...exampleConfig} />
+  </body>
+</html>

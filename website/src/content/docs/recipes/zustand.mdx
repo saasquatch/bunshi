@@ -4,7 +4,7 @@ title: "Zustand"
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import CodeEditor from "~/components/CodeEditor.astro";
-import { zustand } from "~/source-examples/sources";
+import examples from "~/source-examples/zustand/examples.code";
 
 ## Background
 
@@ -18,35 +18,10 @@ Bunshi helps you create Zustand stores per component or other scopes, instead of
 
 <Tabs>
   <TabItem label="React">
-    <CodeEditor
-      files={{
-        "App.tsx": zustand.ReactApp,
-        "molecules.ts": {
-          code: zustand.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-      }}
-    />
+    <CodeEditor {...examples.reactComponentState} />
   </TabItem>
   <TabItem label="Vue">
-    <CodeEditor
-      files={{
-        "src/App.vue": zustand.VueApp,
-        "src/Counter.vue": zustand.VueCounter,
-        "src/molecules.ts": {
-          code: zustand.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-        "vue-zustand": "^0.6",
-      }}
-      template="vite-vue"
-    />
+    <CodeEditor {...examples.vueComponentState} />
   </TabItem>
 </Tabs>
 
@@ -56,35 +31,10 @@ You can use Zustand to define a global stores shared across your application.
 
 <Tabs>
   <TabItem label="React">
-    <CodeEditor
-      files={{
-        "App.tsx": zustand.ReactApp,
-        "molecules.ts": {
-          code: zustand.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-      }}
-    />
+    <CodeEditor {...examples.reactGlobalState} />
   </TabItem>
   <TabItem label="Vue">
-    <CodeEditor
-      files={{
-        "src/App.vue": zustand.VueApp,
-        "src/Counter.vue": zustand.VueCounter,
-        "src/molecules.ts": {
-          code: zustand.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        zustand: "^4.4",
-        "vue-zustand": "^0.6",
-      }}
-      template="vite-vue"
-    />
+    <CodeEditor {...examples.vueGlobalState} />
   </TabItem>
 </Tabs>
 
