@@ -96,10 +96,11 @@ Bunshi's goal is to be a thin layer on top of other libraries. We don't want to 
 has a built-in lifecycle or cleanup tool for easily using them in `React` and `Vue`, hen use those. Otherwise,
 use `onMount` and `onUnmount` from Bunshi.
 
-| Framework  | Recommendation                                        | Syntax                                         |
-| ---------- | ----------------------------------------------------- | ---------------------------------------------- |
-| Jotai      | Prefer Jotai's hooks to Bunshi                        | `profileAtom.onMount = (set)=> {/** hook **/}` |
-| Nanostores | Prefer Nanostores hooks to Bunshi                     | `onMount($profile, () => {/** hook **/}`       |
-| Valtio     | Use Bunshi's `onMount` to cleanup any shared state    |                                                |
-| XState     | Use Bunshi's `onMount` to `start` and `stop` machines |                                                |
-| Zustand    | Use Bunshi's `onMount` to cleanup any shared state    |                                                |
+| Framework  | Recommendation                                        | Syntax                                          |
+| ---------- | ----------------------------------------------------- | ----------------------------------------------- |
+| Jotai      | Prefer Jotai's hooks to Bunshi                        | `profileAtom.onMount = (set)=> {/** hook **/}`  |
+| Nanostores | Prefer Nanostores hooks to Bunshi                     | `onMount($profile, () => {/** hook **/}`        |
+| Valtio     | Use Bunshi's `onMount` to cleanup any shared state    |                                                 |
+| XState     | Use Bunshi's `onMount` to `start` and `stop` machines |                                                 |
+| Zustand    | Use Bunshi's `onMount` to cleanup any shared state    |                                                 |
+| Reatom     | Prefer Reatom hooks to Bunshi                         | `onConnect(profileAtom, () => { /** hook **/})` |                                               |
