@@ -12,10 +12,12 @@ export { default as zustand } from "./zustand/sources";
 import xstateExamples from "~/source-examples/xstate/examples.code";
 import zustandExamples from "~/source-examples/zustand/examples.code";
 import valtioExamples from "~/source-examples/valtio/examples.code";
+import nanostoresExamples from "~/source-examples/nanostores/examples.code";
 
 // Map of categories to their example configs
 export const categories = {
   xstate: xstateExamples,
   zustand: zustandExamples,
   valtio: valtioExamples,
+  nanostores: nanostoresExamples,
 };

@@ -4,7 +4,7 @@ title: "Nanostores"
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import CodeEditor from "~/components/CodeEditor.astro";
-import { nanostores } from "~/source-examples/sources";
+import examples from "~/source-examples/nanostores/examples.code";
 
 ## Background
 
@@ -23,35 +23,16 @@ Bunshi lest you re-use the power of nanostore atoms to build local state for you
 <Tabs>
   <TabItem label="React">
     <CodeEditor
-      files={{
-        "App.tsx": nanostores.ReactApp,
-        "molecules.ts": {
-          code: nanostores.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        nanostores: "^0.9",
-        "@nanostores/react": "^0.7",
-      }}
+      files={examples.reactComponentState.files}
+      dependencies={examples.reactComponentState.dependencies}
+      template={examples.reactComponentState.template}
     />
   </TabItem>
   <TabItem label="Vue">
     <CodeEditor
-      files={{
-        "src/App.vue": nanostores.VueApp,
-        "src/Counter.vue": nanostores.VueCounter,
-        "src/Multiplier.vue": nanostores.VueMultiplier,
-        "src/molecules.ts": {
-          code: nanostores.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        nanostores: "^0.9",
-        "@nanostores/vue": "^0.10",
-      }}
-      template="vite-vue"
+      files={examples.vueComponentState.files}
+      dependencies={examples.vueComponentState.dependencies}
+      template={examples.vueComponentState.template}
     />
   </TabItem>
 </Tabs>
@@ -64,35 +45,16 @@ You can use nanostores to define global atoms shared across your application.
 <Tabs>
   <TabItem label="React">
     <CodeEditor
-      files={{
-        "App.tsx": nanostores.ReactApp,
-        "molecules.ts": {
-          code: nanostores.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        nanostores: "^0.9",
-        "@nanostores/react": "^0.7",
-      }}
+      files={examples.reactGlobalState.files}
+      dependencies={examples.reactGlobalState.dependencies}
+      template={examples.reactGlobalState.template}
     />
   </TabItem>
   <TabItem label="Vue">
     <CodeEditor
-      files={{
-        "src/App.vue": nanostores.VueApp,
-        "src/Counter.vue": nanostores.VueCounter,
-        "src/Multiplier.vue": nanostores.VueMultiplier,
-        "src/molecules.ts": {
-          code: nanostores.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        nanostores: "^0.9",
-        "@nanostores/vue": "^0.10",
-      }}
-      template="vite-vue"
+      files={examples.vueGlobalState.files}
+      dependencies={examples.vueGlobalState.dependencies}
+      template={examples.vueGlobalState.template}
     />
   </TabItem>
 </Tabs>
