@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.2.0
+
+### Minor Changes
+
+- [#83](https://github.com/saasquatch/bunshi/pull/83) [`4a1fea9`](https://github.com/saasquatch/bunshi/commit/4a1fea9601b47213226ea3969df33c7dd5a5fa32) Thanks [@Wendystraite](https://github.com/Wendystraite)! - Add `parent` property to `createInjector`. This property enables hierarchical dependency injection by allowing child injectors to inherit and override dependencies from parent injectors. This creates a tree-like structure where:
+
+  - Child injectors can access and use the dependencies of their parent injectors.
+  - Dependencies can be overridden at the child injector level, allowing for more granular control over dependency resolution.
+
+  Add `MoleculeProvider` for React applications. This React component provides the implementation of a molecule interface for all molecules lower down in the React component tree. It uses the new parent-child injector hierarchy to ensure that existing molecule instances are preserved while allowing interface resolution.
+
+### Patch Changes
+
+- [#85](https://github.com/saasquatch/bunshi/pull/85) [`0dbe0f6`](https://github.com/saasquatch/bunshi/commit/0dbe0f6057b9861b0041a8c7daace4e29862ed4c) Thanks [@Wendystraite](https://github.com/Wendystraite)! - Fix typescript inference of generics molecules.
+
+- [#88](https://github.com/saasquatch/bunshi/pull/88) [`259c83d`](https://github.com/saasquatch/bunshi/commit/259c83d367b801208a16b774194134e854ee57cb) Thanks [@Wendystraite](https://github.com/Wendystraite)! - Fix global molecules not garbage collected if another global molecule is used.
+
 ## 2.1.5
 
 ### Patch Changes
