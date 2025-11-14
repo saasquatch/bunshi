@@ -34,7 +34,14 @@ type Deps = {
   buddies: MoleculeCacheValue[];
 };
 
-export type * from "../types";
+export type {
+  ScopeTuple,
+  BindingTuple,
+  BindingTuples,
+  BindingMap,
+  Bindings,
+  Injectable,
+} from "../types";
 
 export type AnyMoleculeScope = MoleculeScope<unknown>;
 export type AnyScopeTuple = ScopeTuple<unknown>;
