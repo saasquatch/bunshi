@@ -14,6 +14,8 @@ export default defineConfig({
         "src/**/*.test.{ts,tsx}",
         // Don't consider code in helper directories
         "src/**/testing/**/*.{ts,tsx}",
+        // Don't consider benchmark files
+        "src/**/*.bench.{ts,tsx}",
       ],
       thresholds: {
         branches: 90,

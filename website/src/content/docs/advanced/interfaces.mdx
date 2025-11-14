@@ -48,9 +48,54 @@ export const RegistrationFormMolecule = molecule((mol) => {
 });
 ```
 
+## Usage with Injectors
+
+Interfaces are resolved through injectors with interface bindings. Child injectors can inherit bindings from parent injectors.
+
+### Basic Binding
+
+```ts
+const injector = createInjector({
+  bindings: [[ApiClientInterface, FetchApiClientMolecule]]
+});
+
+const apiClient = injector.get(ApiClientInterface);
+```
+
+### Parent-Child Hierarchy
+
+```ts
+const parentInjector = createInjector({
+  bindings: [[ApiClientInterface, ProductionApiClientMolecule]]
+});
+
+const childInjector = createInjector({
+  parent: parentInjector,
+  bindings: [[CacheInterface, MemoryCacheMolecule]]
+});
+
+// Child can access both ApiClientInterface (from parent) and CacheInterface (local)
+```
+
+### Testing & Environment Configuration
+
+```ts
+// Override parent bindings for testing
+const testInjector = createInjector({
+  parent: productionInjector,
+  bindings: [[ApiClientInterface, MockApiClientMolecule]]
+});
+
+// Environment-specific injectors
+const injector = isDev ? devInjector : prodInjector;
+```
+
 ## Tips
 
 - Interfaces don't specify if they are scoped or not. Write your molecules accordingly.
-- Bindings to interfaces have to be done in [injectors](/advanced/injectors).
+- Bindings to interfaces have to be done in [injectors](/advanced/injectors) using the `bindings` parameter.
+- Use parent injectors to create hierarchical configurations where child injectors inherit base bindings.
+- Child injectors can override parent bindings by providing their own implementation for the same interface.
+- Interfaces can be provided in React applications using [MoleculeProvider](/integrations/react#moleculeprovider).
 - If you have a default implementation for an interface, then just use a `molecule` instead.
 - [Scopes](/concepts/scopes) can act as a replacement for interfaces if you have a large number of implementations

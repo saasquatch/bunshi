@@ -4,7 +4,7 @@ import { ComponentScope, MoleculeScope } from "../vanilla";
 import { ScopeContext } from "./contexts/ScopeContext";
 import { useScopes } from "./useScopes";
 
-export type ProviderProps<T> = {
+export type ScopeProviderProps<T> = {
   scope: MoleculeScope<T>;
   value?: T;
   /**
@@ -13,6 +13,11 @@ export type ProviderProps<T> = {
   uniqueValue?: boolean;
   children?: React.ReactNode;
 };
+
+/**
+ * @deprecated use {@link ScopeProviderProps} instead
+ */
+export type ProviderProps<T> = ScopeProviderProps<T>;
 
 /**
  * Provides scope for all molecules lower down in the React component tree.
@@ -24,7 +29,7 @@ export type ProviderProps<T> = {
  * @typeParam T - the type that should match the {@link MoleculeScope} and the value provided
  */
 export function ScopeProvider<T>(
-  props: ProviderProps<T>,
+  props: ScopeProviderProps<T>,
 ): ReturnType<React.FC> {
   const { value, scope, uniqueValue } = props;
 

@@ -8,6 +8,7 @@ import {
   MoleculeInterfaceSymbol,
   MoleculeSymbol,
   TypeSymbol,
+  type TypeInferSymbol,
 } from "./internal/symbols";
 import type { MoleculeScope } from "./scope";
 
@@ -56,7 +57,7 @@ export type MoleculeConstructor<T> = (
  */
 export type Molecule<T> = {
   displayName?: string;
-} & Record<symbol, unknown>;
+} & Record<symbol, unknown> & { [TypeInferSymbol]?: T };
 
 /**
  * A molecule interface object.
@@ -68,7 +69,7 @@ export type Molecule<T> = {
  */
 export type MoleculeInterface<T> = {
   displayName?: string;
-} & Record<symbol, unknown>;
+} & Record<symbol, unknown> & { [TypeInferSymbol]?: T };
 
 /**
  * Either a {@link MoleculeInterface} or a {@link Molecule}

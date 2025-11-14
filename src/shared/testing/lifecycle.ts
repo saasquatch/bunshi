@@ -1,6 +1,12 @@
 import { vi } from "vitest";
 import { onMount } from "../../vanilla";
 
+export type LifecycleUtilsTuple = [
+  executions: number,
+  mounts: number,
+  unmounts: number,
+];
+
 export function createLifecycleUtils() {
   const mounts = vi.fn();
   const unmounts = vi.fn();
