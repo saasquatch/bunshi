@@ -587,7 +587,7 @@ export function createInjector(
     };
     const stop = () => {
       if (state === MoleculeSubscriptionState.STOPPED) {
-        throw new Error("Don't start a subscription that is already started.");
+        throw new Error("Don't stop a subscription that is already stopped.");
       }
       injectorProps?.instrumentation?.unsubscribe(bound, cacheValue);
       sub.stop();

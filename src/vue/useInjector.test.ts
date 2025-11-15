@@ -1,10 +1,16 @@
 import { fireEvent, render, screen, within } from "@testing-library/vue";
-import { createInjector, getDefaultInjector, useInjector } from ".";
+import {
+  createInjector,
+  getDefaultInjector,
+  provideInjector,
+  useInjector,
+} from ".";
 import { InjectorSymbol } from "./internal/symbols";
 import Component from "./testing/Component.vue";
 import DualComponent from "./testing/DualComponent.vue";
 import UserComponent from "./testing/UserComponent.vue";
 import { wrap } from "./testing/test-utils";
+import { defineComponent, h } from "vue";
 
 test("increments value on click", async () => {
   render(Component);
@@ -118,5 +124,37 @@ describe("Providing values ", () => {
 
     expect(result.value).toBe(injector1);
     rendered.unmount();
+  });
+
+  test("provideInjector provides injector to child components", () => {
+    const customInjector = createInjector();
+
+    // Create a parent component that provides the injector
+    const ParentComponent = defineComponent({
+      setup() {
+        provideInjector(customInjector);
+        return () => h(ChildComponent);
+      },
+    });
+
+    // Create a child component that uses the injector
+    const ChildComponent = defineComponent({
+      setup() {
+        const injector = useInjector();
+        return () =>
+          h(
+            "div",
+            { "data-testid": "child" },
+            injector === customInjector ? "custom" : "default",
+          );
+      },
+    });
+
+    const { getByTestId, unmount } = render(ParentComponent);
+
+    // Verify the child received the custom injector
+    expect(getByTestId("child").textContent).toBe("custom");
+
+    unmount();
   });
 });

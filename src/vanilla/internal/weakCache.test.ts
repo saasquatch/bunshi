@@ -48,4 +48,30 @@ describe("Weak cache", () => {
     expect(one).toBe(1);
     expect(two).toBe(2);
   });
+
+  it("safely handles removal of non-existent entries", () => {
+    const memoize = createDeepCache<object, string>();
+
+    const keyThatWasNeverAdded = {};
+    const anotherKey = {};
+
+    // Try to remove entries that don't exist in the cache
+    // Should gracefully handle non-existent entries without throwing
+    expect(() => {
+      memoize.remove(keyThatWasNeverAdded);
+    }).not.toThrow();
+
+    // Try with multiple dependency levels
+    expect(() => {
+      memoize.remove(keyThatWasNeverAdded, anotherKey);
+    }).not.toThrow();
+
+    // Verify cache is still functional after these operations
+    const result = memoize.deepCache(
+      () => "works",
+      () => {},
+      [keyThatWasNeverAdded],
+    );
+    expect(result).toBe("works");
+  });
 });

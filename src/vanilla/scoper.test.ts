@@ -119,3 +119,43 @@ test("Scope subscriptions can be re-used", () => {
     cleanupFnInner.mockReset();
   }
 });
+
+test("addCleanups method on subscription", () => {
+  const scoper = createScoper();
+  const subscription = scoper.createSubscription();
+  const cleanupFn = vi.fn();
+
+  // Expand and start the subscription to cache the scopes
+  subscription.expand([[UserScope, "test@example.com"]]);
+  subscription.start();
+
+  // Add cleanups using the addCleanups method (now the scopes are cached)
+  subscription.addCleanups(new Set([cleanupFn]));
+
+  // Stop the subscription
+  subscription.stop();
+
+  // Cleanup should have been called
+  expect(cleanupFn).toHaveBeenCalled();
+});
+
+test("allows idempotent subscription cleanup", () => {
+  const scoper = createScoper();
+  const cleanupFn = vi.fn();
+
+  // Create and start a subscription
+  const subscription = scoper.createSubscription();
+  subscription.expand([[UserScope, "mark@example.com"]]);
+  subscription.start();
+
+  // Register cleanup
+  subscription.addCleanups(new Set([cleanupFn]));
+
+  // Stop the subscription - cleanup should run once
+  subscription.stop();
+  expect(cleanupFn).toHaveBeenCalledTimes(1);
+
+  // Stop again - this is a no-op, cleanup should NOT run again
+  subscription.stop();
+  expect(cleanupFn).toHaveBeenCalledTimes(1);
+});
