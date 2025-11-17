@@ -86,34 +86,6 @@ export class SandpackHelper {
     return texts;
   }
 
-  /**
-   * Wait for text to appear in preview
-   */
-  async waitForText(selector: string, expectedText: string | RegExp, timeout = 10000): Promise<void> {
-    const iframe = await this.waitForSandpackIframe(timeout);
-    const element = iframe.locator(selector).first();
-    await expect(element).toContainText(expectedText, { timeout });
-  }
-
-  /**
-   * Get the value of an input element
-   */
-  async getInputValue(selector: string, timeout = 10000): Promise<string> {
-    const iframe = await this.waitForSandpackIframe(timeout);
-    const element = iframe.locator(selector).first();
-    await element.waitFor({ state: 'visible', timeout });
-    return await element.inputValue();
-  }
-
-  /**
-   * Type into an input element
-   */
-  async typeInInput(selector: string, text: string, timeout = 10000): Promise<void> {
-    const iframe = await this.waitForSandpackIframe(timeout);
-    const element = iframe.locator(selector).first();
-    await element.waitFor({ state: 'visible', timeout });
-    await element.fill(text);
-  }
 }
 
 /**
