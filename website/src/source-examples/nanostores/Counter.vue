@@ -12,6 +12,6 @@ const value = useStore(valueAtom);
 <template>
   <div>
     <p>Clicks: {{ count }} for total value {{ value }}</p>
-    <button @click="increment()">increment</button>
+    <button @click="increment()">Increment</button>
   </div>
 </template>

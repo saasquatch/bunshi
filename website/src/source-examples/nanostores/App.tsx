@@ -12,7 +12,7 @@ function Counter() {
       <p>
         Clicks: {count} for total value {value}
       </p>
-      <button onClick={increment}>Increment count</button>
+      <button onClick={increment}>Increment</button>
     </div>
   );
 }
@@ -24,7 +24,7 @@ function Multiplier() {
   return (
     <div>
       <p>Multiplier: {multiple}</p>
-      <button onClick={increment}>Increment multiplier</button>
+      <button onClick={increment}>Multiply</button>
     </div>
   );
 }
