@@ -12,7 +12,7 @@ Most of the time you won't need to interact with the `injector` directly. It qui
 
 The core API for injectors is `createInjector`.
 
-````ts
+```ts
 import { molecule, moleculeInterface, createInjector } from "bunshi";
 
 const NumberMolecule = moleculeInterface<number>();
@@ -21,4 +21,19 @@ const RandomNumberMolecule = molecule<number>(() => Math.random());
 const injector = createInjector({
   bindings: [[NumberMolecule, RandomNumberMolecule]],
 });
+```
+
+Injectors can inherit from parent injectors, creating a hierarchy where child injectors can access parent bindings while adding their own:
+
+```ts
+const parentInjector = createInjector({
+  bindings: [[LoggerInterface, ConsoleLoggerMolecule]]
+});
+
+const childInjector = createInjector({
+  parent: parentInjector,
+  bindings: [[DatabaseInterface, SqliteMolecule]]
+});
+
+// Child can access both DatabaseInterface (local) and LoggerInterface (from parent)
 ```

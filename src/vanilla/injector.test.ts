@@ -1,12 +1,13 @@
 import { atom } from "jotai";
-import { createInjector } from "./injector";
+import { createInjector, type MoleculeInjector } from "./injector";
 import {
   ErrorBadUse,
   ErrorInvalidMolecule,
   ErrorInvalidScope,
   ErrorUnboundMolecule,
 } from "./internal/errors";
-import { use } from "./lifecycle";
+import { GlobalScopeSymbol } from "./internal/symbols";
+import { onMount, onUnmount, use } from "./lifecycle";
 import { Molecule, molecule, moleculeInterface } from "./molecule";
 import { createScope } from "./scope";
 import {
@@ -20,8 +21,61 @@ import {
   user1Scope,
   user2Scope,
   userMolecule,
+  type BaseAtoms,
 } from "./testing/test-molecules";
 import { ScopeTuple } from "./types";
+import type { MoleculeInternal } from "./internal/internal-types";
+
+describe("type safety", () => {
+  const injector = createInjector();
+
+  test("createInjector returns a MoleculeInjector", () => {
+    expectTypeOf(createInjector()).toEqualTypeOf<MoleculeInjector>();
+  });
+
+  test("injector infer type from molecule", () => {
+    expectTypeOf(exampleMol).toEqualTypeOf<Molecule<BaseAtoms>>();
+
+    expectTypeOf(() =>
+      injector.get(exampleMol),
+    ).returns.toEqualTypeOf<BaseAtoms>();
+
+    expectTypeOf(() => injector.use(exampleMol)).returns.toEqualTypeOf<
+      [BaseAtoms, () => unknown]
+    >();
+
+    expectTypeOf(() => injector.useLazily(exampleMol)).returns.toEqualTypeOf<
+      [BaseAtoms, { start: () => BaseAtoms; stop: () => unknown }]
+    >();
+  });
+
+  test("injector infer type from moleculeInterface", () => {
+    const ExampleInterface = moleculeInterface<{ value: number }>();
+    expectTypeOf(() => injector.get(ExampleInterface)).returns.toEqualTypeOf<{
+      value: number;
+    }>();
+  });
+
+  test("injector infer type from generic molecule", () => {
+    function useMoleculeGeneric<T>(molecule: Molecule<T>) {
+      const value = injector.get(molecule);
+      expectTypeOf({ value }).toEqualTypeOf<{ value: T }>();
+      return value;
+    }
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric({} as any);
+    }).returns.toEqualTypeOf<unknown>();
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric(molecule(() => 2));
+    }).returns.toEqualTypeOf<number>();
+
+    expectTypeOf(() => {
+      return useMoleculeGeneric(molecule(() => ({ a: 1, b: "test" as const })));
+    }).returns.toEqualTypeOf<{ a: number; b: "test" }>();
+  });
+});
 
 test("returns the same values for dependency-free molecule", () => {
   const injector = createInjector();
@@ -47,7 +101,7 @@ describe("Derived molecules", () => {
     };
   });
 
-  function testDerived(mol: typeof derivedMol) {
+  function testDerived(mol: Molecule<{ base: unknown }>) {
     const injector = createInjector();
 
     const firstValue = injector.get(mol);
@@ -809,5 +863,673 @@ describe("Scope caching", () => {
         expect(mol1).not.toBe(mol2);
       });
     });
+  });
+
+  describe("Parent injectors", () => {
+    interface APIService {
+      fetch(): string;
+    }
+    interface CacheService {
+      get(key: string): any;
+      set(key: string, value: any): void;
+    }
+
+    const APIServiceInterface = moleculeInterface<APIService>();
+    const CacheServiceInterface = moleculeInterface<CacheService>();
+
+    const MockAPIMolecule = molecule(() => ({
+      fetch: () => "mocked-api-data",
+    }));
+
+    const MemoryCacheMolecule = molecule(() => {
+      const cache = new Map();
+      return {
+        get: (key: string) => cache.get(key),
+        set: (key: string, value: any) => cache.set(key, value),
+      };
+    });
+
+    const ComposedServiceMolecule = molecule((get) => {
+      const api = get(APIServiceInterface);
+      const cache = get(CacheServiceInterface);
+      return {
+        getData: () => {
+          const cached = cache.get("data");
+          if (cached) return cached;
+          const data = api.fetch();
+          cache.set("data", data);
+          return data;
+        },
+      };
+    });
+
+    test("child injector inherits parent bindings", () => {
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      const service = childInjector.get(ComposedServiceMolecule);
+      expect(service.getData()).toBe("mocked-api-data");
+    });
+
+    test("child injector overrides parent bindings", () => {
+      const OverrideAPIMolecule = molecule(() => ({
+        fetch: () => "override-data",
+      }));
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [
+          [APIServiceInterface, OverrideAPIMolecule], // Override parent
+          [CacheServiceInterface, MemoryCacheMolecule],
+        ],
+      });
+
+      const service = childInjector.get(ComposedServiceMolecule);
+      expect(service.getData()).toBe("override-data");
+    });
+
+    test("child injector inherits molecules created before its creation", () => {
+      let creationCount = 0;
+      const SharedMolecule = molecule(() => {
+        creationCount++;
+        return { id: creationCount };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      // Create molecule in parent first - this adds it to parent's cache
+      const parentInstance = parentInjector.get(SharedMolecule);
+
+      // Now create child injector - it inherits the parent's cache
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Child should access the same instance from the shared cache
+      const childInstance = childInjector.get(SharedMolecule);
+
+      expect(parentInstance).toBe(childInstance);
+      expect(creationCount).toBe(1); // Only created once in parent
+    });
+
+    test("parent can access molecules created in child (bidirectional cache)", () => {
+      let creationCount = 0;
+      const SharedMolecule = molecule(() => {
+        creationCount++;
+        return { id: creationCount };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create molecule in child first - this should add it to shared cache
+      const childInstance = childInjector.get(SharedMolecule);
+
+      // Parent should access the same instance from the shared cache
+      const parentInstance = parentInjector.get(SharedMolecule);
+
+      expect(parentInstance).toBe(childInstance);
+      expect(creationCount).toBe(1); // Only created once in child
+    });
+
+    test("scoped molecules have consistent behavior between parent and child", () => {
+      let creationCount = 0;
+      const ScopedMolecule = molecule((get, getScope) => {
+        const scope = getScope(UserScope);
+        creationCount++;
+        return { id: creationCount, user: scope };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create scoped molecule in parent
+      const [parentInstance, parentUnsub] = parentInjector.use(ScopedMolecule, [
+        UserScope,
+        "user123",
+      ]);
+
+      // Access same scoped molecule from child
+      const [childInstance, childUnsub] = childInjector.use(ScopedMolecule, [
+        UserScope,
+        "user123",
+      ]);
+
+      // Both should have the same user scope value
+      expect(parentInstance.user).toBe("user123");
+      expect(childInstance.user).toBe("user123");
+
+      // Both should work with same scope value
+      expect(parentInstance.user).toBe(childInstance.user);
+
+      parentUnsub();
+      childUnsub();
+    });
+
+    test("child modifications affect parent cache", () => {
+      let globalState = { counter: 0 };
+      const StatefulMolecule = molecule(() => {
+        globalState.counter++;
+        return {
+          increment: () => globalState.counter++,
+          getCount: () => globalState.counter,
+        };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Get molecule from child first
+      const childInstance = childInjector.get(StatefulMolecule);
+      expect(childInstance.getCount()).toBe(1); // Initial creation
+
+      // Modify state through child
+      childInstance.increment();
+      expect(childInstance.getCount()).toBe(2);
+
+      // Get same molecule from parent - should see the modified state
+      const parentInstance = parentInjector.get(StatefulMolecule);
+      expect(parentInstance).toBe(childInstance); // Same instance
+      expect(parentInstance.getCount()).toBe(2); // See the modification
+    });
+
+    test("parent modifications affect child cache", () => {
+      let globalState = { value: "initial" };
+      const MutableMolecule = molecule(() => ({
+        setValue: (val: string) => {
+          globalState.value = val;
+        },
+        getValue: () => globalState.value,
+      }));
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Get molecule from parent first
+      const parentInstance = parentInjector.get(MutableMolecule);
+      expect(parentInstance.getValue()).toBe("initial");
+
+      // Get same molecule from child - should see the modified state
+      const childInstance = childInjector.get(MutableMolecule);
+      expect(childInstance).toBe(parentInstance); // Same instance
+      expect(childInstance.getValue()).toBe("initial");
+
+      // Modify state through parent
+      parentInstance.setValue("modified-by-parent");
+
+      expect(parentInstance.getValue()).toBe("modified-by-parent"); // See the modification
+      expect(childInstance.getValue()).toBe("modified-by-parent"); // See the modification
+    });
+
+    test("complex scoped molecules with interface dependencies work across injectors", () => {
+      let creationCount = 0;
+      const ComplexServiceMolecule = molecule((get, getScope) => {
+        const user = getScope(UserScope);
+        const api = get(APIServiceInterface);
+        creationCount++;
+
+        return {
+          id: creationCount,
+          user,
+          fetchUserData: () => `${api.fetch()}-for-${user}`,
+          getUserInfo: () => `info-${user}`,
+        };
+      });
+
+      const parentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      // Create scoped service in parent
+      const [parentService, parentUnsub] = parentInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "alice"],
+      );
+
+      // Access same scoped service from child
+      const [childService, childUnsub] = childInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "alice"],
+      );
+
+      // Both should have access to the interface and same scope
+      expect(childService.fetchUserData()).toBe("mocked-api-data-for-alice");
+      expect(childService.getUserInfo()).toBe("info-alice");
+      expect(parentService.user).toBe(childService.user); // Same scope value
+
+      // Different scope should create new instance
+      const [childService2, childUnsub2] = childInjector.use(
+        ComplexServiceMolecule,
+        [UserScope, "bob"],
+      );
+
+      expect(childService2).not.toBe(childService);
+      expect(childService2.user).toBe("bob");
+      expect(childService2.getUserInfo()).toBe("info-bob");
+
+      parentUnsub();
+      childUnsub();
+      childUnsub2();
+    });
+
+    test("deeply nested injector hierarchy works", () => {
+      const LoggerInterface = moleculeInterface<{
+        log: (msg: string) => void;
+      }>();
+
+      const ConsoleLoggerMolecule = molecule(() => ({
+        log: (msg: string) => console.log(msg),
+      }));
+
+      const grandParentInjector = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+
+      const parentInjector = createInjector({
+        parent: grandParentInjector,
+        bindings: [[CacheServiceInterface, MemoryCacheMolecule]],
+      });
+
+      const childInjector = createInjector({
+        parent: parentInjector,
+        bindings: [[LoggerInterface, ConsoleLoggerMolecule]],
+      });
+
+      // Child should access all three interfaces
+      const api = childInjector.get(APIServiceInterface);
+      const cache = childInjector.get(CacheServiceInterface);
+      const logger = childInjector.get(LoggerInterface);
+
+      expect(api.fetch()).toBe("mocked-api-data");
+      expect(cache).toBeDefined();
+      expect(logger).toBeDefined();
+    });
+
+    test("deeply nested injector hierarchy (>3 levels) works", () => {
+      const APIServiceInterface = moleculeInterface<{ fetch(): string }>();
+      const MockAPIMolecule = molecule(() => ({ fetch: () => "deep-mock" }));
+
+      const level1 = createInjector({
+        bindings: [[APIServiceInterface, MockAPIMolecule]],
+      });
+      const level2 = createInjector({ parent: level1 });
+      const level3 = createInjector({ parent: level2 });
+      const level4 = createInjector({ parent: level3 });
+      const level5 = createInjector({ parent: level4 });
+
+      const api = level5.get(APIServiceInterface);
+      expect(api.fetch()).toBe("deep-mock");
+    });
+  });
+});
+
+describe("Global molecule internal scopes", () => {
+  test("Each global molecule gets its own unique internal scope", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ value: Math.random() }));
+    const GlobalMol2 = molecule(() => ({ value: Math.random() }));
+
+    // Both molecules should work without errors
+    const [val1, unsub1] = injector.use(GlobalMol1);
+    const [val2, unsub2] = injector.use(GlobalMol2);
+
+    expect(val1).toBeDefined();
+    expect(val2).toBeDefined();
+    expect(val1).not.toBe(val2);
+
+    // Check that each molecule has its own internal scope using the proper symbol
+    const scope1 = (GlobalMol1 as any)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as any)[GlobalScopeSymbol];
+    expect(scope1).toBeDefined();
+    expect(scope2).toBeDefined();
+    expect(scope1).not.toBe(scope2);
+    expect(scope1.defaultValue).toBeDefined();
+    expect(scope2.defaultValue).toBeDefined();
+    expect(scope1.defaultValue).not.toBe(scope2.defaultValue);
+
+    unsub1();
+    unsub2();
+  });
+
+  test("Global molecule reuses the same internal scope across multiple uses", () => {
+    const injector = createInjector();
+
+    let executionCount = 0;
+    const GlobalMol = molecule(() => {
+      executionCount++;
+      return { value: executionCount };
+    });
+
+    // Use the molecule multiple times
+    const [val1, unsub1] = injector.use(GlobalMol);
+    const internalScope1 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(internalScope1).toBeDefined();
+
+    const [val2, unsub2] = injector.use(GlobalMol);
+    const internalScope2 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+
+    const [val3, unsub3] = injector.use(GlobalMol);
+    const internalScope3 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+
+    // Should all be the same instance (molecule executed only once)
+    expect(val1).toBe(val2);
+    expect(val2).toBe(val3);
+    expect(executionCount).toBe(1);
+
+    // Internal scope should be the same object across all uses
+    expect(internalScope1).toBe(internalScope2);
+    expect(internalScope2).toBe(internalScope3);
+
+    // Verify it's a stable symbol value
+    expect(typeof internalScope1?.defaultValue).toBe("symbol");
+
+    unsub1();
+    unsub2();
+    unsub3();
+  });
+
+  test("Global molecule reuses the same internal scope even after being released", () => {
+    const injector = createInjector();
+
+    let executionCount = 0;
+    const GlobalMol = molecule(() => {
+      executionCount++;
+      return { value: executionCount };
+    });
+
+    // Use the molecule and release it
+    const [val1, unsub1] = injector.use(GlobalMol);
+    const internalScope1 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(internalScope1).toBeDefined();
+    expect(executionCount).toBe(1);
+    unsub1();
+
+    // Uses it again after releasing
+    const [val2, unsub2] = injector.use(GlobalMol);
+    const internalScope2 = (GlobalMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(executionCount).toBe(2);
+    unsub2();
+
+    // Internal scope should be the same object across all uses
+    expect(internalScope1).toBe(internalScope2);
+  });
+
+  test("Global molecule should call onUnmount even if another global molecule is still in use", () => {
+    // See https://github.com/saasquatch/bunshi/issues/80
+
+    const injector = createInjector();
+
+    let mountCount1 = 0;
+    let mountCleanupCount1 = 0;
+    let unmountCount1 = 0;
+
+    const GlobalMol1 = molecule(() => {
+      mountCount1++;
+      onMount(() => {
+        return () => {
+          mountCleanupCount1++;
+        };
+      });
+      onUnmount(() => {
+        unmountCount1++;
+      });
+      return { value: mountCount1 };
+    });
+
+    let mountCount2 = 0;
+    let mountCleanupCount2 = 0;
+    let unmountCount2 = 0;
+
+    const GlobalMol2 = molecule(() => {
+      mountCount2++;
+      onMount(() => {
+        return () => {
+          mountCleanupCount2++;
+        };
+      });
+      onUnmount(() => {
+        unmountCount2++;
+      });
+      return { value: mountCount2 };
+    });
+
+    // First use of both molecules
+    const [val1, unsub1] = injector.use(GlobalMol1);
+    expect(mountCount1).toBe(1);
+    expect(mountCount2).toBe(0);
+
+    const [val2, unsub2] = injector.use(GlobalMol2);
+    expect(mountCount1).toBe(1);
+    expect(mountCount2).toBe(1);
+
+    // Release first molecule
+    unsub1();
+    expect(mountCleanupCount1).toBe(1);
+    expect(unmountCount1).toBe(1);
+
+    // Second use of first molecule (should create new instance)
+    const [val3, unsub3] = injector.use(GlobalMol1);
+    expect(val3).not.toBe(val1);
+    expect(mountCount1).toBe(2);
+
+    // Release second molecule
+    unsub2();
+    expect(mountCleanupCount2).toBe(1);
+    expect(unmountCount2).toBe(1);
+
+    // Release first molecule again
+    unsub3();
+    expect(mountCleanupCount1).toBe(2);
+    expect(unmountCount1).toBe(2);
+  });
+
+  test("Global molecule is properly cleaned up after all references are released", () => {
+    const injector = createInjector();
+
+    let mountCount = 0;
+    let unmountCount = 0;
+
+    const GlobalMol = molecule(() => {
+      mountCount++;
+      onMount(() => {
+        return () => {
+          unmountCount++;
+        };
+      });
+      return { value: mountCount };
+    });
+
+    // First use
+    const [val1, unsub1] = injector.use(GlobalMol);
+    expect(mountCount).toBe(1);
+    expect(unmountCount).toBe(0);
+
+    // Second use (should reuse the same instance)
+    const [val2, unsub2] = injector.use(GlobalMol);
+    expect(val1).toBe(val2);
+    expect(mountCount).toBe(1);
+    expect(unmountCount).toBe(0);
+
+    // Release first reference
+    unsub1();
+    expect(unmountCount).toBe(0); // Should still be mounted
+
+    // Release second reference
+    unsub2();
+    expect(unmountCount).toBe(1); // Should now be unmounted
+
+    // Use again (should create new instance)
+    const [val3, unsub3] = injector.use(GlobalMol);
+    expect(val3).not.toBe(val1);
+    expect(mountCount).toBe(2);
+    expect(unmountCount).toBe(1);
+
+    unsub3();
+    expect(unmountCount).toBe(2);
+  });
+
+  test("Global molecule works correctly when mixed with scoped molecules", () => {
+    const injector = createInjector();
+
+    const GlobalMol = molecule(() => ({ global: Math.random() }));
+    const ScopedMol = molecule((mol, scope) => {
+      const globalValue = mol(GlobalMol);
+      const userId = scope(UserScope);
+      return { globalValue, userId };
+    });
+
+    const [scoped1, unsub1] = injector.use(ScopedMol, user1Scope);
+    const [scoped2, unsub2] = injector.use(ScopedMol, user2Scope);
+
+    // Both scoped molecules should share the same global molecule instance
+    expect(scoped1.globalValue).toBe(scoped2.globalValue);
+    // But have different user IDs
+    expect(scoped1.userId).not.toBe(scoped2.userId);
+
+    unsub1();
+    unsub2();
+  });
+
+  test("Deeply nested global molecules work correctly", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ level: 1 }));
+    const GlobalMol2 = molecule((mol) => {
+      const mol1 = mol(GlobalMol1);
+      return { level: 2, parent: mol1 };
+    });
+    const GlobalMol3 = molecule((mol) => {
+      const mol2 = mol(GlobalMol2);
+      return { level: 3, parent: mol2 };
+    });
+
+    const [val, unsub] = injector.use(GlobalMol3);
+
+    expect(val.level).toBe(3);
+    expect(val.parent.level).toBe(2);
+    expect(val.parent.parent.level).toBe(1);
+
+    // Each nested molecule should have its own internal scope
+    const scope1 = (GlobalMol1 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope3 = (GlobalMol3 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    expect(scope1).toBeDefined();
+    expect(scope2).toBeDefined();
+    expect(scope3).toBeDefined();
+    expect(scope1).not.toBe(scope2);
+    expect(scope2).not.toBe(scope3);
+    expect(scope1).not.toBe(scope3);
+
+    unsub();
+  });
+
+  test("Scoped molecules do get an internal global scope", () => {
+    const injector = createInjector();
+
+    const ScopedMol = molecule((_, scope) => {
+      const userId = scope(UserScope);
+      return { userId };
+    });
+
+    const [val, unsub] = injector.use(ScopedMol, user1Scope);
+
+    expect(val.userId).toBe(user1Scope[1]);
+
+    const globalScope1 = (ScopedMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(globalScope1).toBeDefined();
+
+    const [val2, unsub2] = injector.use(ScopedMol, user2Scope);
+    expect(val2.userId).toBe(user2Scope[1]);
+    expect(val).not.toBe(val2);
+
+    const globalScope2 = (ScopedMol as MoleculeInternal<any>)[
+      GlobalScopeSymbol
+    ];
+    expect(globalScope2).toBeDefined();
+    expect(globalScope1).toBe(globalScope2);
+
+    unsub();
+    unsub2();
+  });
+
+  test("Global scope internal values are unique symbols", () => {
+    const injector = createInjector();
+
+    const GlobalMol1 = molecule(() => ({ id: 1 }));
+    const GlobalMol2 = molecule(() => ({ id: 2 }));
+
+    injector.use(GlobalMol1);
+    injector.use(GlobalMol2);
+
+    const scope1 = (GlobalMol1 as MoleculeInternal<any>)[GlobalScopeSymbol];
+    const scope2 = (GlobalMol2 as MoleculeInternal<any>)[GlobalScopeSymbol];
+
+    // The default values should be unique symbols
+    expect(typeof scope1?.defaultValue).toBe("symbol");
+    expect(typeof scope2?.defaultValue).toBe("symbol");
+    expect(scope1?.defaultValue).not.toBe(scope2?.defaultValue);
+
+    // The symbols should have descriptive labels
+    expect(scope1?.defaultValue.toString()).toMatch(
+      /^Symbol\(bunshi\.global\.scope\.\d+\)$/,
+    );
+    expect(scope2?.defaultValue.toString()).toMatch(
+      /^Symbol\(bunshi\.global\.scope\.\d+\)$/,
+    );
   });
 });

@@ -11,6 +11,8 @@ import {
   MoleculeInterfaceSymbol,
   MoleculeSymbol,
   TypeSymbol,
+  GlobalScopeSymbol,
+  type TypeInferSymbol,
 } from "./symbols";
 
 /**
@@ -33,7 +35,14 @@ type Deps = {
   buddies: MoleculeCacheValue[];
 };
 
-export * from "../types";
+export type {
+  ScopeTuple,
+  BindingTuple,
+  BindingTuples,
+  BindingMap,
+  Bindings,
+  Injectable,
+} from "../types";
 
 export type AnyMoleculeScope = MoleculeScope<unknown>;
 export type AnyScopeTuple = ScopeTuple<unknown>;
@@ -43,10 +52,13 @@ export type AnyMoleculeInterface = MoleculeInterface<unknown>;
 export type MoleculeInternal<T> = {
   [GetterSymbol]: MoleculeConstructor<T>;
   [TypeSymbol]: typeof MoleculeSymbol;
+  [GlobalScopeSymbol]?: MoleculeScope<symbol>;
+  [TypeInferSymbol]?: T;
   displayName?: string;
 };
 
 export type MoleculeInterfaceInternal<T> = {
   [TypeSymbol]: typeof MoleculeInterfaceSymbol;
+  [TypeInferSymbol]?: T;
   displayName?: string;
 };
