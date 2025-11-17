@@ -12,6 +12,12 @@ concurrency:
 jobs:
   create-pr:
     name: Update PR or Release
+    permissions:
+      id-token: write
+      contents: write
+      packages: write
+      pull-requests: write
+      issues: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -21,12 +27,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
+          registry-url: 'https://registry.npmjs.org'
+      
+      # Ensure npm 11.5.1 or later is installed
+      - name: Update npm
+        run: npm install -g npm@latest
+        
       - uses: bahmutov/npm-install@v1
 
       - name: Build
         run: npm run build
 
+      # Publishes using Trusted Publishers support in NPM: https://docs.npmjs.com/trusted-publishers
       - name: Create Release Pull Request or Publish to npm
         id: changesets
         uses: changesets/action@v1
@@ -38,5 +50,3 @@ jobs:
           publish: npm run dopublish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.LOGVOL_NPM_ACCESS_TOKEN }}
-          NPM_TOKEN: ${{ secrets.LOGVOL_NPM_ACCESS_TOKEN }}
