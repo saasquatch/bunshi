@@ -1,4 +1,11 @@
-import { act, renderHook } from "@testing-library/react";
+import {
+  act,
+  waitFor,
+  renderHook,
+  getByText,
+  screen,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import {
   Atom,
   PrimitiveAtom,
@@ -8,7 +15,8 @@ import {
   useAtomValue,
   useSetAtom,
 } from "jotai";
-import React, { ReactNode, useContext, useEffect } from "react";
+import { atomWithObservable, loadable } from "jotai/vanilla/utils";
+import React, { ReactNode, Suspense, useContext, useEffect } from "react";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { createScope, molecule, resetDefaultInjector, use } from "../vanilla";
 import { ScopeProvider } from "./ScopeProvider";
@@ -474,5 +482,214 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       userLifecycle.expectCalledTimesEach(1, 1, 1);
       userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
+  });
+
+  test("Promise atom changes from loading to hasData and contains sattled data", async () => {
+    const PromiseScope = createScope("Scope");
+
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={PromiseScope} uniqueValue>
+          {children}
+        </ScopeProvider>
+      </Outer>
+    );
+
+    const lifecycle = createLifecycleUtils();
+    const PromiseMolecule = molecule(() => {
+      use(PromiseScope);
+      lifecycle.connect();
+
+      const promiseAtom = atom(
+        new Promise<string>((resolve, reject) => {
+          setTimeout(() => {
+            resolve("resolved");
+          }, 100);
+        }),
+      );
+
+      atomLifecycle.connect(promiseAtom);
+
+      return {
+        promiseAtom: loadable(promiseAtom),
+        example: Math.random(),
+      };
+    });
+
+    const usePromiseMolecule = () => {
+      const myMolecule = useMolecule(PromiseMolecule);
+      const promise = useAtom(myMolecule.promiseAtom);
+
+      return {
+        molecule: myMolecule,
+        promise,
+        context: useContext(ScopeContext),
+      };
+    };
+
+    lifecycle.expectUncalled();
+    atomLifecycle.expectUncalled();
+
+    const { result, ...rest } = renderHook(usePromiseMolecule, {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.promise[0].state).toBe("loading");
+
+    await waitFor(() => {
+      expect(result.current.promise[0].state).toBe("hasData");
+      expect(
+        result.current.promise[0].state === "hasData" &&
+          result.current.promise[0].data === "resolved",
+      ).toBe(true);
+    });
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      lifecycle.expectCalledTimesEach(1, 2, 1);
+    } else {
+      lifecycle.expectCalledTimesEach(1, 1, 0);
+    }
+
+    rest.unmount();
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      lifecycle.expectCalledTimesEach(1, 2, 2);
+    } else {
+      lifecycle.expectToHaveBeenCalledTimes(1);
+    }
+  });
+
+  test("Suspense boundary is below the ScopeProvider", async () => {
+    const SuspenseScope = createScope("Suspense");
+
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <ScopeProvider scope={SuspenseScope}>
+          <Suspense fallback="Loading...">{children}</Suspense>
+        </ScopeProvider>
+      </Outer>
+    );
+
+    const lifecycle = createLifecycleUtils();
+
+    const SuspenseMolecule = molecule(() => {
+      use(SuspenseScope);
+      lifecycle.connect();
+
+      // dummy promise atom without lodable which should trigger suspense
+      // boundary
+      const promiseAtom = atom(
+        new Promise<string>((resolve, reject) => {
+          setTimeout(() => {
+            resolve("resolved");
+          }, 100);
+        }),
+      );
+
+      atomLifecycle.connect(promiseAtom);
+
+      return {
+        promiseAtom,
+      };
+    });
+
+    const useSuspenseMolecule = () => {
+      const suspenseMolecule = useMolecule(SuspenseMolecule);
+      // trigger the suspense boundary while we wait for the promise to settle
+      const suspendingAtom = useAtom(suspenseMolecule.promiseAtom);
+
+      return {
+        molecule: suspenseMolecule,
+        suspendingAtom,
+        context: useContext(ScopeContext),
+      };
+    };
+
+    lifecycle.expectUncalled();
+    atomLifecycle.expectUncalled();
+
+    const { result, ...rest } = renderHook(useSuspenseMolecule, {
+      wrapper: Wrapper,
+    });
+
+    // wait for Suspense boundary to resolve
+    await waitForElementToBeRemoved(() => screen.getByText("Loading..."));
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      lifecycle.expectCalledTimesEach(1, 2, 1);
+    } else {
+      lifecycle.expectCalledTimesEach(1, 1, 0);
+    }
+
+    rest.unmount();
+  });
+
+  test("ScopeProvider is child of the Suspense boundary", async () => {
+    const SuspenseScope = createScope("Suspense");
+
+    const Wrapper = ({ children }: { children?: React.ReactNode }) => (
+      <Outer>
+        <Suspense fallback="Loading...">
+          <ScopeProvider scope={SuspenseScope}>{children}</ScopeProvider>
+        </Suspense>
+      </Outer>
+    );
+
+    const lifecycle = createLifecycleUtils();
+
+    const SuspenseMolecule = molecule(() => {
+      use(SuspenseScope);
+      lifecycle.connect();
+
+      // dummy promise atom without lodable which should trigger suspense
+      // boundary
+      const promiseAtom = atom(
+        new Promise<string>((resolve, reject) => {
+          setTimeout(() => {
+            resolve("resolved");
+          }, 100);
+        }),
+      );
+
+      atomLifecycle.connect(promiseAtom);
+
+      return {
+        promiseAtom,
+      };
+    });
+
+    const useSuspenseMolecule = () => {
+      const suspenseMolecule = useMolecule(SuspenseMolecule);
+      // trigger the suspense boundary while we wait for the promise to settle
+      const suspendingAtom = useAtom(suspenseMolecule.promiseAtom);
+
+      return {
+        molecule: suspenseMolecule,
+        suspendingAtom,
+        context: useContext(ScopeContext),
+      };
+    };
+
+    lifecycle.expectUncalled();
+    atomLifecycle.expectUncalled();
+
+    const { result, ...rest } = renderHook(useSuspenseMolecule, {
+      wrapper: Wrapper,
+    });
+
+    // wait for Suspense boundary to resolve, which in this case never resolves.
+    await waitForElementToBeRemoved(() => screen.getByText("Loading..."));
+
+    if (isStrict) {
+      // Note: Since this is using a default scope, it is better memoized
+      lifecycle.expectCalledTimesEach(1, 2, 1);
+    } else {
+      lifecycle.expectCalledTimesEach(1, 1, 0);
+    }
+
+    rest.unmount();
   });
 });
