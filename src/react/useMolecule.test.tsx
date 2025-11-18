@@ -1020,3 +1020,258 @@ strictModeSuite(({ wrapper, isStrict }) => {
     }
   });
 });
+
+strictModeSuite(({ wrapper }) => {
+  describe("Issue #82 - Implicit and explicit scoped molecule instantiations", () => {
+    // NOTE: This issue was reported with React 18 strict mode behavior
+    // where components mount -> unmount -> remount, causing cache cleanup issues.
+    // React 19 changed strict mode behavior (useMemo is called twice but keeps first result)
+    // which has partially resolved this issue. These tests verify the expected behavior.
+
+    // Shared test setup for Issue #82 tests
+    const TestScope = createScope("test-id");
+
+    function createTestMolecules() {
+      // Source molecule with unique random value
+      const sourceLifecycle = createLifecycleUtils();
+      let sourceInstanceCount = 0;
+
+      const SourceMolecule = molecule(() => {
+        sourceInstanceCount++;
+        const value = {
+          count: Math.random(),
+          id: sourceInstanceCount,
+          value: `source-${sourceInstanceCount}`,
+        };
+        sourceLifecycle.connect(value);
+        return value;
+      });
+
+      // Other molecule that depends on Source
+      const otherLifecycle = createLifecycleUtils();
+      const OtherMolecule = molecule(() => {
+        const source = use(SourceMolecule);
+        const value = { source, other: Math.random() };
+        otherLifecycle.connect(value);
+        return value;
+      });
+
+      return {
+        SourceMolecule,
+        OtherMolecule,
+        sourceLifecycle,
+        otherLifecycle,
+        getSourceInstanceCount: () => sourceInstanceCount,
+      };
+    }
+
+    const StrictWrapper = wrapper;
+
+    function createTestWrapper() {
+      return ({ children }: { children?: React.ReactNode }) => (
+        <StrictWrapper>
+          <ScopeProvider scope={TestScope} value="foo">
+            {children}
+          </ScopeProvider>
+        </StrictWrapper>
+      );
+    }
+
+    describe.each([
+      { first: "explicit", second: "implicit" },
+      { first: "implicit", second: "explicit" },
+    ])("When molecule is first $first then $second", ({ first }) => {
+      test("Should share the same instance", () => {
+        const {
+          SourceMolecule,
+          OtherMolecule,
+          sourceLifecycle,
+          otherLifecycle,
+        } = createTestMolecules();
+        const Wrapper = createTestWrapper();
+
+        sourceLifecycle.expectUncalled();
+        otherLifecycle.expectUncalled();
+
+        let explicitSource: { count: number };
+        let implicitSource: { count: number };
+        let sourceCountAfterFirst: number;
+
+        if (first === "explicit") {
+          // Step 1: Mount Source molecule EXPLICITLY first
+          const { result: sourceResult } = renderHook(
+            () => useMolecule(SourceMolecule),
+            { wrapper: Wrapper },
+          );
+
+          explicitSource = sourceResult.current;
+          sourceCountAfterFirst = sourceLifecycle.executions.mock.calls.length;
+
+          // Step 2: Mount Other molecule which implicitly uses Source
+          const { result: otherResult } = renderHook(
+            () => useMolecule(OtherMolecule),
+            { wrapper: Wrapper },
+          );
+
+          implicitSource = otherResult.current.source;
+        } else {
+          // Step 1: Mount Other molecule (which implicitly creates Source)
+          const { result: otherResult } = renderHook(
+            () => useMolecule(OtherMolecule),
+            { wrapper: Wrapper },
+          );
+
+          implicitSource = otherResult.current.source;
+          sourceCountAfterFirst = sourceLifecycle.executions.mock.calls.length;
+
+          // Step 2: Now explicitly mount Source molecule in the same scope
+          const { result: sourceResult } = renderHook(
+            () => useMolecule(SourceMolecule),
+            { wrapper: Wrapper },
+          );
+
+          explicitSource = sourceResult.current;
+        }
+
+        // CRITICAL: The explicit and implicit instances should be THE SAME
+        expect(explicitSource).toBe(implicitSource);
+        expect(explicitSource.count).toBe(implicitSource.count);
+
+        // Source should NOT be executed again (already exists in cache)
+        expect(sourceLifecycle.executions.mock.calls.length).toBe(
+          sourceCountAfterFirst,
+        );
+      });
+
+      test("Should propagate changes between instances", () => {
+        const { SourceMolecule, OtherMolecule } = createTestMolecules();
+        const Wrapper = createTestWrapper();
+
+        let sourceValue: { count: number };
+        let otherValue: { source: { count: number }; other: number };
+
+        if (first === "explicit") {
+          // Mount Source first (explicit)
+          const { result: sourceResult } = renderHook(
+            () => useMolecule(SourceMolecule),
+            { wrapper: Wrapper },
+          );
+          sourceValue = sourceResult.current;
+
+          // Mount Other second (implicit Source)
+          const { result: otherResult } = renderHook(
+            () => useMolecule(OtherMolecule),
+            { wrapper: Wrapper },
+          );
+          otherValue = otherResult.current;
+        } else {
+          // Mount Other first (implicit Source)
+          const { result: otherResult } = renderHook(
+            () => useMolecule(OtherMolecule),
+            { wrapper: Wrapper },
+          );
+          otherValue = otherResult.current;
+
+          // Mount Source second (explicit)
+          const { result: sourceResult } = renderHook(
+            () => useMolecule(SourceMolecule),
+            { wrapper: Wrapper },
+          );
+          sourceValue = sourceResult.current;
+        }
+
+        // They should be the same instance
+        expect(sourceValue).toBe(otherValue.source);
+
+        // Modify via explicit reference
+        sourceValue.count = 42;
+
+        // Changes should be visible in implicit reference
+        expect(otherValue.source.count).toBe(42);
+      });
+
+      test("Should handle toggle pattern with real components", () => {
+        const { SourceMolecule, OtherMolecule, getSourceInstanceCount } =
+          createTestMolecules();
+
+        // Component that explicitly uses Source
+        function ComponentA() {
+          const source = useMolecule(SourceMolecule);
+          return <div data-testid="component-a">{source.value}</div>;
+        }
+
+        // Component that uses Other (which implicitly uses Source)
+        function ComponentB() {
+          const other = useMolecule(OtherMolecule);
+          return <div data-testid="component-b">{other.source.value}</div>;
+        }
+
+        let initialValue: string;
+        let instancesAfterFirst: number;
+        let aValue: string;
+        let bValue: string;
+
+        if (first === "explicit") {
+          // Main component with toggle - ComponentA (explicit) first
+          const TestComponent = ({ showB }: { showB: boolean }) => (
+            <ScopeProvider scope={TestScope} value="test">
+              <ComponentA />
+              {showB && <ComponentB />}
+            </ScopeProvider>
+          );
+
+          const { rerender, getByTestId } = render(
+            <TestComponent showB={false} />,
+            { wrapper },
+          );
+
+          // Initially, only ComponentA is mounted (explicit Source)
+          initialValue = getByTestId("component-a").textContent;
+          instancesAfterFirst = getSourceInstanceCount();
+
+          // Now toggle on ComponentB (implicit Source via Other)
+          rerender(<TestComponent showB={true} />);
+
+          aValue = getByTestId("component-a").textContent;
+          bValue = getByTestId("component-b").textContent;
+        } else {
+          // Main component with toggle - ComponentB (implicit) first
+          const TestComponent = ({ showA }: { showA: boolean }) => (
+            <ScopeProvider scope={TestScope} value="test">
+              <ComponentB />
+              {showA && <ComponentA />}
+            </ScopeProvider>
+          );
+
+          const { rerender, getByTestId } = render(
+            <TestComponent showA={false} />,
+            { wrapper },
+          );
+
+          // Initially, only ComponentB is mounted (implicit Source)
+          initialValue = getByTestId("component-b").textContent;
+          instancesAfterFirst = getSourceInstanceCount();
+
+          // Now toggle on ComponentA (explicit Source)
+          rerender(<TestComponent showA={true} />);
+
+          bValue = getByTestId("component-b").textContent;
+          aValue = getByTestId("component-a").textContent;
+        }
+
+        // CRITICAL TEST: Both components should show the SAME source value
+        // This is the bug from issue #82 - they were getting different instances
+        expect(aValue).toBe(bValue);
+        expect(aValue).toBe(initialValue);
+
+        // Source should NOT be created again when second component mounts
+        // (it should reuse the instance from first component)
+        expect(getSourceInstanceCount()).toBe(instancesAfterFirst);
+
+        // Both components should reference the same instance ID
+        expect(aValue).toContain("source-1");
+        expect(bValue).toContain("source-1");
+      });
+    });
+  });
+});
