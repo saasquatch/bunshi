@@ -14,10 +14,10 @@ If you would like to contribute by fixing an open issue or developing a new feat
 
 - Fork this repository.
 - Create a new feature branch based off the `main` branch.
-- Install dependencies by running `$ npm install`.
+- Install dependencies by running `$ pnpm install`.
 - Create failing tests for your fix or new feature.
-- Implement your changes and confirm that all test are passing. You can run the tests continuously during development via the `$ npm test` command.
-- If you want to test it in a React project you can use the `$ npm link` package.
+- Implement your changes and confirm that all test are passing. You can run the tests continuously during development via the `$ pnpm test` command.
+- If you want to test it in a React project you can use the `$ pnpm link` package.
 - Git stage your required changes and commit (see below commit guidelines).
 - Submit PR for review.
 

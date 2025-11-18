@@ -21,33 +21,37 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: "pnpm"
 
-      - name: Install deps and build (with cache)
-        uses: bahmutov/npm-install@v1
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Test (vitest)
-        run: npm run test:code
+        run: pnpm run test:code
 
       - name: Size Test
-        run: npm run test:size
+        run: pnpm run test:size
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Firefox tests
-        run: npm run test:browsers:firefox
+        run: pnpm run test:browsers:firefox
 
       - name: Safari tests
-        run: npm run test:browsers:safari
+        run: pnpm run test:browsers:safari
 
       - name: Chrome tests
-        run: npm run test:browsers:chrome
+        run: pnpm run test:browsers:chrome

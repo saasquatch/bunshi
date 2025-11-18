@@ -11,6 +11,11 @@
   "license": "ISC",
   "dependencies": {
     "bunshi": "file:../../",
-    "typescript": "3.8"
+    "react": "16",
+    "typescript": "3.8",
+    "vue": "3"
+  },
+  "devDependencies": {
+    "@types/react": "16"
   }
 }
