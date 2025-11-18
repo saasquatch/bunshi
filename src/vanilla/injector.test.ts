@@ -836,6 +836,108 @@ describe("Scope caching", () => {
     });
   });
 
+  describe("Default scope caching", () => {
+    test("returns same molecule instance when accessed with same explicit scope values", () => {
+      const injector = createInjector();
+
+      // Create two scopes: one that will vary, one that uses its default value
+      const VaryingScope = createScope<string>("default-varying");
+      const DefaultScope = createScope<number>(42);
+
+      // Molecule depends on both scopes
+      const testMol = molecule((_, getScope) => {
+        const varying = getScope(VaryingScope);
+        const def = getScope(DefaultScope); // Uses default value
+        return { varying, def };
+      });
+
+      // Create molecule with explicit scope value "A"
+      const [val1, unsub1] = injector.use(testMol, [VaryingScope, "A"]);
+      expect(val1.varying).toBe("A");
+      expect(val1.def).toBe(42);
+
+      // Create with different explicit scope value "B"
+      const [val2, unsub2] = injector.use(testMol, [VaryingScope, "B"]);
+      expect(val2.varying).toBe("B");
+      expect(val2.def).toBe(42);
+
+      // Access again with original value "A" while both subscriptions are active
+      // The cache should return the same molecule instance (val1)
+      // and properly maintain the lease on the default scope
+      const [val3, unsub3] = injector.use(testMol, [VaryingScope, "A"]);
+
+      // Verify we get the cached instance
+      expect(val3).toBe(val1);
+      expect(val3.varying).toBe("A");
+
+      unsub1();
+      unsub2();
+      unsub3();
+    });
+  });
+
+  describe("Multi-scope cleanup behavior", () => {
+    test("maintains cache integrity during out-of-order cleanup with multiple scopes", () => {
+      const injector = createInjector();
+      const Scope1 = createScope<string>("default1");
+      const Scope2 = createScope<number>(0);
+
+      const complexMol = molecule((_, getScope) => {
+        const s1 = getScope(Scope1);
+        const s2 = getScope(Scope2);
+        return { s1, s2, id: Math.random() };
+      });
+
+      // Create molecules with various scope combinations
+      const [v1, u1] = injector.use(complexMol, [Scope1, "A"], [Scope2, 1]);
+      const [v2, u2] = injector.use(complexMol, [Scope1, "A"], [Scope2, 2]);
+      const [v3, u3] = injector.use(complexMol, [Scope1, "B"], [Scope2, 1]);
+
+      // Each combination should produce a different molecule instance
+      expect(v1).not.toBe(v2);
+      expect(v1).not.toBe(v3);
+      expect(v2).not.toBe(v3);
+
+      // Verify scope values
+      expect(v1.s1).toBe("A");
+      expect(v1.s2).toBe(1);
+      expect(v2.s1).toBe("A");
+      expect(v2.s2).toBe(2);
+      expect(v3.s1).toBe("B");
+      expect(v3.s2).toBe(1);
+
+      // Clean up subscriptions in non-sequential order
+      // The cache should handle partial cleanup gracefully
+      u2(); // Remove middle entry
+      u1(); // Remove first entry
+      u3(); // Remove last entry
+
+      // Verify cache still works after fragmented cleanup
+      const [v4, u4] = injector.use(complexMol, [Scope1, "C"], [Scope2, 3]);
+      expect(v4.s1).toBe("C");
+      expect(v4.s2).toBe(3);
+
+      // v4 is a new instance, different from all previous
+      expect(v4).not.toBe(v1);
+      expect(v4).not.toBe(v2);
+      expect(v4).not.toBe(v3);
+
+      // Test repeated creation/cleanup cycles with same scope values
+      u4();
+      const [v5, u5] = injector.use(complexMol, [Scope1, "C"], [Scope2, 3]);
+
+      // After cleanup, new subscription should produce a different instance
+      expect(v5).not.toBe(v4);
+      expect(v5.s1).toBe("C");
+      expect(v5.s2).toBe(3);
+
+      // Verify the id changed (different instance)
+      expect(v5.id).not.toBe(v4.id);
+
+      u5();
+    });
+  });
+
   describe("Parent injectors", () => {
     interface APIService {
       fetch(): string;
@@ -1501,6 +1603,39 @@ describe("Global molecule internal scopes", () => {
     );
     expect(scope2?.defaultValue.toString()).toMatch(
       /^Symbol\(bunshi\.global\.scope\.\d+\)$/,
+    );
+  });
+});
+
+describe("lazyUse subscription errors", () => {
+  const injector = createInjector();
+  const testMol = molecule(() => ({ value: 1 }));
+
+  test("throws error when starting an already active subscription", () => {
+    const [_value, { start, stop }] = injector.useLazily(testMol);
+
+    // Start the subscription
+    start();
+
+    // Try to start again - should throw
+    expect(() => start()).toThrow(
+      "Don't start a subscription that is already started.",
+    );
+
+    // Clean up
+    stop();
+  });
+
+  test("throws error when stopping an already stopped subscription", () => {
+    const [_value, { start, stop }] = injector.useLazily(testMol);
+
+    // Start and then stop the subscription
+    start();
+    stop();
+
+    // Try to stop again - should throw
+    expect(() => stop()).toThrow(
+      "Don't stop a subscription that is already stopped.",
     );
   });
 });
