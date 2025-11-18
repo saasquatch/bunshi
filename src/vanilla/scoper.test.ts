@@ -1,3 +1,4 @@
+import { molecule, use } from ".";
 import { LoggingInstrumentation } from "./internal/instrumentation";
 import { createScoper } from "./scoper";
 import { UserScope } from "./testing/test-molecules";
@@ -118,4 +119,42 @@ test("Scope subscriptions can be re-used", () => {
     expect(cleanupFnInner).toHaveBeenCalled();
     cleanupFnInner.mockReset();
   }
+});
+
+test("Peer subscriptions can share molecules", () => {
+  const Direct = molecule(() => use(UserScope));
+  const Indirect = molecule(() => use(Direct));
+
+  const scoper = createScoper();
+
+  const sub1 = scoper.createSubscription();
+  const sub1Prestart = sub1.expand([[UserScope, "bob"]]);
+
+  const sub2 = scoper.createSubscription();
+  const sub2Prestart = sub2.expand([[UserScope, "bob"]]);
+
+  expect(sub1Prestart[0]).toStrictEqual([UserScope, "bob"]);
+  expect(sub2Prestart[0]).toStrictEqual([UserScope, "bob"]);
+
+  // Before subscription start, these tuples are hanging out as separate instances
+  // Until the subscriptions are started, they dont converge
+  expect(sub1Prestart[0]).not.toBe(sub2Prestart[0]);
+
+  expect(sub1Prestart).not.toBe(sub2Prestart);
+
+  const tuples1 = sub1.start();
+  const tuples2 = sub2.start();
+
+  expect(tuples1[0]).toStrictEqual([UserScope, "bob"]);
+  expect(tuples2[0]).toStrictEqual([UserScope, "bob"]);
+
+  // Should be the same exact value for the scope tuple
+  // Since the subscription is started, the scope tuple can be cached and shared
+  expect(tuples1[0]).toBe(tuples2[0]);
+
+  // But not the same for the set of tuples
+  expect(tuples1).not.toBe(tuples2);
+
+  sub1.stop();
+  sub2.stop();
 });

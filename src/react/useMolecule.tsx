@@ -35,7 +35,7 @@ export function useMolecule<T>(
     mol,
     injector,
     /**
-     * Tuple flattening prevents re-renders unless the number of
+     * Tuple flattening prevents re-renders unless the number of tuples changes
      */
     ...flattenTuples(inputTuples),
   ]);
