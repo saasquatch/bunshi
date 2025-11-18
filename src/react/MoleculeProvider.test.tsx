@@ -14,7 +14,7 @@ const NumberMolecule = molecule(() => 42);
 const AnotherNumberMolecule = molecule(() => 100);
 const StringMolecule = molecule(() => "hello world");
 
-strictModeSuite(({ wrapper: Outer, isStrict }) => {
+strictModeSuite(({ wrapper: Outer }) => {
   describe("MoleculeProvider", () => {
     test("provides molecule interface implementation to children", () => {
       const TestComponent = () => {

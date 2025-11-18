@@ -43,7 +43,7 @@ export function wrap<T>(composable: () => T, options?: { Wrapper: Component }) {
   return {
     component,
     render(options?: RenderOptions) {
-      let result = shallowRef<T | undefined>(undefined);
+      const result = shallowRef<T | undefined>(undefined);
 
       const renderResult = render(component, {
         ...options,

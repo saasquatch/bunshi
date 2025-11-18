@@ -1,20 +1,25 @@
-import { type CreateInjectorProps, createInjector } from "./injector";
+import {
+  type CreateInjectorProps,
+  type MoleculeInjector,
+  createInjector,
+} from "./injector";
 import { ErrorInvalidGlobalInjector } from "./internal/errors";
 import { DefaultInjector } from "./internal/symbols";
 import { isInjector } from "./internal/utils";
 
+type GlobalThis = typeof globalThis & {
+  [DefaultInjector]?: MoleculeInjector;
+};
+
 /**
  * Returns the globally defined {@link MoleculeInjector}
- *
- * @returns
  */
-
 export const getDefaultInjector = () => {
-  const i = (globalThis as any)[DefaultInjector];
+  const i = (globalThis as GlobalThis)[DefaultInjector];
 
   if (i === undefined) {
     const n = createInjector();
-    (globalThis as any)[DefaultInjector] = n;
+    (globalThis as GlobalThis)[DefaultInjector] = n;
     return n;
   }
 
@@ -31,5 +36,5 @@ export const getDefaultInjector = () => {
  * Useful for tests
  */
 export const resetDefaultInjector = (injectorProps?: CreateInjectorProps) => {
-  (globalThis as any)[DefaultInjector] = createInjector(injectorProps);
+  (globalThis as GlobalThis)[DefaultInjector] = createInjector(injectorProps);
 };

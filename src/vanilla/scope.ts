@@ -30,7 +30,7 @@ export type MoleculeScope<T> = {
  * ```
  *
  * @typeParam T - the type that this scope provides
- * @param defaultValue
+ * @param defaultValue - the default value for this scope
  * @returns a new unique {@link MoleculeScope}
  */
 export function createScope<T = undefined>(

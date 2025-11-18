@@ -47,7 +47,7 @@ export type MoleculeConstructor<T> = (
  * This can be used as a reference to create objects by calling `useMolecule`
  * in one of the frontend integrations.
  *
- * Create a {@link Molecule} by callig {@link molecule}
+ * Create a {@link Molecule} by calling {@link molecule}
  *
  * ```ts
  * export const RandomNumberMolecule = molecule(()=>Math.random());
@@ -95,7 +95,7 @@ export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
  * - A molecule that depends on a *scoped* molecule will be called once per unique scope of it’s dependency.
  * - If a molecule calls `scope` then it will be a scoped molecule.
  * - If a molecule calls `mol` then it will depend on that molecule.
-
+ *
  * Create a global molecule
  * ```ts
  * const globalMolecule = molecule(()=>Math.random());
@@ -110,7 +110,7 @@ export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
  * const formScopedMolecule = molecule(()=>use(formScope));
  * const formScopedMolecule = molecule((_,scope)=>scope(formScope));
  * ```*
- * 
+ *
  * @param construct - A callback function called to create molecule instances
  * @returns a molecule
  */
