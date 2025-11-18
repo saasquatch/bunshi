@@ -256,11 +256,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       // and executed twice, since each call to `useMolecule` will call once
       // and mounted once, because only one value will be used
       // and never unmounted
-      if (isStrict) {
-        userLifecycle.expectCalledTimesEach(2, 2, 1);
-      } else {
-        userLifecycle.expectCalledTimesEach(2, 1, 0);
-      }
+      userLifecycle.expectCalledTimesEach(2, 1, 0);
       expect(aValue).toBe(bValue);
 
       act(() => {
@@ -270,11 +266,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
 
       // Then the molecule is still mounted
       // Because it's still being used by B
-      if (isStrict) {
-        userLifecycle.expectCalledTimesEach(2, 2, 1);
-      } else {
-        userLifecycle.expectCalledTimesEach(2, 1, 0);
-      }
+      userLifecycle.expectCalledTimesEach(2, 1, 0);
 
       aValue = getDefaultStore().get(valueA);
       bValue = getDefaultStore().get(valueB);
@@ -291,11 +283,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       });
 
       // Then the molecule is unmounted
-      if (isStrict) {
-        userLifecycle.expectCalledTimesEach(2, 2, 2);
-      } else {
-        userLifecycle.expectCalledTimesEach(2, 1, 1);
-      }
+      userLifecycle.expectCalledTimesEach(2, 1, 1);
 
       aValue = getDefaultStore().get(valueA);
       bValue = getDefaultStore().get(valueB);
@@ -314,7 +302,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       bValue = getDefaultStore().get(valueB);
       // Then a new molecule value is created
       if (isStrict) {
-        userLifecycle.expectCalledTimesEach(3, 4, 3);
+        userLifecycle.expectCalledTimesEach(3, 3, 2);
       } else {
         userLifecycle.expectCalledTimesEach(3, 2, 1);
       }
@@ -328,7 +316,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
 
       // Then the user molecule lifecycle has been completed twice
       if (isStrict) {
-        userLifecycle.expectCalledTimesEach(3, 4, 4);
+        userLifecycle.expectCalledTimesEach(3, 3, 3);
       } else {
         userLifecycle.expectCalledTimesEach(3, 2, 2);
       }
@@ -374,22 +362,12 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
 
     expect(result1.current.molecule).not.toBe(result2.current.molecule);
 
-    if (isStrict) {
-      // Note: Since this is using a default scope, it is better memoized
-      voidLifecycle.expectCalledTimesEach(2, 4, 2);
-    } else {
-      voidLifecycle.expectCalledTimesEach(2, 2, 0);
-    }
+    voidLifecycle.expectCalledTimesEach(2, 2, 0);
 
     rest1.unmount();
     rest2.unmount();
 
-    if (isStrict) {
-      // Note: Since this is using a default scope, it is better memoized
-      voidLifecycle.expectCalledTimesEach(2, 4, 4);
-    } else {
-      voidLifecycle.expectToHaveBeenCalledTimes(2);
-    }
+    voidLifecycle.expectToHaveBeenCalledTimes(2);
   });
 
   test("Object scope values are shared across providers", () => {
@@ -455,11 +433,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       wrapper: Wrapper,
     });
 
-    if (isStrict) {
-      userLifecycle.expectCalledTimesEach(1, 2, 1);
-    } else {
-      userLifecycle.expectCalledTimesEach(1, 1, 0);
-    }
+    userLifecycle.expectCalledTimesEach(1, 1, 0);
 
     expect(result.current.context).toStrictEqual([
       [UserScope, "jeffrey@example.com"],
@@ -468,11 +442,7 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
 
     rest.unmount();
 
-    if (isStrict) {
-      userLifecycle.expectCalledTimesEach(1, 2, 2);
-    } else {
-      userLifecycle.expectCalledTimesEach(1, 1, 1);
-      userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
-    }
+    userLifecycle.expectCalledTimesEach(1, 1, 1);
+    userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
   });
 });
