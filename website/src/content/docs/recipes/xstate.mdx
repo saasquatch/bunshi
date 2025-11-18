@@ -4,7 +4,7 @@ title: "XState"
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import CodeEditor from "~/components/CodeEditor.astro";
-import { xstate } from "~/source-examples/sources";
+import examples from "~/source-examples/xstate/examples.code";
 
 ## Background
 
@@ -21,34 +21,16 @@ Bunshi helps you create xstate machines per component or other scopes, instead o
 <Tabs>
   <TabItem label="React">
     <CodeEditor
-      files={{
-        "App.tsx": xstate.ReactApp,
-        "molecules.ts": {
-          code: xstate.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        xstate: "^4.4",
-        "@xstate/react": "^3.2",
-      }}
+      files={examples.reactComponentState.files}
+      dependencies={examples.reactComponentState.dependencies}
+      template={examples.reactComponentState.template}
     />
   </TabItem>
   <TabItem label="Vue">
     <CodeEditor
-      files={{
-        "src/App.vue": xstate.VueApp,
-        "src/Counter.vue": xstate.VueCounter,
-        "src/molecules.ts": {
-          code: xstate.molecules2,
-          active: true,
-        },
-      }}
-      dependencies={{
-        xstate: "^4.4",
-        "@xstate/vue": "^2.0",
-      }}
-      template="vue"
+      files={examples.vueComponentState.files}
+      dependencies={examples.vueComponentState.dependencies}
+      template={examples.vueComponentState.template}
     />
   </TabItem>
 </Tabs>
@@ -60,34 +42,16 @@ You can use Xstate to define a machine that is shared across your application, t
 <Tabs>
   <TabItem label="React">
     <CodeEditor
-      files={{
-        "App.tsx": xstate.ReactApp,
-        "molecules.ts": {
-          code: xstate.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        xstate: "^4.38",
-        "@xstate/react": "^3.2",
-      }}
+      files={examples.reactGlobalState.files}
+      dependencies={examples.reactGlobalState.dependencies}
+      template={examples.reactGlobalState.template}
     />
   </TabItem>
   <TabItem label="Vue">
     <CodeEditor
-      files={{
-        "src/App.vue": xstate.VueApp,
-        "src/Counter.vue": xstate.VueCounter,
-        "src/molecules.ts": {
-          code: xstate.molecules,
-          active: true,
-        },
-      }}
-      dependencies={{
-        xstate: "^4.38",
-        "@xstate/vue": "^2.0",
-      }}
-      template="vue"
+      files={examples.vueGlobalState.files}
+      dependencies={examples.vueGlobalState.dependencies}
+      template={examples.vueGlobalState.template}
     />
   </TabItem>
 </Tabs>
