@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import {
   Atom,
   PrimitiveAtom,
@@ -474,5 +474,40 @@ strictModeSuite(({ wrapper: Outer, isStrict }) => {
       userLifecycle.expectCalledTimesEach(1, 1, 1);
       userLifecycle.expectToMatchCalls(["jeffrey@example.com"]);
     }
+  });
+
+  test("Changing scope value should propagate immediately", () => {
+    const IdScope = createScope<string | null>(null);
+    const IdMolecule = molecule(() => {
+      const id = use(IdScope);
+      if (id === null) {
+        throw new Error(`ID is required`);
+      }
+      return id;
+    });
+
+    const IdDisplay = () => useMolecule(IdMolecule);
+
+    const Wrapper = ({ id }: { id: string | null }) => {
+      return (
+        <Outer>
+          {
+            <ScopeProvider scope={IdScope} value={id}>
+              {id ? <IdDisplay /> : "no id"}
+            </ScopeProvider>
+          }
+        </Outer>
+      );
+    };
+
+    // Should fallback to 'no id'
+    const { rerender, queryByText } = render(<Wrapper id={null} />);
+
+    expect(queryByText("no id")).not.toBeNull();
+
+    // Should propagate the new value to all components.
+    rerender(<Wrapper id={"xyz"} />);
+
+    expect(queryByText("xyz")).not.toBeNull();
   });
 });
