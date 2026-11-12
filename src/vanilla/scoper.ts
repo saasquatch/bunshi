@@ -103,6 +103,20 @@ export function createScoper(instrumentation?: Instrumentation) {
    */
   const cleanupsRun = new WeakSet<CleanupCallback>();
 
+  /**
+   * The `cleanups` sets that each callback has been registered in.
+   *
+   * A callback is usually registered against several scope tuples, but it is
+   * run when the first of them is released. Once it has run, it is removed
+   * from the sets of the tuples that are still in use. Otherwise a long-lived
+   * tuple, such as the default tuple of a global molecule, would keep the
+   * callback, and everything it closes over, in memory.
+   */
+  const cleanupSetsByCallback = new WeakMap<
+    CleanupCallback,
+    Set<Set<CleanupCallback>>
+  >();
+
   const releasedSubscriptions = new WeakSet<ScopeSubscription>();
 
   function getScopes<T>(tuples: ScopeTuple<T>[]): ScopeTuple<T>[] {
@@ -195,6 +209,8 @@ export function createScoper(instrumentation?: Instrumentation) {
           cb();
           cleanupsRun.add(cb);
         }
+        cleanupSetsByCallback.get(cb)?.forEach((set) => set.delete(cb));
+        cleanupSetsByCallback.delete(cb);
       });
   }
 
@@ -237,6 +253,10 @@ export function createScoper(instrumentation?: Instrumentation) {
           throw new Error("Can't register cleanups for uncached values");
         }
         cleanups.add(cleanup);
+        cleanupSetsByCallback.set(
+          cleanup,
+          (cleanupSetsByCallback.get(cleanup) ?? new Set()).add(cleanups),
+        );
       });
     });
   }

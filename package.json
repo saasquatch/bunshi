@@ -30,7 +30,7 @@
     "test:browsers:chrome": "npm run test:browsers-suite -- --browser=chromium",
     "test:browsers:firefox": "npm run test:browsers-suite -- --browser=firefox",
     "test:browsers:safari": "npm run test:browsers-suite -- --browser=webkit",
-    "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts",
+    "test:browsers-suite": "vitest --run --exclude src/vue/**/*.test.ts --exclude src/bundle.test.ts --exclude src/vanilla/garbage-collection.test.ts",
     "format": "prettier -w src",
     "test:eslint": "eslint . --ext .js,.ts",
     "version": "changeset version && npm i",
@@ -114,7 +114,7 @@
     },
     {
       "path": "dist/vanilla.mjs",
-      "limit": "3.21 KB"
+      "limit": "3.25 KB"
     }
   ],
   "devDependencies": {
