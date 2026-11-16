@@ -2,6 +2,7 @@
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
 import { createInjector } from "./injector";
+import { onUnmount } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
 
@@ -48,6 +49,43 @@ test("Released molecules are garbage collected once the global molecule they use
 
   expect(pages.filter(isAlive)).toHaveLength(0);
 });
+
+test("A released molecule is garbage collected when one of its unmount callbacks throws", async () => {
+  const injector = createInjector();
+
+  const page = visitThrowingPage(injector);
+  await collectGarbage();
+
+  expect(isAlive(page)).toBe(false);
+});
+
+/**
+ * Module-level, so it outlives every molecule that registers it.
+ */
+function throwOnUnmount() {
+  throw new Error("unmount failed");
+}
+
+const ThrowingPageMolecule = molecule((_, scope) => {
+  scope(PageScope);
+  const value = { unmounted: false };
+  onUnmount(() => {
+    value.unmounted = true;
+  });
+  onUnmount(throwOnUnmount);
+  return value;
+});
+
+function visitThrowingPage(
+  injector: ReturnType<typeof createInjector>,
+): WeakRef<object> {
+  const [page, release] = injector.use(ThrowingPageMolecule, [
+    PageScope,
+    "throwing-page",
+  ]);
+  expect(release).toThrow("unmount failed");
+  return new WeakRef(page);
+}
 
 function visit(
   injector: ReturnType<typeof createInjector>,

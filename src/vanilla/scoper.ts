@@ -111,6 +111,10 @@ export function createScoper(instrumentation?: Instrumentation) {
    * from the sets of the tuples that are still in use. Otherwise a long-lived
    * tuple, such as the default tuple of a global molecule, would keep the
    * callback, and everything it closes over, in memory.
+   *
+   * A tuple's set leaves this index when the tuple is released, before any
+   * callback runs. If a callback throws, the callbacks after it are not run,
+   * and a long-lived callback's entry must not keep their released set alive.
    */
   const cleanupSetsByCallback = new WeakMap<
     CleanupCallback,
@@ -231,8 +235,9 @@ export function createScoper(instrumentation?: Instrumentation) {
         scopeMap?.delete(value);
 
         // Run all cleanups
-        cached?.cleanups.forEach((cb) => {
+        cached?.cleanups.forEach((cb, _, cleanups) => {
           cleanupsToRun.add(cb);
+          cleanupSetsByCallback.get(cb)!.delete(cleanups);
         });
       } else {
         instrumentation?.scopeStopWithCleanup(subscriptionObj, cached);
