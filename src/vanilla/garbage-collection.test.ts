@@ -87,6 +87,33 @@ function visitThrowingPage(
   return new WeakRef(page);
 }
 
+test("A molecule dropped without unsubscribing is garbage collected when it registers a long-lived unmount callback", async () => {
+  const injector = createInjector();
+
+  const dropped = useAndDrop(injector);
+  await collectGarbage();
+
+  expect(isAlive(dropped)).toBe(false);
+});
+
+/**
+ * Module-level, so it outlives every molecule that registers it.
+ */
+function sharedOnUnmount() {}
+
+function useAndDrop(
+  injector: ReturnType<typeof createInjector>,
+): WeakRef<object> {
+  const TemporaryScope = createScope({});
+  const TemporaryMolecule = molecule((_, scope) => {
+    scope(TemporaryScope);
+    onUnmount(sharedOnUnmount);
+    return { temporary: true };
+  });
+  const [value] = injector.use(TemporaryMolecule, [TemporaryScope, {}]);
+  return new WeakRef(value);
+}
+
 function visit(
   injector: ReturnType<typeof createInjector>,
   id: string,
