@@ -207,7 +207,7 @@ export function createScoper(instrumentation?: Instrumentation) {
     const cleanupsToRun = new Set<CleanupCallback>();
     cleanupSets.forEach((set) => set.forEach((cb) => cleanupsToRun.add(cb)));
 
-    Array.from(cleanupsToRun.values())
+    Array.from(cleanupsToRun)
       .reverse()
       .forEach((cb) => {
         if (!cleanupsRun.has(cb)) {
@@ -218,9 +218,11 @@ export function createScoper(instrumentation?: Instrumentation) {
         }
       });
 
-    cleanupSets.forEach((set) =>
-      tupleCleanupsBySet.get(set)!.forEach((cleanups) => cleanups.delete(set)),
-    );
+    cleanupSets.forEach((set) => {
+      const tupleCleanups = tupleCleanupsBySet.get(set)!;
+      tupleCleanups.forEach((cleanups) => cleanups.delete(set));
+      tupleCleanups.clear();
+    });
   }
 
   function releaseTuples(
