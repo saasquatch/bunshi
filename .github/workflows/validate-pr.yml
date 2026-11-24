@@ -1,4 +1,6 @@
 name: Pull Request Actions
+permissions:
+  contents: read
 on:
   pull_request:
     branches: [main]
