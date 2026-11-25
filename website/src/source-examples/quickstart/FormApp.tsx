@@ -1,7 +1,7 @@
 import { ScopeProvider, useMolecule } from "bunshi/react";
 import { useAtom } from "jotai";
 import React from "react";
-import { CountMolecule, FormScope } from "./molecules3";
+import { CountMolecule, FormScope } from "./molecules";
 
 export default function App() {
   return (

@@ -1,6 +1,6 @@
 <script setup>
 import { provideScope } from "bunshi/vue";
-import { FormScope } from "./molecules3";
+import { FormScope } from "./molecules";
 
 const {name} = defineProps(['name'])
 
