@@ -28,7 +28,6 @@ For state management library integrations (xstate, zustand, valtio, nanostores),
 library-name/
 ├── sources.ts              # Raw source imports (*.tsx?raw, *.vue?raw)
 ├── examples.code.ts        # Unified configuration for all examples
-├── library-name.mdx        # Documentation page using the examples
 ├── library-name.spec.ts    # Playwright tests for the examples
 ├── App.tsx                 # React application component
 ├── App.vue                 # Vue application component
@@ -121,7 +120,7 @@ export default {
 };
 ```
 
-### `library-name.mdx`
+### `src/content/docs/recipes/library-name.mdx`
 
 Documentation page that imports and uses the examples:
 
@@ -131,7 +130,7 @@ title: Library Name Recipe
 ---
 
 import CodeEditor from "~/components/CodeEditor.astro";
-import examples from "./examples.code.ts";
+import examples from "~/source-examples/library-name/examples.code";
 
 ## Component-Scoped State
 
@@ -144,43 +143,15 @@ import examples from "./examples.code.ts";
 
 ### `library-name.spec.ts`
 
-Playwright tests with helper functions for behavioral testing:
+Examples that follow the standard counter structure (two counters, each a `<p>Clicks: N</p>` followed by its increment `<button>`) reuse the shared test suite:
 
 ```typescript
-import { test, expect } from '@playwright/test';
-import { createSandpackHelper } from '../../../tests/helpers/sandpack';
-import type { Page } from '@playwright/test';
+import { describeCounterRecipe } from "../../../tests/helpers/counter-recipe";
 
-async function testIndependentCounters(page: Page, url: string) {
-  // Test that component-scoped state creates independent instances
-}
-
-async function testSynchronizedCounters(page: Page, url: string) {
-  // Test that global state synchronizes across instances
-}
-
-test.describe('Library Name Recipe', () => {
-  test.describe('Component State Examples', () => {
-    test('React component state - counters should have independent state', async ({ page }) => {
-      await testIndependentCounters(page, '/test/libraryname/reactComponentState/');
-    });
-    
-    test('Vue component state - counters should have independent state', async ({ page }) => {
-      await testIndependentCounters(page, '/test/libraryname/vueComponentState/');
-    });
-  });
-
-  test.describe('Global State Examples', () => {
-    test('React global state - counters should share synchronized state', async ({ page }) => {
-      await testSynchronizedCounters(page, '/test/libraryname/reactGlobalState/');
-    });
-    
-    test('Vue global state - counters should share synchronized state', async ({ page }) => {
-      await testSynchronizedCounters(page, '/test/libraryname/vueGlobalState/');
-    });
-  });
-});
+describeCounterRecipe("libraryname");
 ```
+
+This generates React and Vue tests that open the four `/test/libraryname/*/` pages and check that component state keeps the counters independent while global state shares them. Examples with a different structure should write their own tests using `sandpackPreview()` from `tests/helpers/sandpack.ts`.
 
 ## State Patterns
 
@@ -269,9 +240,9 @@ The dynamic page template is at `/src/pages/test/[category]/[example].astro`.
 
 4. **Create `examples.code.ts`** following the standard structure (see above)
 
-5. **Create `newlibrary.mdx`** in your docs structure
+5. **Create `src/content/docs/recipes/newlibrary.mdx`** using the examples
 
-6. **Create `newlibrary.spec.ts`** with Playwright tests
+6. **Create `newlibrary.spec.ts`** calling `describeCounterRecipe("newlibrary")`
 
 7. **Register in central sources**:
    ```typescript
@@ -303,7 +274,8 @@ Tests verify:
 - ✅ Component-scoped state creates independent instances
 - ✅ Global state synchronizes across instances
 - ✅ Counter increment buttons work correctly
-- ✅ Examples work in Chrome, Firefox, and Safari
+
+Tests run in Chromium only: browser differences are Sandpack's concern, and codesandbox.io serves headless Firefox a bot challenge.
 
 ## Best Practices
 
@@ -317,31 +289,21 @@ Tests verify:
 
 5. **Vue templates**: Always specify `template: "vite-vue"` for Vue examples
 
-6. **Helper functions**: Use helper functions in tests to reduce duplication (e.g., `testIndependentCounters`, `testSynchronizedCounters`)
+6. **Shared tests**: Use `describeCounterRecipe` rather than copying test helpers between recipes
 
 7. **Test URLs**: Use the dynamic test page URLs (`/test/[category]/[example]/`) for testing
 
-8. **Browser compatibility**: Test in Chrome, Firefox, and Safari (webkit)
+8. **No fixed sleeps**: Wait on the element you need (`expect(...).toHaveCount(n, { timeout: SANDBOX_BOOT_TIMEOUT })`), never `waitForTimeout`
 
 ## Troubleshooting
 
 ### Vue examples not loading in tests
 
-Vue examples in Sandpack iframes can have timing issues. The tests include additional wait times:
-
-```typescript
-await page.waitForTimeout(3000);
-```
+Vue examples use Sandpack's Nodebox runtime, which installs dependencies and boots Vite inside the browser. A cold start takes ~20s locally, so the first assertion uses `SANDBOX_BOOT_TIMEOUT` (90s). The Nodebox preview iframe's `src` is on `*.nodebox.codesandbox.io`, so select the preview with `sandpackPreview()` (by its `Sandpack Preview` title), not by `src`.
 
 ### Tests failing with "locator resolved to 0 elements"
 
-The Sandpack iframe may not have loaded yet. Ensure you're using `createSandpackHelper` and `waitForSandpackIframe()`:
-
-```typescript
-const sandpack = createSandpackHelper(page);
-const iframe = await sandpack.waitForSandpackIframe();
-await page.waitForTimeout(3000); // Additional wait for content
-```
+Open the failure's `error-context.md` (or `npx playwright show-report`) to see what the page rendered. If the preview iframe contains a Cloudflare challenge script, codesandbox.io is blocking the browser rather than the example failing.
 
 ### Wrong file shown by default
 
@@ -361,5 +323,6 @@ files: {
 
 - [CodeEditor Component](../components/CodeEditor.astro) - Sandpack wrapper component
 - [CodeEditor Types](../components/CodeEditor.types.ts) - TypeScript type definitions
-- [Sandpack Helper](../../tests/helpers/sandpack.ts) - Test utilities for Sandpack iframes
+- [Sandpack Helper](../../tests/helpers/sandpack.ts) - Locates the Sandpack preview iframe
+- [Counter Recipe Tests](../../tests/helpers/counter-recipe.ts) - Shared tests for the standard counter examples
 - [Dynamic Test Page Template](../pages/test/[category]/[example].astro) - Test page generator

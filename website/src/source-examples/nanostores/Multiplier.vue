@@ -11,6 +11,6 @@ const increment = () => multiplierAtom.set(multiplierAtom.get() + 1);
 <template>
   <div>
     <p>Multiplier: {{ multiple }}</p>
-    <button @click="increment()">Multiply</button>
+    <button @click="increment()">increment</button>
   </div>
 </template>

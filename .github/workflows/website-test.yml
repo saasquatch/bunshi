@@ -1,0 +1,49 @@
+name: Website examples
+permissions:
+  contents: read
+on:
+  pull_request:
+    branches: [main]
+    # Examples run the published bunshi from npm, so only website changes can break them.
+    paths:
+      - "website/**"
+      - ".github/workflows/website-test.yml"
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: website-test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  playwright:
+    name: Test website examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Use Node 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Root npm install
+        run: npm install
+
+      - name: Website npm install
+        run: cd website && npm install
+
+      - name: Install Playwright Chromium
+        run: cd website && npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: cd website && npm test
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: website/playwright-report/
+          retention-days: 30
