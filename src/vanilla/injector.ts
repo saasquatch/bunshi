@@ -416,17 +416,15 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    const scopeDeps = new Set(
-      Array.from(mounted.deps.allScopes).filter(
-        (s) => !internalGlobalScopes.has(s),
-      ),
+    const scopeDeps = Array.from(mounted.deps.allScopes).filter(
+      (s) => !internalGlobalScopes.has(s),
     );
     const cachedDeps = dependencyCache.get(m);
     if (!cachedDeps) {
-      dependencyCache.set(m, scopeDeps);
+      dependencyCache.set(m, new Set(scopeDeps));
     } else if (
-      scopeDeps.size !== cachedDeps.size ||
-      Array.from(scopeDeps).some((s) => !cachedDeps.has(s))
+      scopeDeps.length !== cachedDeps.size ||
+      scopeDeps.some((s) => !cachedDeps.has(s))
     ) {
       throw new Error(
         "Molecule is using conditional dependencies. This is not supported.",
@@ -709,9 +707,11 @@ function runMolecule(
     m[GlobalScopeSymbol] = createScope(Symbol(`bunshi.global.scope.${id}`), {
       debugLabel: `Global Scope ${id}`,
     });
-    internalGlobalScopes.add(m[GlobalScopeSymbol]!);
   }
-  trackingScopeGetter(m[GlobalScopeSymbol]!);
+  // Register on every run: another bunshi copy (CJS vs ESM) may have created it
+  const globalScope = m[GlobalScopeSymbol]!;
+  internalGlobalScopes.add(globalScope);
+  trackingScopeGetter(globalScope);
 
   try {
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);

@@ -3,7 +3,8 @@ import { vi } from "vitest";
 import { ComponentScope } from ".";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
 import { createInjector } from "./injector";
-import { AnyScopeTuple } from "./internal/internal-types";
+import { AnyScopeTuple, MoleculeInternal } from "./internal/internal-types";
+import { GlobalScopeSymbol } from "./internal/symbols";
 import { onMount, onUnmount, use } from "./lifecycle";
 import { molecule } from "./molecule";
 import { createScope } from "./scope";
@@ -485,6 +486,18 @@ describe("Conditional dependencies", () => {
       expect(
         injector.use(LibaryMolecule, [ConfigScope, ConfigMolecule])[0],
       ).toBe(first);
+    });
+    test("Switching works when another bunshi copy created the internal scope", () => {
+      const injector = createInjector();
+      const OtherConfigMolecule = molecule(() => ({ example: atom("other") }));
+      // Simulates the CJS build having already run this molecule
+      (OtherConfigMolecule as MoleculeInternal<unknown>)[GlobalScopeSymbol] =
+        createScope(Symbol("other copy"));
+
+      injector.use(LibaryMolecule, [ConfigScope, ConfigMolecule]);
+      expect(() =>
+        injector.use(LibaryMolecule, [ConfigScope, OtherConfigMolecule]),
+      ).not.toThrow();
     });
   });
 });
