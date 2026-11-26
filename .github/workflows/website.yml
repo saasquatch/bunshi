@@ -15,7 +15,13 @@ permissions:
   id-token: write
 
 jobs:
+  test:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/website-test.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout your repository using git
