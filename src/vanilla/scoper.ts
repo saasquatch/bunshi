@@ -73,9 +73,10 @@ export function createScoper(instrumentation?: Instrumentation) {
         references: Set<ScopeSubscription>;
 
         /**
-         * These callbacks should be called when there are no more subscriptions
+         * The sets of callbacks that should be called when there are no more
+         * subscriptions, one set per `registerCleanups` call
          */
-        cleanups: Set<CleanupCallback>;
+        cleanups: Set<Set<CleanupCallback>>;
       }
     >
   >();
@@ -102,6 +103,24 @@ export function createScoper(instrumentation?: Instrumentation) {
    * a callback is only run once.
    */
   const cleanupsRun = new WeakSet<CleanupCallback>();
+
+  /**
+   * The tuples' `cleanups` that each registered set of callbacks has joined.
+   *
+   * A set of callbacks is usually registered against several scope tuples,
+   * but it is run when the first of them is released. Once it has run, it is
+   * removed from the tuples that are still in use. Otherwise a long-lived
+   * tuple, such as the default tuple of a global molecule, would keep the
+   * callbacks, and everything they close over, in memory.
+   *
+   * The key is the registered set, never a callback. A callback can outlive
+   * the molecule that registers it, and as a key it would keep that
+   * molecule's other callbacks alive.
+   */
+  const tupleCleanupsBySet = new WeakMap<
+    Set<CleanupCallback>,
+    Set<Set<Set<CleanupCallback>>>
+  >();
 
   const releasedSubscriptions = new WeakSet<ScopeSubscription>();
 
@@ -184,9 +203,11 @@ export function createScoper(instrumentation?: Instrumentation) {
     }
     if (!tuples) return;
 
-    const cleanupsToRun = releaseTuples(tuples, subscriptionObj);
+    const cleanupSets = releaseTuples(tuples, subscriptionObj);
+    const cleanupsToRun = new Set<CleanupCallback>();
+    cleanupSets.forEach((set) => set.forEach((cb) => cleanupsToRun.add(cb)));
 
-    Array.from(cleanupsToRun.values())
+    Array.from(cleanupsToRun)
       .reverse()
       .forEach((cb) => {
         if (!cleanupsRun.has(cb)) {
@@ -196,13 +217,19 @@ export function createScoper(instrumentation?: Instrumentation) {
           cleanupsRun.add(cb);
         }
       });
+
+    cleanupSets.forEach((set) => {
+      const tupleCleanups = tupleCleanupsBySet.get(set)!;
+      tupleCleanups.forEach((cleanups) => cleanups.delete(set));
+      tupleCleanups.clear();
+    });
   }
 
   function releaseTuples(
     tuples: Set<AnyScopeTuple>,
     subscriptionObj: ScopeSubscription,
   ) {
-    const cleanupsToRun = new Set<CleanupCallback>();
+    const cleanupsToRun = new Set<Set<CleanupCallback>>();
     tuples.forEach(([scope, value]) => {
       const scopeMap = scopeCache.get(scope);
       const cached = scopeMap?.get(value);
@@ -215,8 +242,8 @@ export function createScoper(instrumentation?: Instrumentation) {
         scopeMap?.delete(value);
 
         // Run all cleanups
-        cached?.cleanups.forEach((cb) => {
-          cleanupsToRun.add(cb);
+        cached?.cleanups.forEach((set) => {
+          cleanupsToRun.add(set);
         });
       } else {
         instrumentation?.scopeStopWithCleanup(subscriptionObj, cached);
@@ -231,13 +258,15 @@ export function createScoper(instrumentation?: Instrumentation) {
     cleanupSet: Set<CleanupCallback>,
   ) {
     scopeKeys.forEach(([scopeKey, scopeValue]) => {
-      cleanupSet.forEach((cleanup) => {
-        const cleanups = scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups;
-        if (!cleanups) {
-          throw new Error("Can't register cleanups for uncached values");
-        }
-        cleanups.add(cleanup);
-      });
+      const cleanups = scopeCache.get(scopeKey)?.get(scopeValue)?.cleanups;
+      if (!cleanups) {
+        throw new Error("Can't register cleanups for uncached values");
+      }
+      cleanups.add(cleanupSet);
+      tupleCleanupsBySet.set(
+        cleanupSet,
+        (tupleCleanupsBySet.get(cleanupSet) ?? new Set()).add(cleanups),
+      );
     });
   }
 
