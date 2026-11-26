@@ -1,3 +1,4 @@
+import { atom } from "jotai";
 import { vi } from "vitest";
 import { ComponentScope } from ".";
 import { createLifecycleUtils } from "../shared/testing/lifecycle";
@@ -465,6 +466,25 @@ describe("Conditional dependencies", () => {
       expect(library.example).toBe(config.example);
       unsub1();
       unsub2();
+    });
+    test("Switching to a different provided molecule works", () => {
+      const injector = createInjector();
+      const OtherConfigMolecule = molecule(() => ({ example: atom("other") }));
+
+      const [first] = injector.use(LibaryMolecule, [
+        ConfigScope,
+        ConfigMolecule,
+      ]);
+      const [other] = injector.use(LibaryMolecule, [
+        ConfigScope,
+        OtherConfigMolecule,
+      ]);
+
+      expect(other.example).toBe(injector.get(OtherConfigMolecule).example);
+      expect(other.example).not.toBe(first.example);
+      expect(
+        injector.use(LibaryMolecule, [ConfigScope, ConfigMolecule])[0],
+      ).toBe(first);
     });
   });
 });

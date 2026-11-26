@@ -49,6 +49,9 @@ import type { BindingMap, Bindings, Injectable } from "./types";
 
 let globalScopeId = 0;
 
+// Internal per-molecule scopes, excluded from the conditional dependency check
+const internalGlobalScopes = new WeakSet<AnyMoleculeScope>();
+
 type UseScopeDetails = {
   value: unknown;
   defaultScopes: Set<AnyMoleculeScope>;
@@ -413,26 +416,21 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    if (dependencyCache.has(m)) {
-      const cachedDeps = dependencyCache.get(m)!;
-      if (mounted.deps.allScopes.size !== cachedDeps?.size) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-      let mismatch = false;
-      mounted.deps.allScopes.forEach((s) => {
-        if (!cachedDeps.has(s)) {
-          mismatch = true;
-        }
-      });
-      if (mismatch) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-    } else {
-      dependencyCache.set(m, mounted.deps.allScopes);
+    const scopeDeps = new Set(
+      Array.from(mounted.deps.allScopes).filter(
+        (s) => !internalGlobalScopes.has(s),
+      ),
+    );
+    const cachedDeps = dependencyCache.get(m);
+    if (!cachedDeps) {
+      dependencyCache.set(m, scopeDeps);
+    } else if (
+      scopeDeps.size !== cachedDeps.size ||
+      Array.from(scopeDeps).some((s) => !cachedDeps.has(s))
+    ) {
+      throw new Error(
+        "Molecule is using conditional dependencies. This is not supported.",
+      );
     }
     return multiCache(
       m,
@@ -711,6 +709,7 @@ function runMolecule(
     m[GlobalScopeSymbol] = createScope(Symbol(`bunshi.global.scope.${id}`), {
       debugLabel: `Global Scope ${id}`,
     });
+    internalGlobalScopes.add(m[GlobalScopeSymbol]!);
   }
   trackingScopeGetter(m[GlobalScopeSymbol]!);
 
