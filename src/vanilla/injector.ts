@@ -49,9 +49,6 @@ import type { BindingMap, Bindings, Injectable } from "./types";
 
 let globalScopeId = 0;
 
-// Internal per-molecule scopes, excluded from the conditional dependency check
-const internalGlobalScopes = new WeakSet<AnyMoleculeScope>();
-
 type UseScopeDetails = {
   value: unknown;
   defaultScopes: Set<AnyMoleculeScope>;
@@ -417,7 +414,7 @@ export function createInjector(
     );
 
     const scopeDeps = Array.from(mounted.deps.allScopes).filter(
-      (s) => !internalGlobalScopes.has(s),
+      (s) => !s[GlobalScopeSymbol],
     );
     const cachedDeps = dependencyCache.get(m);
     if (!cachedDeps) {
@@ -708,9 +705,9 @@ function runMolecule(
       debugLabel: `Global Scope ${id}`,
     });
   }
-  // Register on every run: another bunshi copy (CJS vs ESM) may have created it
+  // Marked on the scope itself so every bunshi copy (CJS, ESM) can recognise it
   const globalScope = m[GlobalScopeSymbol]!;
-  internalGlobalScopes.add(globalScope);
+  globalScope[GlobalScopeSymbol] = true;
   trackingScopeGetter(globalScope);
 
   try {
