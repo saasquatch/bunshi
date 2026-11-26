@@ -77,6 +77,16 @@ export type MoleculeInterface<T> = {
 export type MoleculeOrInterface<T> = MoleculeInterface<T> | Molecule<T>;
 
 /**
+ * Extract the result type of a molecule
+ *
+ * @example
+ * ```ts
+ * const MyMolecule = molecule(()=>123);
+ * type ResultType = ExtractMoleculeResult<typeof MyMolecule>; // ResultType is number
+ *  */ 
+export type ExtractMoleculeResult<T> = T extends Molecule<infer U> ? U : never 
+
+/**
  * Create a new molecule
  *
  * Molecules are the core building block of bunshi. They are functions that return a value.
