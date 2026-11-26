@@ -22,15 +22,16 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      # Trusted publishing needs Node >= 22.14.0 and npm >= 11.5.1
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
       
-      # Ensure npm 11.5.1 or later is installed
+      # Pin the major so a new npm release can't drop support for this Node version
       - name: Update npm
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
         
       - uses: bahmutov/npm-install@v1
 
