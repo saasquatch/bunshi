@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1
+
+### Patch Changes
+
+- [#109](https://github.com/saasquatch/bunshi/pull/109) [`38d1281`](https://github.com/saasquatch/bunshi/commit/38d1281223fdf2967d835bc41e3ff473852de39f) Thanks [@alecmce-maltedai](https://github.com/alecmce-maltedai)! - Released molecules are garbage collected while a global molecule they depend on is still in use. Previously, a molecule's cleanup callbacks stayed registered on every scope it used, so a long-lived scope kept the released molecule's value in memory.
+
 ## 2.2.0
 
 ### Minor Changes
