@@ -25,6 +25,9 @@ import { molecule as ReactMoleculeMjs } from "../dist/react.mjs";
 import { molecule as VueMolecule } from "../dist/vue.js";
 import { molecule as VueMoleculeMjs } from "../dist/vue.mjs";
 
+import { createInjector as VanillaCreateInjector } from "../dist/vanilla.js";
+import { createInjector as VanillaCreateInjectorMjs } from "../dist/vanilla.mjs";
+
 /**
  *
  * LANDMINE: This requires build to have run first!!
@@ -61,5 +64,21 @@ describe("Build artifacts", () => {
       // Test of the fix for https://github.com/saasquatch/bunshi/issues/29
       expect(ReactComponentScopeMjs).toBe(VanillaComponentScopeMjs);
     });
+  });
+
+  test("An MJS child injector can switch providers on a CommonJS parent's cache", () => {
+    const ConfigScope = VanillaCreateScope<object | undefined>(undefined);
+    const Shared = VanillaMolecule(() => ({}));
+    const Library = VanillaMolecule((getMol, getScope) => {
+      getMol(Shared);
+      return getMol(getScope(ConfigScope) as typeof Shared);
+    });
+    const parent = VanillaCreateInjector();
+    const child = VanillaCreateInjectorMjs({ parent });
+
+    parent.use(Library, [ConfigScope, VanillaMolecule(() => ({}))]);
+    expect(() =>
+      child.use(Library, [ConfigScope, VanillaMolecule(() => ({}))]),
+    ).not.toThrow();
   });
 });

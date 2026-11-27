@@ -413,26 +413,17 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    if (dependencyCache.has(m)) {
-      const cachedDeps = dependencyCache.get(m)!;
-      if (mounted.deps.allScopes.size !== cachedDeps?.size) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-      let mismatch = false;
-      mounted.deps.allScopes.forEach((s) => {
-        if (!cachedDeps.has(s)) {
-          mismatch = true;
-        }
-      });
-      if (mismatch) {
-        throw new Error(
-          "Molecule is using conditional dependencies. This is not supported.",
-        );
-      }
-    } else {
-      dependencyCache.set(m, mounted.deps.allScopes);
+    const scopeDeps = mounted.deps.allScopes;
+    const cachedDeps = dependencyCache.get(m);
+    if (!cachedDeps) {
+      dependencyCache.set(m, scopeDeps);
+    } else if (
+      scopeDeps.size !== cachedDeps.size ||
+      Array.from(scopeDeps).some((s) => !cachedDeps.has(s))
+    ) {
+      throw new Error(
+        "Molecule is using conditional dependencies. This is not supported.",
+      );
     }
     return multiCache(
       m,
@@ -666,7 +657,7 @@ function runMolecule(
 
   const use: InternalUse = (dep: Injectable<unknown>) => {
     if (isMoleculeScope(dep)) {
-      allScopes.add(dep);
+      if (!dep[GlobalScopeSymbol]) allScopes.add(dep);
       const scopeDetails = getScopeValue(dep);
       scopeDetails.defaultScopes.forEach((s) => defaultScopes.add(s));
       return scopeDetails.value;
@@ -712,7 +703,10 @@ function runMolecule(
       debugLabel: `Global Scope ${id}`,
     });
   }
-  trackingScopeGetter(m[GlobalScopeSymbol]!);
+  // Marked on the scope itself so every bunshi copy (CJS, ESM) can recognise it
+  const globalScope = m[GlobalScopeSymbol]!;
+  globalScope[GlobalScopeSymbol] = true;
+  trackingScopeGetter(globalScope);
 
   try {
     const value = m[GetterSymbol](trackingGetter, trackingScopeGetter);
