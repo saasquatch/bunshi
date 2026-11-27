@@ -30,7 +30,7 @@ export default defineConfig({
        * This is intentionally disabled here, but browsers tests
        * can still be run.
        *
-       * To run browser tests in one browser, use `vitest --browser=chromium`
+       * To run browser tests in one browser, use `vitest --browser.enabled --browser.name=chromium`
        */
       enabled: false,
       provider: playwright(),

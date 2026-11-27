@@ -14,7 +14,7 @@ If you would like to contribute by fixing an open issue or developing a new feat
 
 - Fork this repository.
 - Create a new feature branch based off the `main` branch.
-- Install dependencies by running `$ npm install`. Development needs Node.js 22.12 or later (CI uses Node 24).
+- Install dependencies by running `$ npm install`. Development needs Node.js 22.22.2+ (22.x), 24.15.0+ (24.x), or 26+ (CI uses Node 24).
 - Create failing tests for your fix or new feature.
 - Implement your changes and confirm that all test are passing. You can run the tests continuously during development via the `$ npm test` command.
 - If you want to test it in a React project you can use the `$ npm link` package.

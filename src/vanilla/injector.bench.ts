@@ -63,7 +63,7 @@ describe("Injector benchmarks", () => {
     await bench(
       "Using a new really deep molecule, with proper cleanup",
       {
-        beforeAll() {
+        beforeEach() {
           DeepMolecule3 = createDeepMolecule({
             rootDependency: SimpleMolecule,
             depth: 100,
