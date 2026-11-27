@@ -4,3 +4,6 @@ node_modules
 .cache
 dist
 coverage
+
+# Vitest attachments (browser-mode failure screenshots)
+.vitest/

@@ -1,5 +1,6 @@
 // vite.config.ts
 import vue from "@vitejs/plugin-vue";
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -29,16 +30,15 @@ export default defineConfig({
        * This is intentionally disabled here, but browsers tests
        * can still be run.
        *
-       * To run browser tests, use `vitest --browser=chrome`
+       * To run browser tests in one browser, use `vitest --browser.enabled --browser.name=chromium`
        */
       enabled: false,
-      /**
-       * This is hard-coded as chrome here, but overriden in package.json scripts
-       * and github actions. We can still run tests on other browsers
-       * with `vitest --browser=chrome`
-       */
-      name: "chrome",
-      provider: "playwright",
+      provider: playwright(),
+      instances: [
+        { browser: "chromium" },
+        { browser: "firefox" },
+        { browser: "webkit" },
+      ],
       headless: true,
     },
   },
