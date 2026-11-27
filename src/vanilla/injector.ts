@@ -413,15 +413,13 @@ export function createInjector(
       mounted.deps.allScopes.has(key),
     );
 
-    const scopeDeps = Array.from(mounted.deps.allScopes).filter(
-      (s) => !s[GlobalScopeSymbol],
-    );
+    const scopeDeps = mounted.deps.allScopes;
     const cachedDeps = dependencyCache.get(m);
     if (!cachedDeps) {
-      dependencyCache.set(m, new Set(scopeDeps));
+      dependencyCache.set(m, scopeDeps);
     } else if (
-      scopeDeps.length !== cachedDeps.size ||
-      scopeDeps.some((s) => !cachedDeps.has(s))
+      scopeDeps.size !== cachedDeps.size ||
+      Array.from(scopeDeps).some((s) => !cachedDeps.has(s))
     ) {
       throw new Error(
         "Molecule is using conditional dependencies. This is not supported.",
@@ -659,7 +657,7 @@ function runMolecule(
 
   const use: InternalUse = (dep: Injectable<unknown>) => {
     if (isMoleculeScope(dep)) {
-      allScopes.add(dep);
+      if (!dep[GlobalScopeSymbol]) allScopes.add(dep);
       const scopeDetails = getScopeValue(dep);
       scopeDetails.defaultScopes.forEach((s) => defaultScopes.add(s));
       return scopeDetails.value;
