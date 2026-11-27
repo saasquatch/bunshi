@@ -251,10 +251,12 @@ export function createInjector(
      *  - The relevant scopes are B and C
      *  - This set doesn't need to be iterable, because the scope context (e.g. A, B and C) is iterable
      */
-    Set</**
-     * We only need to store the scope keys, not the scope values.
-     */
-    AnyMoleculeScope>
+    Set<
+      /**
+       * We only need to store the scope keys, not the scope values.
+       */
+      AnyMoleculeScope
+    >
   > = parentInternals?.dependencyCache ?? new WeakMap();
 
   const bindings = bindingsToMap(injectorProps.bindings);

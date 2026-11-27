@@ -10,7 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/react": "^16.14.71",
     "bunshi": "file:../../",
-    "typescript": "3.8"
+    "react": "^16.14.0",
+    "typescript": "3.8",
+    "vue": "^3.5.46"
   }
 }
